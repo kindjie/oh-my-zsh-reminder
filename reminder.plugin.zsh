@@ -68,11 +68,22 @@ alias task_done=todo_task_done
 function todo_display {
     load_tasks
     if [[ ${#todo_tasks} -gt 0 ]] then
-      printf "$fg_bold[default]Todo :$fg_no_bold[default]\n"
       for (( i = 1; i <= ${#todo_tasks}; i++ )); do
-        printf "  - %s%s$fg[default]\n" "${todo_tasks_colors[i]}" "${todo_tasks[i]}"
+        printf "${todo_tasks_colors[i]}%${COLUMNS}s$fg[default]\n" " ${todo_tasks[i]} :: "
       done
     fi
+    echo
+    # Run in background, but not as job.
+    show_affirm &|
+}
+
+function show_affirm {
+    export affirm="$(curl -s https://www.affirmations.dev/ | jq --raw-output '.affirmation')"
+    # Save cursor. Move up two lines.
+    printf "\033[s\033[F\033[F"
+    printf "${todo_tasks_colors[i]}%${COLUMNS}s$fg[default]\n" "❤️${affirm}!❤️ "
+    printf "\033[u"
+    # Restore cursor.
 }
 
 function todo_save {
