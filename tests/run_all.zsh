@@ -36,6 +36,8 @@ TEST_FILES=(
     "character.zsh"
 )
 
+PERFORMANCE_TEST_FILE="performance.zsh"
+
 # Global test tracking
 TOTAL_TESTS=0
 PASSED_TESTS=0
@@ -93,6 +95,60 @@ run_test_file() {
         echo "${GREEN}✅ $test_file: $file_passed passed, $file_warnings warnings${RESET}"
     else
         echo "${RED}❌ $test_file: $file_passed passed, $file_failed failed, $file_warnings warnings${RESET}"
+    fi
+    echo
+    
+    return $exit_code
+}
+
+# Function to run performance tests
+run_performance_tests() {
+    local perf_path="$TESTS_DIR/$PERFORMANCE_TEST_FILE"
+    
+    if [[ ! -f "$perf_path" ]]; then
+        echo "${RED}❌ Performance test file not found: $PERFORMANCE_TEST_FILE${RESET}"
+        return 1
+    fi
+    
+    echo "${MAGENTA}🚀 Running performance tests...${RESET}"
+    echo "This may take 30-60 seconds to complete all 16 performance tests."
+    echo
+    
+    # Run performance tests with timeout
+    local output
+    local exit_code
+    
+    if timeout 120 "$perf_path" > /tmp/perf_output 2>&1; then
+        output=$(cat /tmp/perf_output)
+        exit_code=0
+    else
+        output=$(cat /tmp/perf_output 2>/dev/null || echo "Performance tests timed out or failed")
+        exit_code=1
+    fi
+    
+    # Clean up temp file
+    rm -f /tmp/perf_output
+    
+    # Display relevant output
+    echo "$output" | tail -20
+    
+    # Count performance test results
+    local perf_passed=$(echo "$output" | grep -c "✅ PASS")
+    local perf_failed=$(echo "$output" | grep -c "❌ FAIL")
+    local perf_warnings=$(echo "$output" | grep -c "⚠️")
+    
+    # Update global counters
+    TOTAL_TESTS=$((TOTAL_TESTS + perf_passed + perf_failed))
+    PASSED_TESTS=$((PASSED_TESTS + perf_passed))
+    FAILED_TESTS=$((FAILED_TESTS + perf_failed))
+    WARNING_TESTS=$((WARNING_TESTS + perf_warnings))
+    
+    # Report performance results
+    echo "────────────────────────────────────────────────────"
+    if [[ $perf_failed -eq 0 ]]; then
+        echo "${GREEN}✅ Performance tests: $perf_passed passed, $perf_warnings warnings${RESET}"
+    else
+        echo "${RED}❌ Performance tests: $perf_passed passed, $perf_failed failed, $perf_warnings warnings${RESET}"
     fi
     echo
     
@@ -197,7 +253,7 @@ run_specific_tests() {
 
 # Function to display help
 show_help() {
-    local script_name="$(basename "$0")"
+    local script_name="$(basename "${1:-$0}")"
     echo "Usage: $script_name [options] [test_files...]"
     echo
     echo "Options:"
@@ -205,6 +261,7 @@ show_help() {
     echo "  -l, --list      List available test files"
     echo "  -v, --verbose   Run with verbose output"
     echo "  -q, --quick     Run quick tests only (skip slow tests)"
+    echo "  -p, --perf      Include performance tests (adds ~30-60s)"
     echo
     echo "Test Files:"
     for test_file in "${TEST_FILES[@]}"; do
@@ -212,7 +269,8 @@ show_help() {
     done
     echo
     echo "Examples:"
-    echo "  $script_name                          # Run all tests"
+    echo "  $script_name                          # Run all functional tests"
+    echo "  $script_name --perf                   # Run functional + performance tests"
     echo "  $script_name display.zsh color.zsh    # Run specific tests"
     echo "  $script_name --list                   # List available tests"
 }
@@ -232,16 +290,20 @@ list_tests() {
 
 # Main execution
 main() {
+    local script_name="$1"
+    shift  # Remove script name from arguments
+    
     local run_all=true
     local verbose=false
     local quick=false
+    local run_performance=false
     local specific_tests=()
     
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
             -h|--help)
-                show_help
+                show_help "$script_name"
                 return 0
                 ;;
             -l|--list)
@@ -256,9 +318,13 @@ main() {
                 quick=true
                 shift
                 ;;
+            -p|--perf)
+                run_performance=true
+                shift
+                ;;
             -*)
                 echo "${RED}❌ Unknown option: $1${RESET}"
-                show_help
+                show_help "$script_name"
                 return 1
                 ;;
             *)
@@ -283,7 +349,7 @@ main() {
     
     # Run tests
     if [[ "$run_all" == true ]]; then
-        echo "${CYAN}🚀 Running all tests...${RESET}"
+        echo "${CYAN}🚀 Running all functional tests...${RESET}"
         echo
         for test_file in "${TEST_FILES[@]}"; do
             run_test_file "$test_file"
@@ -292,6 +358,12 @@ main() {
         echo "${CYAN}🚀 Running selected tests...${RESET}"
         echo
         run_specific_tests "${specific_tests[@]}"
+    fi
+    
+    # Run performance tests if requested
+    if [[ "$run_performance" == true ]]; then
+        echo
+        run_performance_tests
     fi
     
     local end_time=$(date +%s 2>/dev/null || date +%s)
@@ -307,5 +379,6 @@ main() {
 
 # Execute main function if run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "$0" == *"run_all.zsh" ]]; then
-    main "$@"
+    # Pass script name as first argument to main
+    main "$0" "$@"
 fi
