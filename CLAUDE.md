@@ -12,6 +12,7 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - **Persistent Storage**: Tasks and colors stored in single file `~/.todo.save`
 - **Hook System**: Uses zsh's `precmd` hook to display tasks before each prompt
 - **Color Management**: Cycles through configurable colors for task differentiation (default: red, green, yellow, blue, magenta, cyan)
+- **Separate Border/Content Colors**: Independent foreground/background color control for borders vs content areas
 - **Emoji Support**: Full Unicode character width detection for proper alignment with emojis
 - **Configurable Display**: Customizable bullet/heart characters, padding, show/hide states, and box dimensions
 - **Runtime Controls**: Toggle commands for showing/hiding components without restart
@@ -38,6 +39,29 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 ## Testing Workflow
 
 **Test Data Safety**: All tests use temporary files via `TODO_SAVE_FILE` configuration to protect user data. Tests automatically isolate themselves in `$TMPDIR` and clean up on exit.
+
+### Testing Conventions
+
+**Test Structure**:
+- Each test module is a standalone executable zsh script in `tests/`
+- Tests use numbered functions with descriptive names: `test_feature_name()`
+- Test output uses standardized format: `✅ PASS:` and `❌ FAIL:` for parsing
+- Tests include both positive and negative validation cases
+- Edge cases and boundary conditions are thoroughly tested
+
+**Test Categories**:
+- `display.zsh`: Display functionality, layout, text wrapping, emoji handling
+- `configuration.zsh`: Padding, dimensions, show/hide states, box styling  
+- `color.zsh`: Color validation, border/content colors, legacy compatibility
+- `interface.zsh`: Commands, toggles, help system, user interactions
+- `character.zsh`: Character width detection, Unicode/emoji support
+- `performance.zsh`: Speed validation, async behavior, network resilience
+
+**Integration**:
+- `run_all.zsh` orchestrates all test execution with summary reporting
+- Individual tests can be run independently for focused development
+- Performance tests separated with `--perf` flag due to longer execution time
+- All tests designed to run in CI/automated environments
 
 To test plugin modifications:
 
@@ -123,12 +147,14 @@ The performance test suite validates the plugin's async design and ensures displ
 
 ## Display Layout
 
-- Right side: Todo box (configurable width, default 50%) with low-contrast gray borders
+- Right side: Todo box (configurable width, default 50%) with configurable borders
 - Left side: Motivational affirmation with configurable heart positioning
 - Configurable title (default: "REMEMBER") displays in bright color
 - Regular tasks display with customizable bullet characters (default: ▪) and gray text
 - Text wraps within box boundaries with proper emoji-aware indentation
 - Dual-color system: bright bullets for visual emphasis, configurable text/border colors for readability
+- Independent border and content background colors for visual distinction
+- Configurable box drawing characters (corners, lines) for style customization
 - Configurable padding on all sides (top/right/bottom/left)
 - Runtime show/hide controls for all components
 - Full emoji and Unicode support with proper terminal width calculation

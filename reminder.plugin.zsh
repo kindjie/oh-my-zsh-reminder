@@ -25,11 +25,30 @@ TODO_PADDING_LEFT="${TODO_PADDING_LEFT:-0}"               # Left padding/margin
 
 # Color configuration (256-color terminal codes)
 TODO_TASK_COLORS="${TODO_TASK_COLORS:-167,71,136,110,139,73}"    # Task bullet colors (comma-separated)
-TODO_BORDER_COLOR="${TODO_BORDER_COLOR:-240}"                     # Box border color
-TODO_BACKGROUND_COLOR="${TODO_BACKGROUND_COLOR:-235}"             # Box background color
+TODO_BORDER_COLOR="${TODO_BORDER_COLOR:-240}"                     # Box border foreground color
+
+# Handle legacy compatibility first
+if [[ -n "${TODO_BACKGROUND_COLOR:-}" ]]; then
+    # If TODO_BACKGROUND_COLOR is set, use it as default for both new variables
+    TODO_BORDER_BG_COLOR="${TODO_BORDER_BG_COLOR:-$TODO_BACKGROUND_COLOR}"
+    TODO_CONTENT_BG_COLOR="${TODO_CONTENT_BG_COLOR:-$TODO_BACKGROUND_COLOR}"
+else
+    # Use individual defaults if legacy variable not set
+    TODO_BORDER_BG_COLOR="${TODO_BORDER_BG_COLOR:-235}"               # Box border background color
+    TODO_CONTENT_BG_COLOR="${TODO_CONTENT_BG_COLOR:-235}"             # Box content background color
+fi
+
 TODO_TEXT_COLOR="${TODO_TEXT_COLOR:-240}"                         # Task text color
 TODO_TITLE_COLOR="${TODO_TITLE_COLOR:-250}"                       # Box title color
 TODO_AFFIRMATION_COLOR="${TODO_AFFIRMATION_COLOR:-109}"           # Affirmation text color
+
+# Box drawing characters configuration
+TODO_BOX_TOP_LEFT="${TODO_BOX_TOP_LEFT:-┌}"                       # Top left corner
+TODO_BOX_TOP_RIGHT="${TODO_BOX_TOP_RIGHT:-┐}"                     # Top right corner
+TODO_BOX_BOTTOM_LEFT="${TODO_BOX_BOTTOM_LEFT:-└}"                 # Bottom left corner
+TODO_BOX_BOTTOM_RIGHT="${TODO_BOX_BOTTOM_RIGHT:-┘}"               # Bottom right corner
+TODO_BOX_HORIZONTAL="${TODO_BOX_HORIZONTAL:-─}"                   # Horizontal line
+TODO_BOX_VERTICAL="${TODO_BOX_VERTICAL:-│}"                       # Vertical line
 
 # Validate heart character display width (allows Unicode characters including emojis)
 if [[ -z "$TODO_HEART_CHAR" ]] || [[ ${#TODO_HEART_CHAR} -gt 4 ]]; then
@@ -70,13 +89,21 @@ for padding_var in TODO_PADDING_TOP TODO_PADDING_RIGHT TODO_PADDING_BOTTOM TODO_
 done
 
 # Validate color configurations are numeric
-for color_var in TODO_BORDER_COLOR TODO_BACKGROUND_COLOR TODO_TEXT_COLOR TODO_TITLE_COLOR TODO_AFFIRMATION_COLOR; do
+for color_var in TODO_BORDER_COLOR TODO_BORDER_BG_COLOR TODO_CONTENT_BG_COLOR TODO_TEXT_COLOR TODO_TITLE_COLOR TODO_AFFIRMATION_COLOR; do
     local color_value="${(P)color_var}"
     if [[ ! "$color_value" =~ ^[0-9]+$ ]] || [[ $color_value -gt 255 ]]; then
         echo "Error: $color_var must be a number between 0-255, got: '$color_value'" >&2
         return 1
     fi
 done
+
+# Validate legacy TODO_BACKGROUND_COLOR if set
+if [[ -n "${TODO_BACKGROUND_COLOR:-}" ]]; then
+    if [[ ! "$TODO_BACKGROUND_COLOR" =~ ^[0-9]+$ ]] || [[ $TODO_BACKGROUND_COLOR -gt 255 ]]; then
+        echo "Error: TODO_BACKGROUND_COLOR must be a number between 0-255, got: '$TODO_BACKGROUND_COLOR'" >&2
+        return 1
+    fi
+fi
 
 # Validate and parse task colors
 if [[ -z "$TODO_TASK_COLORS" ]] || [[ ! "$TODO_TASK_COLORS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
@@ -89,6 +116,15 @@ IFS=',' read -A task_color_array <<< "$TODO_TASK_COLORS"
 for color in "${task_color_array[@]}"; do
     if [[ $color -gt 255 ]]; then
         echo "Error: Task color values must be 0-255, got: '$color'" >&2
+        return 1
+    fi
+done
+
+# Validate box drawing characters (must be single characters)
+for box_var in TODO_BOX_TOP_LEFT TODO_BOX_TOP_RIGHT TODO_BOX_BOTTOM_LEFT TODO_BOX_BOTTOM_RIGHT TODO_BOX_HORIZONTAL TODO_BOX_VERTICAL; do
+    local box_char="${(P)box_var}"
+    if [[ -z "$box_char" ]] || [[ ${#box_char} -gt 4 ]]; then
+        echo "Error: $box_var must be a single character, got: '$box_char'" >&2
         return 1
     fi
 done
@@ -497,8 +533,9 @@ function draw_todo_box() {
     unsetopt XTRACE
     local box_width=$(calculate_box_width)
     local content_width=$((box_width - 4))  # 2 for borders, 2 for padding
-    local gray_color=$'\e[38;5;'${TODO_BORDER_COLOR}$'m'
-    local bg_color=$'\e[48;5;'${TODO_BACKGROUND_COLOR}$'m'
+    local border_fg_color=$'\e[38;5;'${TODO_BORDER_COLOR}$'m'
+    local border_bg_color=$'\e[48;5;'${TODO_BORDER_BG_COLOR}$'m'
+    local content_bg_color=$'\e[48;5;'${TODO_CONTENT_BG_COLOR}$'m'
     local reset_bg=$'\e[49m'
 
     if [[ ${#todo_tasks} -eq 0 ]]; then
@@ -597,8 +634,9 @@ function draw_todo_box() {
 
     # Top border (low contrast) - ensure correct width
     local border_chars=$((box_width - 2))
-    local top_border="┌$(printf '─%.0s' $(seq 1 $border_chars))┐"
-    format_todo_line "" "${gray_color}${bg_color}$top_border${reset_bg}" ""
+    local horizontal_line="$(printf "${TODO_BOX_HORIZONTAL}%.0s" $(seq 1 $border_chars))"
+    local top_border="${TODO_BOX_TOP_LEFT}${horizontal_line}${TODO_BOX_TOP_RIGHT}"
+    format_todo_line "" "${border_fg_color}${border_bg_color}$top_border${reset_bg}" ""
 
     # Content lines
     for (( i = 1; i <= ${#all_lines}; i++ )); do
@@ -607,8 +645,11 @@ function draw_todo_box() {
         local line_display_width=${(m)#clean_line}
         local padding_needed=$((content_width - line_display_width))
         local padding="$(printf '%*s' $padding_needed '')"
-        local content_line="${all_lines[i]}${gray_color}${padding}"
-        local box_line="${gray_color}${bg_color}│ ${content_line} │${reset_bg}$fg[default]"
+        local content_line="${all_lines[i]}${border_fg_color}${padding}"
+        local left_border="${border_fg_color}${border_bg_color}${TODO_BOX_VERTICAL}${reset_bg}"
+        local right_border="${border_fg_color}${border_bg_color}${TODO_BOX_VERTICAL}${reset_bg}"
+        local content_space="${content_bg_color} ${content_line} ${reset_bg}"
+        local box_line="${left_border}${content_space}${right_border}$fg[default]"
         local left_text=""
 
         # Show placeholder affirmation on middle line
@@ -620,8 +661,8 @@ function draw_todo_box() {
     done
 
     # Bottom border (low contrast) - ensure correct width
-    local bottom_border="└$(printf '─%.0s' $(seq 1 $border_chars))┘"
-    format_todo_line "" "${gray_color}${bg_color}$bottom_border${reset_bg}" ""
+    local bottom_border="${TODO_BOX_BOTTOM_LEFT}${horizontal_line}${TODO_BOX_BOTTOM_RIGHT}"
+    format_todo_line "" "${border_fg_color}${border_bg_color}$bottom_border${reset_bg}" ""
 }
 
 # Fetch new affirmation in background (requires curl and jq)
@@ -821,7 +862,8 @@ function todo_colors() {
     echo "  • Test your colors: echo -e '\\e[38;5;NUMmText\\e[0m'"
     echo "  • Current plugin colors:"
     echo "    - Task colors: $TODO_TASK_COLORS"
-    echo "    - Border: $TODO_BORDER_COLOR, Background: $TODO_BACKGROUND_COLOR"
+    echo "    - Border fg: $TODO_BORDER_COLOR, Border bg: $TODO_BORDER_BG_COLOR"
+    echo "    - Content bg: $TODO_CONTENT_BG_COLOR"
     echo "    - Text: $TODO_TEXT_COLOR, Title: $TODO_TITLE_COLOR"
     echo "    - Affirmation: $TODO_AFFIRMATION_COLOR"
 }
@@ -906,13 +948,25 @@ function todo_help_full() {
     echo "    ${cyan}TODO_PADDING_BOTTOM${reset}                ${gray}Bottom padding (default: 0)${reset}"
     echo "    ${cyan}TODO_PADDING_LEFT${reset}                  ${gray}Left padding (default: 0)${reset}"
     echo
+    echo "  ${white}Box Drawing Characters:${reset}"
+    echo "    ${cyan}TODO_BOX_TOP_LEFT${reset}                  ${gray}Top left corner (default: ┌)${reset}"
+    echo "    ${cyan}TODO_BOX_TOP_RIGHT${reset}                 ${gray}Top right corner (default: ┐)${reset}"
+    echo "    ${cyan}TODO_BOX_BOTTOM_LEFT${reset}               ${gray}Bottom left corner (default: └)${reset}"
+    echo "    ${cyan}TODO_BOX_BOTTOM_RIGHT${reset}              ${gray}Bottom right corner (default: ┘)${reset}"
+    echo "    ${cyan}TODO_BOX_HORIZONTAL${reset}                ${gray}Horizontal line (default: ─)${reset}"
+    echo "    ${cyan}TODO_BOX_VERTICAL${reset}                  ${gray}Vertical line (default: │)${reset}"
+    echo
     echo "${bold}${yellow}🎨 Color Configuration:${reset} ${gray}(256-color codes 0-255)${reset}"
     echo "    ${cyan}TODO_TASK_COLORS${reset}                   ${gray}Task bullet colors (default: 167,71,136,110,139,73)${reset}"
-    echo "    ${cyan}TODO_BORDER_COLOR${reset}                  ${gray}Box border color (default: 240)${reset}"
-    echo "    ${cyan}TODO_BACKGROUND_COLOR${reset}              ${gray}Box background color (default: 235)${reset}"
+    echo "    ${cyan}TODO_BORDER_COLOR${reset}                  ${gray}Box border foreground color (default: 240)${reset}"
+    echo "    ${cyan}TODO_BORDER_BG_COLOR${reset}               ${gray}Box border background color (default: 235)${reset}"
+    echo "    ${cyan}TODO_CONTENT_BG_COLOR${reset}              ${gray}Box content background color (default: 235)${reset}"
     echo "    ${cyan}TODO_TEXT_COLOR${reset}                    ${gray}Task text color (default: 240)${reset}"
     echo "    ${cyan}TODO_TITLE_COLOR${reset}                   ${gray}Box title color (default: 250)${reset}"
     echo "    ${cyan}TODO_AFFIRMATION_COLOR${reset}             ${gray}Affirmation text color (default: 109)${reset}"
+    echo
+    echo "  ${white}Legacy Compatibility:${reset}"
+    echo "    ${cyan}TODO_BACKGROUND_COLOR${reset}              ${gray}Sets both border and content bg if new vars not set${reset}"
     echo
     echo "${bold}${green}📁 Files:${reset}"
     echo "  ${gray}~/.todo.save                       Task storage${reset}"
@@ -929,8 +983,29 @@ function todo_help_full() {
     echo "  ${white}export${reset} TODO_HEART_CHAR=\"💖\"        ${gray}# Use emoji heart${reset}"
     echo "  ${white}export${reset} TODO_PADDING_LEFT=4         ${gray}# Add left padding${reset}"
     echo "  ${white}export${reset} TODO_TASK_COLORS=\"196,46,33,21,129,201\"  ${gray}# Custom task colors${reset}"
-    echo "  ${white}export${reset} TODO_BORDER_COLOR=244       ${gray}# Lighter border${reset}"
+    echo "  ${white}export${reset} TODO_BORDER_COLOR=244       ${gray}# Lighter border foreground${reset}"
+    echo "  ${white}export${reset} TODO_BORDER_BG_COLOR=233    ${gray}# Dark border background${reset}"
+    echo "  ${white}export${reset} TODO_CONTENT_BG_COLOR=234   ${gray}# Content background${reset}"
     echo "  ${white}export${reset} TODO_AFFIRMATION_COLOR=33   ${gray}# Blue affirmations${reset}"
+    echo
+    echo "  ${gray}# Box style examples${reset}"
+    echo "  ${gray}# ASCII style:${reset}"
+    echo "  ${white}export${reset} TODO_BOX_TOP_LEFT=\"+\" TODO_BOX_TOP_RIGHT=\"+\""
+    echo "  ${white}export${reset} TODO_BOX_BOTTOM_LEFT=\"+\" TODO_BOX_BOTTOM_RIGHT=\"+\""
+    echo "  ${white}export${reset} TODO_BOX_HORIZONTAL=\"-\" TODO_BOX_VERTICAL=\"|\"" 
+    echo
+    echo "  ${gray}# Double-line style:${reset}"
+    echo "  ${white}export${reset} TODO_BOX_TOP_LEFT=\"╔\" TODO_BOX_TOP_RIGHT=\"╗\""
+    echo "  ${white}export${reset} TODO_BOX_BOTTOM_LEFT=\"╚\" TODO_BOX_BOTTOM_RIGHT=\"╝\""
+    echo "  ${white}export${reset} TODO_BOX_HORIZONTAL=\"═\" TODO_BOX_VERTICAL=\"║\""
+    echo
+    echo "  ${gray}# Rounded corners:${reset}"
+    echo "  ${white}export${reset} TODO_BOX_TOP_LEFT=\"╭\" TODO_BOX_TOP_RIGHT=\"╮\""
+    echo "  ${white}export${reset} TODO_BOX_BOTTOM_LEFT=\"╰\" TODO_BOX_BOTTOM_RIGHT=\"╯\""
+    echo
+    echo "  ${gray}# Color separation example:${reset}"
+    echo "  ${white}export${reset} TODO_BORDER_COLOR=255 TODO_BORDER_BG_COLOR=196"
+    echo "  ${white}export${reset} TODO_CONTENT_BG_COLOR=235  ${gray}# Bright white border on red bg, normal content bg${reset}"
     echo
     echo "${bold}${blue}🔗 Links:${reset}"
     echo "  ${gray}Repository: https://github.com/kindjie/zsh-todo-reminder${reset}"

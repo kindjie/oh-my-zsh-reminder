@@ -169,6 +169,14 @@ export TODO_HEART_CHAR="💖"                  # Heart character (default: "♥"
 export TODO_HEART_POSITION="both"            # "left", "right", "both", "none" (default: "left")
 export TODO_BULLET_CHAR="🔸"                 # Task bullet character (default: "▪")
 
+# Box drawing characters
+export TODO_BOX_TOP_LEFT="┌"                 # Top left corner (default: "┌")
+export TODO_BOX_TOP_RIGHT="┐"                # Top right corner (default: "┐")
+export TODO_BOX_BOTTOM_LEFT="└"              # Bottom left corner (default: "└")
+export TODO_BOX_BOTTOM_RIGHT="┘"             # Bottom right corner (default: "┘")
+export TODO_BOX_HORIZONTAL="─"               # Horizontal line (default: "─")
+export TODO_BOX_VERTICAL="│"                 # Vertical line (default: "│")
+
 # Show/hide configuration
 export TODO_SHOW_AFFIRMATION="false"         # Show affirmations: "true", "false" (default: "true")
 export TODO_SHOW_TODO_BOX="true"             # Show todo box: "true", "false" (default: "true")
@@ -181,11 +189,15 @@ export TODO_PADDING_LEFT=4                   # Left padding/margin (default: 0)
 
 # Color configuration (256-color terminal codes)
 export TODO_TASK_COLORS="196,46,33,21,129,201"  # Task bullet colors (default: "167,71,136,110,139,73")
-export TODO_BORDER_COLOR=244                 # Box border color (default: 240)
-export TODO_BACKGROUND_COLOR=233             # Box background color (default: 235)
+export TODO_BORDER_COLOR=244                 # Box border foreground color (default: 240)
+export TODO_BORDER_BG_COLOR=233              # Box border background color (default: 235)
+export TODO_CONTENT_BG_COLOR=234             # Box content background color (default: 235)
 export TODO_TEXT_COLOR=245                   # Task text color (default: 240)
 export TODO_TITLE_COLOR=255                  # Box title color (default: 250)
 export TODO_AFFIRMATION_COLOR=33             # Affirmation text color (default: 109)
+
+# Legacy compatibility
+export TODO_BACKGROUND_COLOR=235             # Sets both border and content bg if new vars not set
 
 # File locations
 export TODO_SAVE_FILE="$HOME/.my_todos"      # Save location (default: ~/.todo.save)
@@ -267,11 +279,21 @@ export TODO_PADDING_LEFT=8
 
 ```bash
 export TODO_TASK_COLORS="196,46,33,21,129,201"  # Bright and vibrant task colors
-export TODO_BORDER_COLOR=244                     # Lighter border
-export TODO_BACKGROUND_COLOR=233                 # Darker background
+export TODO_BORDER_COLOR=244                     # Lighter border foreground
+export TODO_BORDER_BG_COLOR=233                  # Dark border background
+export TODO_CONTENT_BG_COLOR=234                 # Slightly lighter content background
 export TODO_TITLE_COLOR=255                      # Bright white title
 export TODO_AFFIRMATION_COLOR=33                 # Blue affirmations
 # Make it uniquely yours
+```
+
+### The "High Contrast Border" Setup
+
+```bash
+export TODO_BORDER_COLOR=255                     # Bright white border
+export TODO_BORDER_BG_COLOR=196                  # Red border background
+export TODO_CONTENT_BG_COLOR=235                 # Normal content background
+# Make your borders pop!
 ```
 
 ### The "Stealth Mode" Setup
@@ -280,6 +302,56 @@ export TODO_AFFIRMATION_COLOR=33                 # Blue affirmations
 export TODO_SHOW_AFFIRMATION="false"
 export TODO_SHOW_TODO_BOX="false"
 # Hide everything (but why would you want to?!)
+```
+
+### Box Style Variations
+
+```bash
+# ASCII Style (for purists)
+export TODO_BOX_TOP_LEFT="+"
+export TODO_BOX_TOP_RIGHT="+"
+export TODO_BOX_BOTTOM_LEFT="+"
+export TODO_BOX_BOTTOM_RIGHT="+"
+export TODO_BOX_HORIZONTAL="-"
+export TODO_BOX_VERTICAL="|"
+# +---------------------------+
+# | REMEMBER                  |
+# | - Buy coffee              |
+# +---------------------------+
+
+# Double-line Style (fancy!)
+export TODO_BOX_TOP_LEFT="╔"
+export TODO_BOX_TOP_RIGHT="╗"
+export TODO_BOX_BOTTOM_LEFT="╚"
+export TODO_BOX_BOTTOM_RIGHT="╝"
+export TODO_BOX_HORIZONTAL="═"
+export TODO_BOX_VERTICAL="║"
+# ╔═══════════════════════════╗
+# ║ REMEMBER                  ║
+# ║ ▪ Look professional       ║
+# ╚═══════════════════════════╝
+
+# Rounded Corners (smooth vibes)
+export TODO_BOX_TOP_LEFT="╭"
+export TODO_BOX_TOP_RIGHT="╮"
+export TODO_BOX_BOTTOM_LEFT="╰"
+export TODO_BOX_BOTTOM_RIGHT="╯"
+# ╭───────────────────────────╮
+# │ REMEMBER                  │
+# │ ▪ Stay zen                │
+# ╰───────────────────────────╯
+
+# Heavy Style (make a statement)
+export TODO_BOX_TOP_LEFT="┏"
+export TODO_BOX_TOP_RIGHT="┓"
+export TODO_BOX_BOTTOM_LEFT="┗"
+export TODO_BOX_BOTTOM_RIGHT="┛"
+export TODO_BOX_HORIZONTAL="━"
+export TODO_BOX_VERTICAL="┃"
+# ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+# ┃ REMEMBER                  ┃
+# ┃ ▪ Be bold                 ┃
+# ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
 
 ## 🎛️ Runtime Controls
