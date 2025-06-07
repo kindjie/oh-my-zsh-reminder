@@ -1,5 +1,5 @@
 # Configuration variables - can be overridden before sourcing plugin
-TODO_SAVE_FILE="${TODO_SAVE_FILE:-$HOME/.todo.sav}"
+TODO_SAVE_FILE="${TODO_SAVE_FILE:-$HOME/.todo.save}"
 TODO_AFFIRMATION_FILE="${TODO_AFFIRMATION_FILE:-${TMPDIR:-/tmp}/todo_affirmation}"
 
 # Box width configuration (fraction of terminal width, with min/max limits)
@@ -19,7 +19,7 @@ TODO_SHOW_TODO_BOX="${TODO_SHOW_TODO_BOX:-true}"          # Show todo box: "true
 
 # Padding/margin configuration (in characters)
 TODO_PADDING_TOP="${TODO_PADDING_TOP:-0}"                 # Top padding/margin
-TODO_PADDING_RIGHT="${TODO_PADDING_RIGHT:-0}"             # Right padding/margin
+TODO_PADDING_RIGHT="${TODO_PADDING_RIGHT:-4}"             # Right padding/margin
 TODO_PADDING_BOTTOM="${TODO_PADDING_BOTTOM:-0}"           # Bottom padding/margin
 TODO_PADDING_LEFT="${TODO_PADDING_LEFT:-0}"               # Left padding/margin
 
@@ -64,7 +64,7 @@ done
 # Function to calculate actual display width of a character (handles emojis)
 function get_char_display_width() {
     local char="$1"
-    
+
     # Method 1: Try using python if available (most reliable)
     if command -v python3 >/dev/null 2>&1; then
         python3 -c "
@@ -83,7 +83,7 @@ for c in char:
 print(width)
 " "$char" 2>/dev/null && return
     fi
-    
+
     # Method 2: Try using perl if available
     if command -v perl >/dev/null 2>&1; then
         perl -Mutf8 -E "
@@ -103,7 +103,7 @@ for my \$c (split //, \$char) {
 say \$width;
 " "$char" 2>/dev/null && return
     fi
-    
+
     # Method 3: Simple heuristic fallback
     # Most emojis are in these ranges and are 2 chars wide
     if [[ "$char" =~ [🀀-🿿] ]] || [[ "$char" =~ [⚀-⚿] ]] || [[ "$char" =~ [✀-✿] ]] || \
@@ -118,7 +118,7 @@ say \$width;
 # Function to calculate actual display width of a string (handles emojis)
 function get_string_display_width() {
     local string="$1"
-    
+
     # Method 1: Try using python if available (most reliable)
     if command -v python3 >/dev/null 2>&1; then
         python3 -c "
@@ -137,7 +137,7 @@ for c in string:
 print(width)
 " "$string" 2>/dev/null && return
     fi
-    
+
     # Method 2: Try using perl if available
     if command -v perl >/dev/null 2>&1; then
         perl -Mutf8 -E "
@@ -157,7 +157,7 @@ for my \$c (split //, \$string) {
 say \$width;
 " "$string" 2>/dev/null && return
     fi
-    
+
     # Method 3: Simple heuristic fallback
     # Count emojis as 2 chars, everything else as 1
     local width=0
@@ -198,33 +198,33 @@ function load_tasks() {
             todo_color_index=1
             return 1
         fi
-        
+
         local lines=("${(@f)file_content}")
         TODO_TASKS="${lines[1]:-}"
         TODO_TASKS_COLORS="${lines[2]:-}"
         local index_line="${lines[3]:-1}"
-        
+
         if [[ -z "$TODO_TASKS" ]]; then
             todo_tasks=()
             todo_tasks_colors=()
             todo_color_index=1
             return
         fi
-        
+
         # Validate color index is numeric
         if [[ "$index_line" =~ ^[0-9]+$ ]]; then
             todo_color_index="$index_line"
         else
             todo_color_index=1
         fi
-        
+
         # Count tasks and colors to ensure consistency
         local task_count=$(echo "$TODO_TASKS" | tr '\000' '\n' | wc -l)
         local color_count=0
         if [[ -n "$TODO_TASKS_COLORS" ]]; then
             color_count=$(echo "$TODO_TASKS_COLORS" | tr '\000' '\n' | grep -c .)
         fi
-        
+
         # If color count doesn't match task count, regenerate colors
         if [[ $color_count -ne $task_count ]] || [[ -z "$TODO_TASKS_COLORS" ]]; then
             regenerate_colors_for_existing_tasks
@@ -241,17 +241,17 @@ function regenerate_colors_for_existing_tasks() {
     local task_count=$(echo "$TODO_TASKS" | tr '\000' '\n' | wc -l)
     local new_colors=()
     local color_index=1
-    
+
     for (( i = 1; i <= task_count; i++ )); do
         local color_code=$'\e[38;5;'${TODO_COLORS[color_index]}$'m'
         new_colors+=("$color_code")
         (( color_index = (color_index % ${#TODO_COLORS}) + 1 ))
     done
-    
+
     # Update in-memory data
     TODO_TASKS_COLORS="$(IFS=$'\000'; echo "${new_colors[*]}")"
     todo_color_index="$color_index"
-    
+
     # Save to file
     todo_save
 }
@@ -262,22 +262,22 @@ function calculate_box_width() {
     local percentage=$((${TODO_BOX_WIDTH_FRACTION} * 100))
     local desired_width=$((COLUMNS * percentage / 100))
     local width=$desired_width
-    
+
     # Apply minimum constraint
     if [[ $width -lt $TODO_BOX_MIN_WIDTH ]]; then
         width=$TODO_BOX_MIN_WIDTH
     fi
-    
+
     # Apply maximum constraint
     if [[ $width -gt $TODO_BOX_MAX_WIDTH ]]; then
         width=$TODO_BOX_MAX_WIDTH
     fi
-    
+
     # Never exceed terminal width
     if [[ $width -gt $COLUMNS ]]; then
         width=$COLUMNS
     fi
-    
+
     echo $width
 }
 
@@ -313,7 +313,7 @@ function todo_add_task() {
         # Source: http://stackoverflow.com/a/8997314/1298019
         local task=$(echo -E "$@" | tr '\n' '\000' | sed 's:\x00\x00.*:\n:g' | tr '\000' '\n')
         local color=$'\e[38;5;'${TODO_COLORS[${todo_color_index}]}$'m'
-        
+
         load_tasks
         todo_tasks+="$task"
         todo_tasks_colors+="$color"
@@ -328,15 +328,15 @@ alias todo=todo_add_task
 # Remove a completed task by pattern matching
 function todo_task_done() {
     local pattern="$1"
-    
+
     if [[ -z "$pattern" ]]; then
         echo "Usage: todo_task_done <pattern>" >&2
         return 1
     fi
-    
+
     load_tasks
     local index=${(M)todo_tasks[(i)${pattern}*]}
-    
+
     if [[ $index -le ${#todo_tasks} ]]; then
         todo_tasks[index]=()
         todo_tasks_colors[index]=()
@@ -367,25 +367,25 @@ function wrap_todo_text() {
     local is_title="$4"
     local gray_color=$'\e[38;5;240m'
     local title_color=$'\e[38;5;250m'
-    
+
     # Check if this is a title (REMEMBER is a special case)
     if [[ "$is_title" == "true" ]]; then
         # This is a title - no prefix, use bullet color for title
         echo "${title_color}${text}${gray_color}"
         return
     fi
-    
+
     # For regular tasks, we need to handle bullet and text separately
     local bullet="${bullet_color}${TODO_BULLET_CHAR}${gray_color}"
-    
+
     # Account for bullet display width and space
     local remaining_width=$((max_width - ${(m)#TODO_BULLET_CHAR} - 1))
-    
+
     # Simple word wrapping for the text part only
     local words=(${=text})  # Split into words
     local lines=()
     local current_line=""
-    
+
     for word in "${words[@]}"; do
         if [[ -z "$current_line" ]]; then
             current_line="$word"
@@ -396,11 +396,11 @@ function wrap_todo_text() {
             current_line="$word"
         fi
     done
-    
+
     if [[ -n "$current_line" ]]; then
         lines+=("$current_line")
     fi
-    
+
     # Output first line with bullet, subsequent lines with spacing
     for (( i = 1; i <= ${#lines}; i++ )); do
         if [[ $i -eq 1 ]]; then
@@ -416,20 +416,20 @@ function format_todo_line() {
     local left_content="$1"
     local right_content="$2"
     local right_color="$3"
-    
+
     local box_width=$(calculate_box_width)
     local effective_columns=$((COLUMNS - TODO_PADDING_LEFT - TODO_PADDING_RIGHT))
-    local left_width=$((effective_columns - box_width - 4))
+    local left_width=$((effective_columns - box_width))
     local affirmation_color=$'\e[38;5;109m'
-    
+
     # Ensure left_width is positive
     if [[ $left_width -lt 10 ]]; then
         left_width=10
     fi
-    
+
     # Add left padding
     printf "%*s" $TODO_PADDING_LEFT ""
-    
+
     # Display left content (affirmation) at start of line if enabled
     if [[ "$TODO_SHOW_AFFIRMATION" == "true" && -n "$left_content" ]]; then
         printf "${affirmation_color}%s$fg[default]" "$left_content"
@@ -444,17 +444,17 @@ function format_todo_line() {
         # No affirmation or affirmation disabled, just add spacing for box alignment
         printf "%*s" $left_width ""
     fi
-    
+
     # Print right content with box formatting
     if [[ -n "$right_content" ]]; then
         printf "${right_color}%s$fg[default]" "$right_content"
     fi
-    
+
     # Add right padding (note: this might cause line wrapping issues on narrow terminals)
     if [[ $TODO_PADDING_RIGHT -gt 0 ]]; then
         printf "%*s" $TODO_PADDING_RIGHT ""
     fi
-    
+
     echo
 }
 
@@ -467,11 +467,11 @@ function draw_todo_box() {
     local gray_color=$'\e[38;5;240m'
     local bg_color=$'\e[48;5;235m'
     local reset_bg=$'\e[49m'
-    
+
     if [[ ${#todo_tasks} -eq 0 ]]; then
         return
     fi
-    
+
     # Read cached affirmation if available, otherwise use fallback
     local affirm_text
     if [[ -f "$TODO_AFFIRMATION_FILE" && -s "$TODO_AFFIRMATION_FILE" ]]; then
@@ -484,19 +484,22 @@ function draw_todo_box() {
     else
         affirm_text="$(format_affirmation "Keep going!")"
     fi
-    
+
     # Start background affirmation fetch (safe async execution)
     (fetch_affirmation_async &) 2>/dev/null
-    
-    local left_width=$((COLUMNS - box_width - 4))
-    
+
+    local effective_columns=$((COLUMNS - TODO_PADDING_LEFT - TODO_PADDING_RIGHT))
+    local left_width=$((effective_columns - box_width))
+
     # Truncate affirmation if too long (preserve formatting and add ellipsis)
-    if [[ ${#affirm_text} -gt $left_width ]]; then
+    local clean_affirm_text="$(echo "$affirm_text" | sed 's/\x1b\[[0-9;]*m//g')"
+    local affirm_display_width=${(m)#clean_affirm_text}
+    if [[ $affirm_display_width -gt $left_width ]]; then
         local max_affirm_len=$((left_width - 3))  # Reserve space for "..."
-        
+
         # Calculate space needed for heart character
         local heart_width=${(m)#TODO_HEART_CHAR}
-        
+
         case "$TODO_HEART_POSITION" in
             "left"|"right")
                 max_affirm_len=$((max_affirm_len - heart_width - 1))  # Space for heart + space
@@ -508,7 +511,7 @@ function draw_todo_box() {
                 # No additional space needed
                 ;;
         esac
-        
+
         # Extract just the core text and truncate, then reformat
         local core_text
         case "$TODO_HEART_POSITION" in
@@ -526,22 +529,27 @@ function draw_todo_box() {
                 core_text="$affirm_text"
                 ;;
         esac
-        
-        # Truncate core text and reformat with hearts
-        local truncated_text="${core_text:0:$max_affirm_len}..."
-        affirm_text="$(format_affirmation "$truncated_text")"
+
+        # Truncate core text and reformat with hearts (ensure non-negative length)
+        if [[ $max_affirm_len -gt 0 ]]; then
+            local truncated_text="${core_text:0:$max_affirm_len}..."
+            affirm_text="$(format_affirmation "$truncated_text")"
+        else
+            # If no space for text, just show heart(s) if configured
+            affirm_text="$(format_affirmation "")"
+        fi
     fi
-    
+
     # Collect all wrapped lines with colors
     local -a all_lines
-    
+
     # Add title first
     while IFS= read -r line; do
         if [[ -n "$line" ]]; then
             all_lines+=("$line")
         fi
     done <<< "$(wrap_todo_text "$TODO_TITLE" "$content_width" "" "true")"
-    
+
     # Add regular tasks
     for (( i = 1; i <= ${#todo_tasks}; i++ )); do
         while IFS= read -r line; do
@@ -550,15 +558,15 @@ function draw_todo_box() {
             fi
         done <<< "$(wrap_todo_text "${todo_tasks[i]}" "$content_width" "${todo_tasks_colors[i]}" "false")"
     done
-    
+
     # Calculate middle line for affirmation
     local middle_line=$((${#all_lines} / 2 + 1))
-    
+
     # Top border (low contrast) - ensure correct width
     local border_chars=$((box_width - 2))
     local top_border="┌$(printf '─%.0s' $(seq 1 $border_chars))┐"
     format_todo_line "" "${gray_color}${bg_color}$top_border${reset_bg}" ""
-    
+
     # Content lines
     for (( i = 1; i <= ${#all_lines}; i++ )); do
         # Strip color codes and calculate display width for proper box alignment
@@ -569,15 +577,15 @@ function draw_todo_box() {
         local content_line="${all_lines[i]}${gray_color}${padding}"
         local box_line="${gray_color}${bg_color}│ ${content_line} │${reset_bg}$fg[default]"
         local left_text=""
-        
+
         # Show placeholder affirmation on middle line
         if [[ $i -eq $middle_line ]]; then
             left_text="$affirm_text"
         fi
-        
+
         format_todo_line "$left_text" "$box_line" ""
     done
-    
+
     # Bottom border (low contrast) - ensure correct width
     local bottom_border="└$(printf '─%.0s' $(seq 1 $border_chars))┘"
     format_todo_line "" "${gray_color}${bg_color}$bottom_border${reset_bg}" ""
@@ -589,10 +597,10 @@ function fetch_affirmation_async() {
     if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
         return 1
     fi
-    
+
     local new_affirm
     new_affirm="$(curl -s https://www.affirmations.dev/ 2>/dev/null | jq --raw-output '.affirmation' 2>/dev/null)"
-    
+
     if [[ -n "$new_affirm" && "$new_affirm" != "null" ]]; then
         echo "$new_affirm" > "$TODO_AFFIRMATION_FILE"
     fi
@@ -604,22 +612,21 @@ function todo_display() {
     if [[ "$TODO_SHOW_TODO_BOX" == "false" ]]; then
         return
     fi
-    
+
     load_tasks
     if [[ ${#todo_tasks} -gt 0 ]]; then
         # Add top padding
         for (( i = 0; i < TODO_PADDING_TOP; i++ )); do
             echo
         done
-        
+
         draw_todo_box
-        
+
         # Add bottom padding
         for (( i = 0; i < TODO_PADDING_BOTTOM; i++ )); do
             echo
         done
     fi
-    echo
 }
 
 # Save tasks, colors, and color index to single file (3 lines)
@@ -723,6 +730,46 @@ function todo_toggle_all() {
             return 1
             ;;
     esac
+}
+
+# Show abbreviated help for the reminder plugin
+function todo_help() {
+    echo "📝 oh-my-zsh-reminder - Quick Reference"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo
+    echo "📋 Task Management:"
+    echo "  todo \"task\"                        Add a new task"
+    echo "  task_done \"pattern\"                Remove completed task (tab completion)"
+    echo
+    echo "👁️  Display Controls:"
+    echo "  todo_toggle_affirmation [show|hide|toggle] Control affirmations"
+    echo "  todo_toggle_box [show|hide|toggle]         Control todo box"
+    echo "  todo_toggle_all [show|hide|toggle]         Control everything"
+    echo "  todo_affirm                                Alias for toggle_affirmation"
+    echo "  todo_box                                   Alias for toggle_box"
+    echo
+    echo "⚙️  Configuration (set before sourcing plugin):"
+    echo "  TODO_TITLE                         Box title (default: REMEMBER)"
+    echo "  TODO_BULLET_CHAR                   Task bullet (default: ▪)"
+    echo "  TODO_HEART_CHAR                    Affirmation heart (default: ♥)"
+    echo "  TODO_HEART_POSITION                left|right|both|none (default: left)"
+    echo "  TODO_BOX_WIDTH_FRACTION            Box width fraction (default: 0.5)"
+    echo "  TODO_PADDING_TOP/RIGHT/BOTTOM/LEFT Padding (default: 0,4,0,0)"
+    echo "  TODO_SHOW_AFFIRMATION              true|false (default: true)"
+    echo "  TODO_SHOW_TODO_BOX                 true|false (default: true)"
+    echo
+    echo "📁 Files:"
+    echo "  ~/.todo.save                       Task storage"
+    echo "  /tmp/todo_affirmation              Affirmation cache"
+    echo
+    echo "💡 Examples:"
+    echo "  todo \"Buy groceries\"               # Add task"
+    echo "  task_done \"Buy\"                    # Remove task"
+    echo "  todo_affirm hide                   # Hide affirmations"
+    echo "  export TODO_HEART_CHAR=\"💖\"        # Use emoji heart"
+    echo "  export TODO_PADDING_LEFT=4         # Add left padding"
+    echo
+    echo "For full documentation: https://github.com/kindjie/oh-my-zsh-reminder"
 }
 
 # Aliases for convenience

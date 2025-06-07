@@ -40,6 +40,9 @@ source /path/to/oh-my-zsh-reminder/reminder.plugin.zsh
 ### Basic Usage
 
 ```bash
+# Get help anytime
+$ todo_help
+
 # Add a task (because your brain is not a hard drive)
 $ todo "Stop procrastinating and finish that thing"
 $ todo "Feed the cat before it stages a revolt"
@@ -52,6 +55,20 @@ $ task_done "Stop proc"  # Tab completion saves your sanity
 ```
 
 ## 📖 Usage
+
+### Quick Help
+
+```bash
+# Show all available commands and configuration options
+$ todo_help
+```
+
+The help command provides a quick reference with:
+- All available commands and their usage
+- Configuration options with defaults
+- File locations 
+- Practical examples
+- Link to full documentation
 
 ### Adding Tasks
 ```bash
@@ -97,12 +114,12 @@ export TODO_SHOW_TODO_BOX="true"             # Show todo box: "true", "false" (d
 
 # Padding/margin (in characters)
 export TODO_PADDING_TOP=1                    # Top padding/margin (default: 0)
-export TODO_PADDING_RIGHT=2                  # Right padding/margin (default: 0)
+export TODO_PADDING_RIGHT=2                  # Right padding/margin (default: 4)
 export TODO_PADDING_BOTTOM=1                 # Bottom padding/margin (default: 0)
 export TODO_PADDING_LEFT=4                   # Left padding/margin (default: 0)
 
 # File locations
-export TODO_SAVE_FILE="$HOME/.my_todos"      # Save location (default: ~/.todo.sav)
+export TODO_SAVE_FILE="$HOME/.my_todos"      # Save location (default: ~/.todo.save)
 export TODO_AFFIRMATION_FILE="/tmp/affirm"   # Affirmation cache (default: /tmp/todo_affirmation)
 ```
 
@@ -220,7 +237,7 @@ Todo box enabled
 ## 🛠️ Technical Details
 
 ### File Format
-Tasks are stored in `~/.todo.sav` with this format:
+Tasks are stored in `~/.todo.save` with this format:
 - Line 1: Tasks (null-byte separated)
 - Line 2: Colors (null-byte separated) 
 - Line 3: Next color index
@@ -261,11 +278,18 @@ Tests cover:
 
 ## 🐛 Troubleshooting
 
+### Quick Help
+```bash
+# First, get help to see all available commands
+$ todo_help
+```
+
 ### Plugin not loading
 If tasks don't appear in new terminals:
 1. Verify the plugin is loaded: `which todo`
-2. Check that you've sourced the plugin correctly
-3. Try manually sourcing: `source path/to/reminder.plugin.zsh`
+2. Check available commands: `todo_help`
+3. Check that you've sourced the plugin correctly
+4. Try manually sourcing: `source path/to/reminder.plugin.zsh`
 
 ### Affirmations not appearing
 - Affirmations require `curl` and `jq` (optional dependencies)
