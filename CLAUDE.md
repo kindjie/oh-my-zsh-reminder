@@ -37,6 +37,8 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 
 ## Testing Workflow
 
+**Test Data Safety**: All tests use temporary files via `TODO_SAVE_FILE` configuration to protect user data. Tests automatically isolate themselves in `$TMPDIR` and clean up on exit.
+
 To test plugin modifications:
 
 1. **Basic functionality test**:
