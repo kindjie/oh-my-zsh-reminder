@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an oh-my-zsh plugin that displays TODO reminders above the terminal prompt. It's a simple zsh plugin with persistent task storage and colorized display.
+This is a zsh plugin that displays TODO reminders above the terminal prompt. It's a beautiful, configurable zsh plugin with persistent task storage and colorized display.
 
 ## Architecture
 
@@ -59,19 +59,28 @@ To test plugin modifications:
    - Remove tasks: `task_done "partial match"`
    - Check storage: `cat ~/.todo.save`
 
-5. **Run comprehensive test suite**:
+5. **Run complete test suite**:
+   ```bash
+   ./tests/run_all.zsh
+   ```
+   (Runs all organized test modules with summary reporting)
+
+6. **Run individual test modules**:
+   ```bash
+   ./tests/display.zsh        # Display functionality and layout tests
+   ./tests/configuration.zsh  # Padding, characters, and config tests
+   ./tests/color.zsh          # Color configuration and validation tests
+   ./tests/interface.zsh      # Commands, toggles, and help tests
+   ./tests/character.zsh      # Character width and emoji handling tests
+   ```
+
+7. **Legacy comprehensive test**:
    ```bash
    ./test_plugin.zsh
    ```
-   (Tests all features: emoji support, padding, toggles, character width detection, color configuration)
+   (Original monolithic test - still functional for compatibility)
 
-6. **Run color validation tests**:
-   ```bash
-   ./test_color_validation.zsh
-   ```
-   (Tests color configuration validation with various valid/invalid scenarios)
-
-7. **Visual padding demonstration**:
+8. **Visual padding demonstration**:
    ```bash
    ./demo_padding.zsh
    ```

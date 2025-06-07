@@ -132,6 +132,14 @@ export TODO_PADDING_RIGHT=2                  # Right padding/margin (default: 4)
 export TODO_PADDING_BOTTOM=1                 # Bottom padding/margin (default: 0)
 export TODO_PADDING_LEFT=4                   # Left padding/margin (default: 0)
 
+# Color configuration (256-color terminal codes)
+export TODO_TASK_COLORS="196,46,33,21,129,201"  # Task bullet colors (default: "167,71,136,110,139,73")
+export TODO_BORDER_COLOR=244                 # Box border color (default: 240)
+export TODO_BACKGROUND_COLOR=233             # Box background color (default: 235)
+export TODO_TEXT_COLOR=245                   # Task text color (default: 240)
+export TODO_TITLE_COLOR=255                  # Box title color (default: 250)
+export TODO_AFFIRMATION_COLOR=33             # Affirmation text color (default: 109)
+
 # File locations
 export TODO_SAVE_FILE="$HOME/.my_todos"      # Save location (default: ~/.todo.save)
 export TODO_AFFIRMATION_FILE="/tmp/affirm"   # Affirmation cache (default: /tmp/todo_affirmation)
@@ -199,6 +207,16 @@ export TODO_PADDING_RIGHT=10
 export TODO_PADDING_BOTTOM=2
 export TODO_PADDING_LEFT=8
 # For when you need some breathing room
+```
+
+### The "Custom Color Scheme" Setup
+```bash
+export TODO_TASK_COLORS="196,46,33,21,129,201"  # Bright and vibrant task colors
+export TODO_BORDER_COLOR=244                     # Lighter border
+export TODO_BACKGROUND_COLOR=233                 # Darker background
+export TODO_TITLE_COLOR=255                      # Bright white title
+export TODO_AFFIRMATION_COLOR=33                 # Blue affirmations
+# Make it uniquely yours
 ```
 
 ### The "Stealth Mode" Setup

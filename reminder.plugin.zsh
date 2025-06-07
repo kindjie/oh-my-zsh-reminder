@@ -828,8 +828,8 @@ function todo_colors() {
 
 # Show abbreviated help for the reminder plugin
 function todo_help() {
-    echo "📝 oh-my-zsh-reminder - Quick Reference"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📝 Zsh Todo Reminder Plugin - Quick Reference"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo
     echo "📋 Task Management:"
     echo "  todo \"task\"                        Add a new task"
@@ -876,7 +876,10 @@ function todo_help() {
     echo "  export TODO_BORDER_COLOR=244       # Lighter border"
     echo "  export TODO_AFFIRMATION_COLOR=33   # Blue affirmations"
     echo
-    echo "For full documentation: https://github.com/kindjie/oh-my-zsh-reminder"
+    echo "🔗 Links:"
+    echo "  Repository: https://github.com/kindjie/zsh-todo-reminder"
+    echo "  Issues:     https://github.com/kindjie/zsh-todo-reminder/issues"
+    echo "  Releases:   https://github.com/kindjie/zsh-todo-reminder/releases"
 }
 
 # Aliases for convenience
