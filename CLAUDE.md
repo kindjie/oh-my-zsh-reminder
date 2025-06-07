@@ -59,26 +59,65 @@ To test plugin modifications:
    - Remove tasks: `task_done "partial match"`
    - Check storage: `cat ~/.todo.save`
 
-5. **Run complete test suite**:
+5. **Run complete functional test suite**:
    ```bash
    ./tests/run_all.zsh
    ```
-   (Runs all organized test modules with summary reporting)
+   (Runs all organized test modules with summary reporting - ~10 seconds)
 
-6. **Run individual test modules**:
+6. **Run comprehensive test suite with performance validation**:
+   ```bash
+   ./tests/run_all.zsh --perf
+   ```
+   (Includes all functional tests + 16 performance tests - ~60 seconds)
+
+7. **Run individual test modules**:
    ```bash
    ./tests/display.zsh        # Display functionality and layout tests
    ./tests/configuration.zsh  # Padding, characters, and config tests
    ./tests/color.zsh          # Color configuration and validation tests
    ./tests/interface.zsh      # Commands, toggles, and help tests
    ./tests/character.zsh      # Character width and emoji handling tests
+   ./tests/performance.zsh    # Performance and network behavior tests
    ```
 
-7. **Visual padding demonstration**:
+8. **Performance testing specifically**:
+   ```bash
+   ./tests/performance.zsh
+   ```
+   (16 performance tests validating display speed, network behavior, and async design)
+
+9. **Visual padding demonstration**:
    ```bash
    ./demo_padding.zsh
    ```
    (Shows all padding configurations with visual borders)
+
+## Performance Test Coverage
+
+The performance test suite validates the plugin's async design and ensures display performance remains optimal:
+
+**Display Performance Tests:**
+- Basic display speed (< 50ms threshold)
+- Large task lists (50 items, < 100ms)
+- Text wrapping with complex Unicode/emoji content
+- Configuration overhead testing
+- Memory usage monitoring (leak detection)
+
+**Network & Async Behavior Tests:**
+- Network timeout simulation (validates non-blocking design)
+- Cache vs network performance comparison
+- Missing dependencies graceful degradation (curl/jq)
+- Network isolation and failure handling
+- Background process cleanup verification
+- Request throttling (prevents network storms)
+
+**Key Validation Points:**
+- Display always completes in <50ms regardless of network conditions
+- Network operations never block the display pipeline
+- Background affirmation fetching is properly async
+- Cache reads are fast (<30ms)
+- System works correctly without external dependencies
 
 ## Display Layout
 

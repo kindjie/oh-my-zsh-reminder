@@ -293,20 +293,42 @@ Tasks are stored in `~/.todo.save` with this format:
 
 ## 🧪 Testing
 
-Run the comprehensive test suite:
+### Quick Functional Tests
+Run the comprehensive functional test suite:
 ```bash
-./test_plugin.zsh
+./tests/run_all.zsh
 ```
 
-Tests cover:
+### Complete Test Suite (with Performance)
+Run all tests including performance validation:
+```bash
+./tests/run_all.zsh --perf
+```
+
+### Individual Test Modules
+Run specific test categories:
+```bash
+./tests/run_all.zsh display.zsh configuration.zsh  # Specific tests
+./tests/performance.zsh                            # Performance only
+```
+
+### Test Coverage
+
+**Functional Tests (100+ tests):**
 - Display functionality with custom bullet/heart characters
-- Non-blocking behavior
-- Configuration options including padding
-- Toggle command functionality
-- Show/hide state management
+- Configuration options including padding, colors, and dimensions
+- Toggle command functionality and show/hide state management
 - Character width detection for ASCII, Unicode, and emojis
-- Emoji box alignment
-- Data integrity
+- Interface commands, help system, and error handling
+- Color validation and interactive color reference
+
+**Performance Tests (16 tests):**
+- Display performance under various conditions (< 50ms)
+- Network timeout behavior (ensures non-blocking async design)
+- Cache vs network performance validation
+- Missing dependencies graceful degradation
+- Memory usage monitoring and leak detection
+- Background process cleanup verification
 
 ### Visual Padding Demo
 
@@ -360,8 +382,14 @@ Special thanks to Claude (that's me! 🤖) for making this README way more enter
 
 1. Fork the repository
 2. Create a feature branch
-3. Run tests: `./test_plugin.zsh`
+3. Run tests: `./tests/run_all.zsh --perf` (or `./tests/run_all.zsh` for faster functional tests)
 4. Submit a pull request
+
+### Development Testing
+- **Quick validation:** `./tests/run_all.zsh` (~10s)
+- **Comprehensive testing:** `./tests/run_all.zsh --perf` (~60s)
+- **Performance testing:** `./tests/performance.zsh` (network, async, timing)
+- **Visual testing:** `./demo_padding.zsh` (padding demonstration)
 
 ---
 
