@@ -485,6 +485,7 @@ I purposely chose to build on an existing plugin rather than start from scratch,
 ### Observations from the Process
 
 - **Testing was critical**: Progress was nearly impossible without comprehensive automated tests. Setting up an environment that accurately reflected rendered terminal output took several attempts.
+- **Visual feedback essential**: Screenshots pasted into Claude Code were necessary to make progress on display issues. The AI couldn't accurately visualize terminal rendering from code alone.
 - **Context management matters**: With limited context windows, I had to encourage documentation and strategically break up tasks to use `/clear` instead of `/compact`. The project consumed hundreds of thousands of tokens - I consistently hit Pro limits and needed to upgrade.
 - **Not everything worked**: Some features had to be abandoned after thousands of tokens of failed attempts, like a transient display mode that would only show above the current prompt. The AI struggled to reason about interactions with other zsh plugins like P10k.
 - **Surprisingly engaging**: The process was far more fun than solo coding - whether due to novelty or something inherent to collaborative AI development remains to be seen.
