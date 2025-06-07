@@ -2,33 +2,6 @@
 
 A beautiful, configurable zsh plugin that displays your TODO tasks in a right-aligned box with motivational affirmations above every terminal prompt.
 
-```
-                                                      ┌────────────────────────────┐
-                                                      │ REMEMBER                   │
-♥ You make a difference in the world by simply        │ ▪ Shell -> <C-s> <C-e> and │
-  existing in it                                      │   <A-b> <A-f>              │
-                                                      │ ▪ Elixir2 ratings investi- │
-                                                      │   gation (low priority)    │
-                                                      │ ▪ Refactor chessgpt-server │
-                                                      │   static chess evals       │
-                                                      └────────────────────────────┘
-~/projects/awesome-app main*
-❯ git status
-# ... git output ...
-
-                                                      ┌────────────────────────────┐
-                                                      │ REMEMBER                   │
-♥ You make a difference in the world by simply        │ ▪ Shell -> <C-s> <C-e> and │
-  existing in it                                      │   <A-b> <A-f>              │
-                                                      │ ▪ Elixir2 ratings investi- │
-                                                      │   gation (low priority)    │
-                                                      │ ▪ Refactor chessgpt-server │
-                                                      │   static chess evals       │
-                                                      └────────────────────────────┘
-~/projects/awesome-app main*
-❯ _
-```
-
 ![Basic Display](docs/images/basic-display.png)
 
 ## 📸 Screenshots
