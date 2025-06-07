@@ -11,10 +11,21 @@ TODO_BOX_MAX_WIDTH="${TODO_BOX_MAX_WIDTH:-80}"            # Maximum 80 chars
 TODO_TITLE="${TODO_TITLE:-REMEMBER}"                      # Box title
 TODO_HEART_CHAR="${TODO_HEART_CHAR:-♥}"                   # Affirmation heart character
 TODO_HEART_POSITION="${TODO_HEART_POSITION:-left}"        # Heart position: "left", "right", "both", "none"
+TODO_BULLET_CHAR="${TODO_BULLET_CHAR:-▪}"                 # Task bullet character
 
-# Validate heart character display width (allows Unicode characters)
+# Show/hide state configuration
+TODO_SHOW_AFFIRMATION="${TODO_SHOW_AFFIRMATION:-true}"    # Show affirmations: "true", "false"
+TODO_SHOW_TODO_BOX="${TODO_SHOW_TODO_BOX:-true}"          # Show todo box: "true", "false"
+
+# Padding/margin configuration (in characters)
+TODO_PADDING_TOP="${TODO_PADDING_TOP:-0}"                 # Top padding/margin
+TODO_PADDING_RIGHT="${TODO_PADDING_RIGHT:-0}"             # Right padding/margin
+TODO_PADDING_BOTTOM="${TODO_PADDING_BOTTOM:-0}"           # Bottom padding/margin
+TODO_PADDING_LEFT="${TODO_PADDING_LEFT:-0}"               # Left padding/margin
+
+# Validate heart character display width (allows Unicode characters including emojis)
 if [[ -z "$TODO_HEART_CHAR" ]] || [[ ${#TODO_HEART_CHAR} -gt 4 ]]; then
-    echo "Error: TODO_HEART_CHAR must be a single character, got: '$TODO_HEART_CHAR'" >&2
+    echo "Error: TODO_HEART_CHAR must be a single character or emoji, got: '$TODO_HEART_CHAR'" >&2
     return 1
 fi
 
@@ -24,8 +35,149 @@ if [[ "$TODO_HEART_POSITION" != "left" && "$TODO_HEART_POSITION" != "right" && "
     return 1
 fi
 
+# Validate bullet character display width (allows Unicode characters including emojis)
+if [[ -z "$TODO_BULLET_CHAR" ]] || [[ ${#TODO_BULLET_CHAR} -gt 4 ]]; then
+    echo "Error: TODO_BULLET_CHAR must be a single character or emoji, got: '$TODO_BULLET_CHAR'" >&2
+    return 1
+fi
+
+# Validate show/hide configurations
+if [[ "$TODO_SHOW_AFFIRMATION" != "true" && "$TODO_SHOW_AFFIRMATION" != "false" ]]; then
+    echo "Error: TODO_SHOW_AFFIRMATION must be 'true' or 'false', got: '$TODO_SHOW_AFFIRMATION'" >&2
+    return 1
+fi
+
+if [[ "$TODO_SHOW_TODO_BOX" != "true" && "$TODO_SHOW_TODO_BOX" != "false" ]]; then
+    echo "Error: TODO_SHOW_TODO_BOX must be 'true' or 'false', got: '$TODO_SHOW_TODO_BOX'" >&2
+    return 1
+fi
+
+# Validate padding configurations are numeric
+for padding_var in TODO_PADDING_TOP TODO_PADDING_RIGHT TODO_PADDING_BOTTOM TODO_PADDING_LEFT; do
+    local padding_value="${(P)padding_var}"
+    if [[ ! "$padding_value" =~ ^[0-9]+$ ]]; then
+        echo "Error: $padding_var must be a non-negative integer, got: '$padding_value'" >&2
+        return 1
+    fi
+done
+
+# Function to calculate actual display width of a character (handles emojis)
+function get_char_display_width() {
+    local char="$1"
+    
+    # Method 1: Try using python if available (most reliable)
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "
+import unicodedata
+import sys
+char = sys.argv[1]
+width = 0
+for c in char:
+    eaw = unicodedata.east_asian_width(c)
+    if eaw in ('F', 'W'):  # Full-width or Wide
+        width += 2
+    elif unicodedata.category(c).startswith('M'):  # Mark (combining)
+        width += 0
+    else:
+        width += 1
+print(width)
+" "$char" 2>/dev/null && return
+    fi
+    
+    # Method 2: Try using perl if available
+    if command -v perl >/dev/null 2>&1; then
+        perl -Mutf8 -E "
+use Unicode::EastAsianWidth;
+my \$char = shift @ARGV;
+my \$width = 0;
+for my \$c (split //, \$char) {
+    my \$eaw = Unicode::EastAsianWidth::InEastAsianWidth(\$c);
+    if (\$eaw eq 'F' || \$eaw eq 'W') {
+        \$width += 2;
+    } elsif (\$eaw eq 'A') {
+        \$width += 1;  # Ambiguous - assume 1 for most terminals
+    } else {
+        \$width += 1;
+    }
+}
+say \$width;
+" "$char" 2>/dev/null && return
+    fi
+    
+    # Method 3: Simple heuristic fallback
+    # Most emojis are in these ranges and are 2 chars wide
+    if [[ "$char" =~ [🀀-🿿] ]] || [[ "$char" =~ [⚀-⚿] ]] || [[ "$char" =~ [✀-✿] ]] || \
+       [[ "$char" =~ [🎀-🎿] ]] || [[ "$char" =~ [🚀-🚿] ]] || [[ "$char" =~ [🔀-🔿] ]]; then
+        echo 2
+    else
+        # Default to character count for ASCII and basic Unicode
+        echo ${#char}
+    fi
+}
+
+# Function to calculate actual display width of a string (handles emojis)
+function get_string_display_width() {
+    local string="$1"
+    
+    # Method 1: Try using python if available (most reliable)
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "
+import unicodedata
+import sys
+string = sys.argv[1]
+width = 0
+for c in string:
+    eaw = unicodedata.east_asian_width(c)
+    if eaw in ('F', 'W'):  # Full-width or Wide
+        width += 2
+    elif unicodedata.category(c).startswith('M'):  # Mark (combining)
+        width += 0
+    else:
+        width += 1
+print(width)
+" "$string" 2>/dev/null && return
+    fi
+    
+    # Method 2: Try using perl if available
+    if command -v perl >/dev/null 2>&1; then
+        perl -Mutf8 -E "
+use Unicode::EastAsianWidth;
+my \$string = shift @ARGV;
+my \$width = 0;
+for my \$c (split //, \$string) {
+    my \$eaw = Unicode::EastAsianWidth::InEastAsianWidth(\$c);
+    if (\$eaw eq 'F' || \$eaw eq 'W') {
+        \$width += 2;
+    } elsif (\$eaw eq 'A') {
+        \$width += 1;  # Ambiguous - assume 1 for most terminals
+    } else {
+        \$width += 1;
+    }
+}
+say \$width;
+" "$string" 2>/dev/null && return
+    fi
+    
+    # Method 3: Simple heuristic fallback
+    # Count emojis as 2 chars, everything else as 1
+    local width=0
+    local i=1
+    while [[ $i -le ${#string} ]]; do
+        local char="${string:$((i-1)):1}"
+        if [[ "$char" =~ [🀀-🿿] ]] || [[ "$char" =~ [⚀-⚿] ]] || [[ "$char" =~ [✀-✿] ]] || \
+           [[ "$char" =~ [🎀-🎿] ]] || [[ "$char" =~ [🚀-🚿] ]] || [[ "$char" =~ [🔀-🔿] ]]; then
+            width=$((width + 2))
+        else
+            width=$((width + 1))
+        fi
+        i=$((i + 1))
+    done
+    echo $width
+}
+
 # Color palette: red, green, yellow, blue, magenta, cyan (256-color terminal codes)
 TODO_COLORS=(167 71 136 110 139 73)
+
 
 # Allow to use colors (ensure autoload first for deferred loading)
 autoload -U colors
@@ -224,8 +376,10 @@ function wrap_todo_text() {
     fi
     
     # For regular tasks, we need to handle bullet and text separately
-    local bullet="${bullet_color}▪${gray_color}"
-    local remaining_width=$((max_width - 2))  # Account for bullet and space
+    local bullet="${bullet_color}${TODO_BULLET_CHAR}${gray_color}"
+    
+    # Account for bullet display width and space
+    local remaining_width=$((max_width - ${(m)#TODO_BULLET_CHAR} - 1))
     
     # Simple word wrapping for the text part only
     local words=(${=text})  # Split into words
@@ -264,7 +418,8 @@ function format_todo_line() {
     local right_color="$3"
     
     local box_width=$(calculate_box_width)
-    local left_width=$((COLUMNS - box_width - 4))
+    local effective_columns=$((COLUMNS - TODO_PADDING_LEFT - TODO_PADDING_RIGHT))
+    local left_width=$((effective_columns - box_width - 4))
     local affirmation_color=$'\e[38;5;109m'
     
     # Ensure left_width is positive
@@ -272,24 +427,32 @@ function format_todo_line() {
         left_width=10
     fi
     
-    # Display left content (affirmation) at start of line
-    if [[ -n "$left_content" ]]; then
+    # Add left padding
+    printf "%*s" $TODO_PADDING_LEFT ""
+    
+    # Display left content (affirmation) at start of line if enabled
+    if [[ "$TODO_SHOW_AFFIRMATION" == "true" && -n "$left_content" ]]; then
         printf "${affirmation_color}%s$fg[default]" "$left_content"
-        # Calculate actual text length (without color codes) for proper spacing
+        # Calculate actual display width (without color codes) for proper spacing
         local clean_content="$(echo "$left_content" | sed 's/\x1b\[[0-9;]*m//g')"
-        local content_length=${#clean_content}
+        local content_length=${(m)#clean_content}
         local padding_needed=$((left_width - content_length))
         if [[ $padding_needed -gt 0 ]]; then
             printf "%*s" $padding_needed ""
         fi
     else
-        # No affirmation, just add spacing for box alignment
+        # No affirmation or affirmation disabled, just add spacing for box alignment
         printf "%*s" $left_width ""
     fi
     
     # Print right content with box formatting
     if [[ -n "$right_content" ]]; then
         printf "${right_color}%s$fg[default]" "$right_content"
+    fi
+    
+    # Add right padding (note: this might cause line wrapping issues on narrow terminals)
+    if [[ $TODO_PADDING_RIGHT -gt 0 ]]; then
+        printf "%*s" $TODO_PADDING_RIGHT ""
     fi
     
     echo
@@ -331,13 +494,15 @@ function draw_todo_box() {
     if [[ ${#affirm_text} -gt $left_width ]]; then
         local max_affirm_len=$((left_width - 3))  # Reserve space for "..."
         
-        # Calculate space needed for heart characters based on position
+        # Calculate space needed for heart character
+        local heart_width=${(m)#TODO_HEART_CHAR}
+        
         case "$TODO_HEART_POSITION" in
             "left"|"right")
-                max_affirm_len=$((max_affirm_len - 2))  # Space for "♥ " or " ♥"
+                max_affirm_len=$((max_affirm_len - heart_width - 1))  # Space for heart + space
                 ;;
             "both")
-                max_affirm_len=$((max_affirm_len - 4))  # Space for "♥ " and " ♥"
+                max_affirm_len=$((max_affirm_len - (heart_width + 1) * 2))  # Space for heart+space on both sides
                 ;;
             "none")
                 # No additional space needed
@@ -396,9 +561,10 @@ function draw_todo_box() {
     
     # Content lines
     for (( i = 1; i <= ${#all_lines}; i++ )); do
-        # Strip color codes to measure actual text width
+        # Strip color codes and calculate display width for proper box alignment
         local clean_line="$(echo "${all_lines[i]}" | sed 's/\x1b\[[0-9;]*m//g')"
-        local padding_needed=$((content_width - ${#clean_line}))
+        local line_display_width=${(m)#clean_line}
+        local padding_needed=$((content_width - line_display_width))
         local padding="$(printf '%*s' $padding_needed '')"
         local content_line="${all_lines[i]}${gray_color}${padding}"
         local box_line="${gray_color}${bg_color}│ ${content_line} │${reset_bg}$fg[default]"
@@ -434,9 +600,24 @@ function fetch_affirmation_async() {
 
 # Display todo box with tasks (called before each prompt)
 function todo_display() {
+    # Skip display if todo box is hidden
+    if [[ "$TODO_SHOW_TODO_BOX" == "false" ]]; then
+        return
+    fi
+    
     load_tasks
     if [[ ${#todo_tasks} -gt 0 ]]; then
+        # Add top padding
+        for (( i = 0; i < TODO_PADDING_TOP; i++ )); do
+            echo
+        done
+        
         draw_todo_box
+        
+        # Add bottom padding
+        for (( i = 0; i < TODO_PADDING_BOTTOM; i++ )); do
+            echo
+        done
     fi
     echo
 }
@@ -452,4 +633,99 @@ function todo_save() {
         return 1
     fi
 }
+
+# Toggle or set visibility of affirmations
+function todo_toggle_affirmation() {
+    local action="${1:-toggle}"
+    case "$action" in
+        "show")
+            TODO_SHOW_AFFIRMATION="true"
+            echo "Affirmations enabled"
+            ;;
+        "hide")
+            TODO_SHOW_AFFIRMATION="false"
+            echo "Affirmations disabled"
+            ;;
+        "toggle")
+            if [[ "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
+                TODO_SHOW_AFFIRMATION="false"
+                echo "Affirmations disabled"
+            else
+                TODO_SHOW_AFFIRMATION="true"
+                echo "Affirmations enabled"
+            fi
+            ;;
+        *)
+            echo "Usage: todo_toggle_affirmation [show|hide|toggle]" >&2
+            echo "Current state: $TODO_SHOW_AFFIRMATION" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Toggle or set visibility of todo box
+function todo_toggle_box() {
+    local action="${1:-toggle}"
+    case "$action" in
+        "show")
+            TODO_SHOW_TODO_BOX="true"
+            echo "Todo box enabled"
+            ;;
+        "hide")
+            TODO_SHOW_TODO_BOX="false"
+            echo "Todo box disabled"
+            ;;
+        "toggle")
+            if [[ "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+                TODO_SHOW_TODO_BOX="false"
+                echo "Todo box disabled"
+            else
+                TODO_SHOW_TODO_BOX="true"
+                echo "Todo box enabled"
+            fi
+            ;;
+        *)
+            echo "Usage: todo_toggle_box [show|hide|toggle]" >&2
+            echo "Current state: $TODO_SHOW_TODO_BOX" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Toggle or set visibility of both affirmation and todo box
+function todo_toggle_all() {
+    local action="${1:-toggle}"
+    case "$action" in
+        "show")
+            TODO_SHOW_AFFIRMATION="true"
+            TODO_SHOW_TODO_BOX="true"
+            echo "Affirmations and todo box enabled"
+            ;;
+        "hide")
+            TODO_SHOW_AFFIRMATION="false"
+            TODO_SHOW_TODO_BOX="false"
+            echo "Affirmations and todo box disabled"
+            ;;
+        "toggle")
+            if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+                TODO_SHOW_AFFIRMATION="false"
+                TODO_SHOW_TODO_BOX="false"
+                echo "Affirmations and todo box disabled"
+            else
+                TODO_SHOW_AFFIRMATION="true"
+                TODO_SHOW_TODO_BOX="true"
+                echo "Affirmations and todo box enabled"
+            fi
+            ;;
+        *)
+            echo "Usage: todo_toggle_all [show|hide|toggle]" >&2
+            echo "Current state - Affirmations: $TODO_SHOW_AFFIRMATION, Todo box: $TODO_SHOW_TODO_BOX" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Aliases for convenience
+alias todo_affirm=todo_toggle_affirmation
+alias todo_box=todo_toggle_box
 

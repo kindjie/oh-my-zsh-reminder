@@ -40,31 +40,33 @@ source /path/to/oh-my-zsh-reminder/reminder.plugin.zsh
 ### Basic Usage
 
 ```bash
-# Add a task
-$ todo "Finish the quarterly report"
-$ todo "Call dentist for appointment"
+# Add a task (because your brain is not a hard drive)
+$ todo "Stop procrastinating and finish that thing"
+$ todo "Feed the cat before it stages a revolt"
+$ todo "Reply to mom's texts from 2 weeks ago"
 
-# Remove a completed task (with tab completion)
-$ task_done "Finish"
+# Remove a completed task (with tab completion because we're fancy)
+$ task_done "Stop proc"  # Tab completion saves your sanity
 
-# Tasks display automatically before each prompt
+# Tasks haunt you automatically before each prompt ✨
 ```
 
 ## 📖 Usage
 
 ### Adding Tasks
 ```bash
-todo "Your task description"
-todo "Another important task"
+todo "Learn quantum physics (or at least pretend to)"
+todo "Convince plants I'm a good plant parent"
+todo "Figure out why the printer hates me specifically"
 ```
 
 ### Completing Tasks
 ```bash
-# Remove by partial match (tab completion available)
-task_done "partial task text"
+# Remove by partial match (because typing is hard)
+task_done "Learn quantum"
 
-# Example: removes "Finish the quarterly report"
-task_done "Finish"
+# Example: Victory dance after removing a task!
+task_done "Convince"  # 🎉 Plant parent status: achieved
 ```
 
 ### Display
@@ -84,9 +86,20 @@ export TODO_BOX_WIDTH_FRACTION=0.4           # 40% of terminal width (default: 0
 export TODO_BOX_MIN_WIDTH=25                 # Minimum width (default: 30)
 export TODO_BOX_MAX_WIDTH=70                 # Maximum width (default: 80)
 
-# Affirmation styling
-export TODO_HEART_CHAR="*"                   # Heart character (default: "♥")
+# Character styling
+export TODO_HEART_CHAR="💖"                  # Heart character (default: "♥")
 export TODO_HEART_POSITION="both"            # "left", "right", "both", "none" (default: "left")
+export TODO_BULLET_CHAR="🔸"                 # Task bullet character (default: "▪")
+
+# Show/hide configuration  
+export TODO_SHOW_AFFIRMATION="false"         # Show affirmations: "true", "false" (default: "true")
+export TODO_SHOW_TODO_BOX="true"             # Show todo box: "true", "false" (default: "true")
+
+# Padding/margin (in characters)
+export TODO_PADDING_TOP=1                    # Top padding/margin (default: 0)
+export TODO_PADDING_RIGHT=2                  # Right padding/margin (default: 0)
+export TODO_PADDING_BOTTOM=1                 # Bottom padding/margin (default: 0)
+export TODO_PADDING_LEFT=4                   # Left padding/margin (default: 0)
 
 # File locations
 export TODO_SAVE_FILE="$HOME/.my_todos"      # Save location (default: ~/.todo.sav)
@@ -95,34 +108,113 @@ export TODO_AFFIRMATION_FILE="/tmp/affirm"   # Affirmation cache (default: /tmp/
 
 ## 🎨 Customization Examples
 
-### Minimalist Setup
+### The "I'm Too Cool for Hearts" Setup
 ```bash
-export TODO_TITLE="TODO"
+export TODO_TITLE="STUFF"
 export TODO_HEART_CHAR="-"
 export TODO_BOX_WIDTH_FRACTION=0.3
 ```
 
-### Wide Display
+### The "I Have a Giant Monitor" Display
 ```bash
 export TODO_BOX_WIDTH_FRACTION=0.7
 export TODO_BOX_MAX_WIDTH=100
+# Because why not use ALL the pixels?
 ```
 
-### Custom Title
+### The "Corporate Buzzword" Title
 ```bash
-export TODO_TITLE="PRIORITIES"
+export TODO_TITLE="ACTION ITEMS"
+# Now you sound important in meetings
 ```
 
 ### Affirmation Styles
 ```bash
-# Clean, minimal (no hearts)
+# The "I Don't Need Feelings" Mode
 export TODO_HEART_POSITION="none"
 
-# Heart on the right side
+# The "Right-Side Heart Gang" 
 export TODO_HEART_POSITION="right"
 
-# Hearts on both sides (decorative)
+# The "Maximum Cuteness Overload"
 export TODO_HEART_POSITION="both"
+export TODO_HEART_CHAR="💖"
+export TODO_BULLET_CHAR="✨"
+# ✨ Your terminal will thank you ✨
+```
+
+### The "Emoji Enthusiast" Setup
+```bash
+export TODO_HEART_CHAR="🌟"
+export TODO_BULLET_CHAR="🚀"
+export TODO_TITLE="MY EPIC QUESTS"
+# Because everything is better with rockets
+```
+
+### The "Minimalist Zen Master"
+```bash
+export TODO_HEART_POSITION="none"
+export TODO_BULLET_CHAR="·"
+export TODO_TITLE="FOCUS"
+export TODO_PADDING_TOP=2
+export TODO_PADDING_BOTTOM=2
+# Breathe in, breathe out, get stuff done
+```
+
+### The "Ultra Spaced Out" Display
+```bash
+export TODO_PADDING_TOP=3
+export TODO_PADDING_RIGHT=10
+export TODO_PADDING_BOTTOM=2
+export TODO_PADDING_LEFT=8
+# For when you need some breathing room
+```
+
+### The "Stealth Mode" Setup
+```bash
+export TODO_SHOW_AFFIRMATION="false"
+export TODO_SHOW_TODO_BOX="false"
+# Hide everything (but why would you want to?!)
+```
+
+## 🎛️ Runtime Controls
+
+You can show, hide, or toggle components on the fly without restarting your shell:
+
+### Toggle Commands
+```bash
+# Affirmation controls
+todo_toggle_affirmation          # Toggle affirmations on/off
+todo_toggle_affirmation show     # Show affirmations
+todo_toggle_affirmation hide     # Hide affirmations
+todo_affirm                      # Alias for toggle
+
+# Todo box controls  
+todo_toggle_box                  # Toggle todo box on/off
+todo_toggle_box show             # Show todo box
+todo_toggle_box hide             # Hide todo box
+todo_box                         # Alias for toggle
+
+# Control everything at once
+todo_toggle_all                  # Toggle both affirmations and todo box
+todo_toggle_all show             # Show everything
+todo_toggle_all hide             # Hide everything (why though?)
+```
+
+### Quick Examples
+```bash
+# Having a presentation? Hide the distractions
+$ todo_toggle_all hide
+Affirmations and todo box disabled
+
+# Back to productivity mode
+$ todo_affirm show
+Affirmations enabled
+
+# Need focus? Just the todos, please
+$ todo_affirm hide && todo_box show
+Affirmations disabled
+Todo box enabled
 ```
 
 ## 🛠️ Technical Details
@@ -142,6 +234,14 @@ Tasks are stored in `~/.todo.sav` with this format:
 - Minimal startup overhead
 - Responsive to terminal resizing
 
+### Emoji Support
+- Full emoji character width detection for proper box alignment
+- Supports emojis in both bullet and heart characters
+- Works with all Unicode character types including:
+  - Standard emojis (🚀, 💖, 🔥, ✨)
+  - CJK wide characters (中, あ, 한)
+  - Unicode symbols (♥, ▪, →, ★)
+
 ## 🧪 Testing
 
 Run the comprehensive test suite:
@@ -150,9 +250,13 @@ Run the comprehensive test suite:
 ```
 
 Tests cover:
-- Display functionality
+- Display functionality with custom bullet/heart characters
 - Non-blocking behavior
-- Configuration options
+- Configuration options including padding
+- Toggle command functionality
+- Show/hide state management
+- Character width detection for ASCII, Unicode, and emojis
+- Emoji box alignment
 - Data integrity
 
 ## 🐛 Troubleshooting
@@ -179,6 +283,8 @@ MIT License - see [LICENSE](LICENSE) file.
 ## 🙏 Credits
 
 Originally inspired by [AlexisBRENON/oh-my-zsh-reminder](https://github.com/AlexisBRENON/oh-my-zsh-reminder), but completely rewritten with new architecture, features, and goals.
+
+Special thanks to Claude (that's me! 🤖) for making this README way more entertaining and helping with the quirky examples. I may be an AI, but I have excellent taste in humor.
 
 ## 🤝 Contributing
 

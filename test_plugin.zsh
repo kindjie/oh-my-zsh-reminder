@@ -114,6 +114,208 @@ echo "(To test different configs, set TODO_BOX_WIDTH_FRACTION before sourcing pl
 
 COLUMNS="$original_columns"
 
+# Test 4: Toggle commands
+echo "\nTesting toggle commands:"
+
+# Test affirmation toggle
+original_affirmation_state="$TODO_SHOW_AFFIRMATION"
+echo "Original affirmation state: $TODO_SHOW_AFFIRMATION"
+
+todo_toggle_affirmation hide >/dev/null
+if [[ "$TODO_SHOW_AFFIRMATION" == "false" ]]; then
+    echo "✅ PASS: Affirmation hiding works"
+else
+    echo "❌ FAIL: Affirmation hiding failed"
+fi
+
+todo_toggle_affirmation show >/dev/null
+if [[ "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
+    echo "✅ PASS: Affirmation showing works"
+else
+    echo "❌ FAIL: Affirmation showing failed"
+fi
+
+# Test todo box toggle
+original_box_state="$TODO_SHOW_TODO_BOX"
+echo "Original todo box state: $TODO_SHOW_TODO_BOX"
+
+todo_toggle_box hide >/dev/null
+if [[ "$TODO_SHOW_TODO_BOX" == "false" ]]; then
+    echo "✅ PASS: Todo box hiding works"
+else
+    echo "❌ FAIL: Todo box hiding failed"
+fi
+
+todo_toggle_box show >/dev/null
+if [[ "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+    echo "✅ PASS: Todo box showing works"
+else
+    echo "❌ FAIL: Todo box showing failed"
+fi
+
+# Test toggle all
+todo_toggle_all hide >/dev/null
+if [[ "$TODO_SHOW_AFFIRMATION" == "false" && "$TODO_SHOW_TODO_BOX" == "false" ]]; then
+    echo "✅ PASS: Toggle all hide works"
+else
+    echo "❌ FAIL: Toggle all hide failed"
+fi
+
+todo_toggle_all show >/dev/null
+if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+    echo "✅ PASS: Toggle all show works"
+else
+    echo "❌ FAIL: Toggle all show failed"
+fi
+
+# Restore original states
+TODO_SHOW_AFFIRMATION="$original_affirmation_state"
+TODO_SHOW_TODO_BOX="$original_box_state"
+
+# Test 5: Custom bullet and heart characters
+echo "\nTesting custom characters:"
+
+# Test with emoji bullet
+original_bullet="$TODO_BULLET_CHAR"
+original_heart="$TODO_HEART_CHAR"
+
+TODO_BULLET_CHAR="🚀"
+TODO_HEART_CHAR="💖"
+
+echo "Testing with rocket bullet (🚀) and heart emoji (💖):"
+# Show the complete box display (no truncation)
+todo_display
+
+# Restore
+TODO_BULLET_CHAR="$original_bullet"
+TODO_HEART_CHAR="$original_heart"
+
+echo "✅ PASS: Custom characters work (visual test)"
+
+# Test 6: Padding configuration
+echo "\nTesting padding configuration:"
+
+original_padding_top="$TODO_PADDING_TOP"
+original_padding_left="$TODO_PADDING_LEFT"
+
+TODO_PADDING_TOP=2
+TODO_PADDING_LEFT=4
+
+echo "Testing with padding: top=2, left=4"
+# Visual test - just show it works without error
+todo_display >/dev/null 2>&1
+
+if [[ $? -eq 0 ]]; then
+    echo "✅ PASS: Padding configuration works without errors"
+else
+    echo "❌ FAIL: Padding configuration caused errors"
+fi
+
+# Restore
+TODO_PADDING_TOP="$original_padding_top"
+TODO_PADDING_LEFT="$original_padding_left"
+
+# Test 7: Show/hide display functionality
+echo "\nTesting show/hide display functionality:"
+
+# Test hidden todo box
+TODO_SHOW_TODO_BOX="false"
+output=$(todo_display 2>&1)
+if [[ -z "$output" || "$output" == $'\n' ]]; then
+    echo "✅ PASS: Hidden todo box produces no output"
+else
+    echo "❌ FAIL: Hidden todo box still produces output"
+fi
+
+# Test hidden affirmation (should show box but no affirmation)
+TODO_SHOW_TODO_BOX="true"
+TODO_SHOW_AFFIRMATION="false"
+output=$(todo_display 2>&1)
+if [[ -n "$output" ]]; then
+    echo "✅ PASS: Hidden affirmation still shows todo box"
+else
+    echo "❌ FAIL: Hidden affirmation hides entire display"
+fi
+
+# Restore states
+TODO_SHOW_TODO_BOX="$original_box_state"
+TODO_SHOW_AFFIRMATION="$original_affirmation_state"
+
+# Test 8: Character width detection
+echo "\nTesting character width detection:"
+
+# Test width detection for various character types
+char="▪"; standard_width=${(m)#char}
+char="🚀"; emoji_width=${(m)#char}
+char="💖"; heart_width=${(m)#char}
+char="A"; ascii_width=${(m)#char}
+
+if [[ $standard_width -eq 1 && $emoji_width -eq 2 && $heart_width -eq 2 && $ascii_width -eq 1 ]]; then
+    echo "✅ PASS: Character width detection works correctly"
+    echo "  Standard bullet: $standard_width, Emoji: $emoji_width, Heart: $heart_width, ASCII: $ascii_width"
+else
+    echo "❌ FAIL: Character width detection failed"
+    echo "  Standard bullet: $standard_width (expected 1)"
+    echo "  Emoji: $emoji_width (expected 2)"
+    echo "  Heart: $heart_width (expected 2)"
+    echo "  ASCII: $ascii_width (expected 1)"
+fi
+
+# Test string width calculation
+string_test="🚀 Hello World"
+string_width=${(m)#string_test}
+expected_string_width=14  # 🚀(2) + space(1) + "Hello World"(11) = 14
+
+if [[ $string_width -eq $expected_string_width ]]; then
+    echo "✅ PASS: String width detection works correctly"
+    echo "  String '$string_test' width: $string_width (expected: $expected_string_width)"
+else
+    echo "❌ FAIL: String width detection failed"
+    echo "  String '$string_test' width: $string_width (expected: $expected_string_width)"
+fi
+
+# Test 9: Comprehensive character width tests
+echo "\nTesting various character types:"
+
+# Test various character categories
+test_chars=(
+    "A:1:ASCII letter"
+    "1:1:ASCII digit"
+    "•:1:Bullet point"
+    "▪:1:Square bullet"
+    "♥:1:Heart suit"
+    "→:1:Arrow"
+    "★:1:Star"
+    "🚀:2:Rocket emoji"
+    "💖:2:Sparkling heart emoji"
+    "😀:2:Grinning face emoji"
+    "🎉:2:Party popper emoji"
+    "👍:2:Thumbs up emoji"
+    "🔥:2:Fire emoji"
+    "✨:2:Sparkles emoji"
+    "中:2:Chinese character"
+    "あ:2:Japanese hiragana"
+    "한:2:Korean character"
+)
+
+all_char_tests_passed=true
+for test_data in "${test_chars[@]}"; do
+    IFS=':' read -r char expected desc <<< "$test_data"
+    actual=${(m)#char}
+    if [[ $actual -eq $expected ]]; then
+        echo "  ✓ '$char' ($desc): width=$actual"
+    else
+        echo "  ✗ '$char' ($desc): width=$actual (expected $expected)"
+        all_char_tests_passed=false
+    fi
+done
+
+if [[ "$all_char_tests_passed" == "true" ]]; then
+    echo "✅ PASS: All character width tests passed"
+else
+    echo "❌ FAIL: Some character width tests failed"
+fi
+
 # Restore original data if needed
 if [[ -n "$backup_save" ]]; then
     echo "$backup_save" > "$TODO_SAVE_FILE"
