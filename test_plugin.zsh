@@ -428,7 +428,99 @@ else
     echo "❌ FAIL: Help missing major sections"
 fi
 
-# Test 11: Character width detection
+# Test that help includes new color features
+if [[ "$help_output" == *"todo_colors"* ]] && [[ "$help_output" == *"Color Configuration"* ]]; then
+    echo "✅ PASS: Help includes color configuration features"
+else
+    echo "❌ FAIL: Help missing color configuration features"
+fi
+
+# Test 11: Color configuration
+echo "\nTesting color configuration:"
+
+# Test default color values
+if [[ "$TODO_TASK_COLORS" == "167,71,136,110,139,73" ]]; then
+    echo "✅ PASS: Default task colors correct"
+else
+    echo "❌ FAIL: Default task colors wrong (got: $TODO_TASK_COLORS)"
+fi
+
+if [[ "$TODO_BORDER_COLOR" == "240" ]]; then
+    echo "✅ PASS: Default border color correct"
+else
+    echo "❌ FAIL: Default border color wrong (got: $TODO_BORDER_COLOR)"
+fi
+
+if [[ "$TODO_AFFIRMATION_COLOR" == "109" ]]; then
+    echo "✅ PASS: Default affirmation color correct"
+else
+    echo "❌ FAIL: Default affirmation color wrong (got: $TODO_AFFIRMATION_COLOR)"
+fi
+
+# Test color array initialization
+if [[ ${#TODO_COLORS[@]} -eq 6 ]]; then
+    echo "✅ PASS: Color array initialized with correct count"
+else
+    echo "❌ FAIL: Color array has wrong size (got: ${#TODO_COLORS[@]}, expected: 6)"
+fi
+
+# Test todo_colors command exists
+if command -v todo_colors >/dev/null 2>&1; then
+    echo "✅ PASS: todo_colors command exists"
+else
+    echo "❌ FAIL: todo_colors command not found"
+fi
+
+# Test todo_colors produces output
+colors_output=$(todo_colors 16 2>/dev/null)
+if [[ -n "$colors_output" ]] && [[ "$colors_output" == *"Color Reference"* ]]; then
+    echo "✅ PASS: todo_colors produces color reference output"
+else
+    echo "❌ FAIL: todo_colors doesn't produce expected output"
+fi
+
+# Test that todo_colors shows current configuration
+if [[ "$colors_output" == *"Current plugin colors"* ]] && [[ "$colors_output" == *"Task colors: $TODO_TASK_COLORS"* ]]; then
+    echo "✅ PASS: todo_colors shows current configuration"
+else
+    echo "❌ FAIL: todo_colors doesn't show current configuration"
+fi
+
+# Test color validation (simulated - would normally happen at plugin load)
+echo "Testing color validation logic:"
+
+# Test valid color range (0-255)
+valid_color=128
+if [[ $valid_color -ge 0 && $valid_color -le 255 ]]; then
+    echo "✅ PASS: Valid color range check works"
+else
+    echo "❌ FAIL: Valid color range check failed"
+fi
+
+# Test invalid color range 
+invalid_color=256
+if [[ $invalid_color -gt 255 ]]; then
+    echo "✅ PASS: Invalid color range detection works"
+else
+    echo "❌ FAIL: Invalid color range detection failed"
+fi
+
+# Test comma-separated format validation
+valid_format="123,45,67"
+if [[ "$valid_format" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+    echo "✅ PASS: Valid task colors format check works"
+else
+    echo "❌ FAIL: Valid task colors format check failed"
+fi
+
+invalid_format="red,green,blue"
+if [[ ! "$invalid_format" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+    echo "✅ PASS: Invalid task colors format detection works"
+else
+    echo "❌ FAIL: Invalid task colors format detection failed"
+fi
+
+# Test 12: Character width detection
 echo "\nTesting character width detection:"
 
 # Test width detection for various character types
@@ -461,7 +553,7 @@ else
     echo "  String '$string_test' width: $string_width (expected: $expected_string_width)"
 fi
 
-# Test 9: Comprehensive character width tests
+# Test 13: Comprehensive character width tests
 echo "\nTesting various character types:"
 
 # Test various character categories

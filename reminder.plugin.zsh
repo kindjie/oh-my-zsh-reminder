@@ -23,6 +23,14 @@ TODO_PADDING_RIGHT="${TODO_PADDING_RIGHT:-4}"             # Right padding/margin
 TODO_PADDING_BOTTOM="${TODO_PADDING_BOTTOM:-0}"           # Bottom padding/margin
 TODO_PADDING_LEFT="${TODO_PADDING_LEFT:-0}"               # Left padding/margin
 
+# Color configuration (256-color terminal codes)
+TODO_TASK_COLORS="${TODO_TASK_COLORS:-167,71,136,110,139,73}"    # Task bullet colors (comma-separated)
+TODO_BORDER_COLOR="${TODO_BORDER_COLOR:-240}"                     # Box border color
+TODO_BACKGROUND_COLOR="${TODO_BACKGROUND_COLOR:-235}"             # Box background color
+TODO_TEXT_COLOR="${TODO_TEXT_COLOR:-240}"                         # Task text color
+TODO_TITLE_COLOR="${TODO_TITLE_COLOR:-250}"                       # Box title color
+TODO_AFFIRMATION_COLOR="${TODO_AFFIRMATION_COLOR:-109}"           # Affirmation text color
+
 # Validate heart character display width (allows Unicode characters including emojis)
 if [[ -z "$TODO_HEART_CHAR" ]] || [[ ${#TODO_HEART_CHAR} -gt 4 ]]; then
     echo "Error: TODO_HEART_CHAR must be a single character or emoji, got: '$TODO_HEART_CHAR'" >&2
@@ -57,6 +65,30 @@ for padding_var in TODO_PADDING_TOP TODO_PADDING_RIGHT TODO_PADDING_BOTTOM TODO_
     local padding_value="${(P)padding_var}"
     if [[ ! "$padding_value" =~ ^[0-9]+$ ]]; then
         echo "Error: $padding_var must be a non-negative integer, got: '$padding_value'" >&2
+        return 1
+    fi
+done
+
+# Validate color configurations are numeric
+for color_var in TODO_BORDER_COLOR TODO_BACKGROUND_COLOR TODO_TEXT_COLOR TODO_TITLE_COLOR TODO_AFFIRMATION_COLOR; do
+    local color_value="${(P)color_var}"
+    if [[ ! "$color_value" =~ ^[0-9]+$ ]] || [[ $color_value -gt 255 ]]; then
+        echo "Error: $color_var must be a number between 0-255, got: '$color_value'" >&2
+        return 1
+    fi
+done
+
+# Validate and parse task colors
+if [[ -z "$TODO_TASK_COLORS" ]] || [[ ! "$TODO_TASK_COLORS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+    echo "Error: TODO_TASK_COLORS must be comma-separated numbers (0-255), got: '$TODO_TASK_COLORS'" >&2
+    return 1
+fi
+
+# Convert comma-separated string to array and validate range
+IFS=',' read -A task_color_array <<< "$TODO_TASK_COLORS"
+for color in "${task_color_array[@]}"; do
+    if [[ $color -gt 255 ]]; then
+        echo "Error: Task color values must be 0-255, got: '$color'" >&2
         return 1
     fi
 done
@@ -175,8 +207,9 @@ say \$width;
     echo $width
 }
 
-# Color palette: red, green, yellow, blue, magenta, cyan (256-color terminal codes)
-TODO_COLORS=(167 71 136 110 139 73)
+# Initialize color palette from configuration
+typeset -a TODO_COLORS
+TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
 
 
 # Allow to use colors (ensure autoload first for deferred loading)
@@ -365,8 +398,8 @@ function wrap_todo_text() {
     local max_width="$2"
     local bullet_color="$3"
     local is_title="$4"
-    local gray_color=$'\e[38;5;240m'
-    local title_color=$'\e[38;5;250m'
+    local gray_color=$'\e[38;5;'${TODO_TEXT_COLOR}$'m'
+    local title_color=$'\e[38;5;'${TODO_TITLE_COLOR}$'m'
 
     # Check if this is a title (REMEMBER is a special case)
     if [[ "$is_title" == "true" ]]; then
@@ -420,7 +453,7 @@ function format_todo_line() {
     local box_width=$(calculate_box_width)
     local effective_columns=$((COLUMNS - TODO_PADDING_LEFT - TODO_PADDING_RIGHT))
     local left_width=$((effective_columns - box_width))
-    local affirmation_color=$'\e[38;5;109m'
+    local affirmation_color=$'\e[38;5;'${TODO_AFFIRMATION_COLOR}$'m'
 
     # Ensure left_width is positive
     if [[ $left_width -lt 10 ]]; then
@@ -464,8 +497,8 @@ function draw_todo_box() {
     unsetopt XTRACE
     local box_width=$(calculate_box_width)
     local content_width=$((box_width - 4))  # 2 for borders, 2 for padding
-    local gray_color=$'\e[38;5;240m'
-    local bg_color=$'\e[48;5;235m'
+    local gray_color=$'\e[38;5;'${TODO_BORDER_COLOR}$'m'
+    local bg_color=$'\e[48;5;'${TODO_BACKGROUND_COLOR}$'m'
     local reset_bg=$'\e[49m'
 
     if [[ ${#todo_tasks} -eq 0 ]]; then
@@ -732,6 +765,67 @@ function todo_toggle_all() {
     esac
 }
 
+# Display color reference for choosing color values
+function todo_colors() {
+    local max_colors="${1:-72}"  # Default to first 72 colors for reasonable display
+    local row_len=12
+    
+    echo "🎨 Color Reference (256-color codes for terminal themes)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo
+    echo "Usage: export TODO_TASK_COLORS=\"num1,num2,num3\" # comma-separated"
+    echo "       export TODO_BORDER_COLOR=num              # single number"
+    echo
+    
+    local n=0
+    
+    # Base 16 colors (0-15)
+    echo "Basic Colors (0-15):"
+    for ((row=0; row<2; row++)); do
+        for ((col=0; col<8; col++)); do
+            local color=$((row * 8 + col))
+            printf "\e[48;5;${color}m\e[38;5;231m%03d\e[0m " "$color"
+        done
+        echo
+        for ((col=0; col<8; col++)); do
+            local color=$((row * 8 + col))
+            printf "\e[48;5;${color}m\e[38;5;232m%03d\e[0m " "$color"
+        done
+        echo
+    done
+    echo
+    
+    # Extended colors (16+)
+    if [[ $max_colors -gt 16 ]]; then
+        echo "Extended Colors (16+):"
+        for ((n=16; n<max_colors; n+=row_len)); do
+            # First row with white text
+            for ((m=0; m<row_len && n+m<max_colors; m++)); do
+                local color=$((n + m))
+                printf "\e[48;5;${color}m\e[38;5;231m%03d\e[0m " "$color"
+            done
+            echo
+            # Second row with black text
+            for ((m=0; m<row_len && n+m<max_colors; m++)); do
+                local color=$((n + m))
+                printf "\e[48;5;${color}m\e[38;5;232m%03d\e[0m " "$color"
+            done
+            echo
+            echo
+        done
+    fi
+    
+    echo "💡 Tips:"
+    echo "  • Lower numbers (0-15) are basic terminal colors"
+    echo "  • Higher numbers (16-255) are extended colors"
+    echo "  • Test your colors: echo -e '\\e[38;5;NUMmText\\e[0m'"
+    echo "  • Current plugin colors:"
+    echo "    - Task colors: $TODO_TASK_COLORS"
+    echo "    - Border: $TODO_BORDER_COLOR, Background: $TODO_BACKGROUND_COLOR"
+    echo "    - Text: $TODO_TEXT_COLOR, Title: $TODO_TITLE_COLOR"
+    echo "    - Affirmation: $TODO_AFFIRMATION_COLOR"
+}
+
 # Show abbreviated help for the reminder plugin
 function todo_help() {
     echo "📝 oh-my-zsh-reminder - Quick Reference"
@@ -747,6 +841,7 @@ function todo_help() {
     echo "  todo_toggle_all [show|hide|toggle]         Control everything"
     echo "  todo_affirm                                Alias for toggle_affirmation"
     echo "  todo_box                                   Alias for toggle_box"
+    echo "  todo_colors [max_colors]                   Show color reference (default: 72)"
     echo
     echo "⚙️  Configuration (set before sourcing plugin):"
     echo "  TODO_TITLE                         Box title (default: REMEMBER)"
@@ -758,6 +853,14 @@ function todo_help() {
     echo "  TODO_SHOW_AFFIRMATION              true|false (default: true)"
     echo "  TODO_SHOW_TODO_BOX                 true|false (default: true)"
     echo
+    echo "🎨 Color Configuration (256-color codes 0-255):"
+    echo "  TODO_TASK_COLORS                   Task bullet colors (default: 167,71,136,110,139,73)"
+    echo "  TODO_BORDER_COLOR                  Box border color (default: 240)"
+    echo "  TODO_BACKGROUND_COLOR              Box background color (default: 235)"
+    echo "  TODO_TEXT_COLOR                    Task text color (default: 240)"
+    echo "  TODO_TITLE_COLOR                   Box title color (default: 250)"
+    echo "  TODO_AFFIRMATION_COLOR             Affirmation text color (default: 109)"
+    echo
     echo "📁 Files:"
     echo "  ~/.todo.save                       Task storage"
     echo "  /tmp/todo_affirmation              Affirmation cache"
@@ -766,8 +869,12 @@ function todo_help() {
     echo "  todo \"Buy groceries\"               # Add task"
     echo "  task_done \"Buy\"                    # Remove task"
     echo "  todo_affirm hide                   # Hide affirmations"
+    echo "  todo_colors                        # Show color reference"
     echo "  export TODO_HEART_CHAR=\"💖\"        # Use emoji heart"
     echo "  export TODO_PADDING_LEFT=4         # Add left padding"
+    echo "  export TODO_TASK_COLORS=\"196,46,33,21,129,201\"  # Custom task colors"
+    echo "  export TODO_BORDER_COLOR=244       # Lighter border"
+    echo "  export TODO_AFFIRMATION_COLOR=33   # Blue affirmations"
     echo
     echo "For full documentation: https://github.com/kindjie/oh-my-zsh-reminder"
 }

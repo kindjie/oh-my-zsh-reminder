@@ -11,7 +11,7 @@ This is an oh-my-zsh plugin that displays TODO reminders above the terminal prom
 - **Single File Plugin**: All functionality is contained in `reminder.plugin.zsh`
 - **Persistent Storage**: Tasks and colors stored in single file `~/.todo.save`
 - **Hook System**: Uses zsh's `precmd` hook to display tasks before each prompt
-- **Color Management**: Cycles through 6 colors (red, green, yellow, blue, magenta, cyan) for task differentiation
+- **Color Management**: Cycles through configurable colors for task differentiation (default: red, green, yellow, blue, magenta, cyan)
 - **Emoji Support**: Full Unicode character width detection for proper alignment with emojis
 - **Configurable Display**: Customizable bullet/heart characters, padding, show/hide states, and box dimensions
 - **Runtime Controls**: Toggle commands for showing/hiding components without restart
@@ -24,6 +24,7 @@ This is an oh-my-zsh plugin that displays TODO reminders above the terminal prom
 - `fetch_affirmation_async`: Fetches and displays motivational affirmations asynchronously
 - `todo_toggle_affirmation/todo_toggle_box/todo_toggle_all`: Runtime visibility controls
 - `todo_help`: Abbreviated help command with quick reference
+- `todo_colors`: Interactive color reference showing 256-color codes for customization
 - `format_affirmation`: Handles configurable heart positioning (left/right/both/none)
 - `wrap_todo_text`: Text wrapping with emoji-aware width calculation
 - `load_tasks`/`todo_save`: Handle persistent storage
@@ -62,9 +63,15 @@ To test plugin modifications:
    ```bash
    ./test_plugin.zsh
    ```
-   (Tests all features: emoji support, padding, toggles, character width detection)
+   (Tests all features: emoji support, padding, toggles, character width detection, color configuration)
 
-6. **Visual padding demonstration**:
+6. **Run color validation tests**:
+   ```bash
+   ./test_color_validation.zsh
+   ```
+   (Tests color configuration validation with various valid/invalid scenarios)
+
+7. **Visual padding demonstration**:
    ```bash
    ./demo_padding.zsh
    ```
@@ -77,7 +84,7 @@ To test plugin modifications:
 - Configurable title (default: "REMEMBER") displays in bright color
 - Regular tasks display with customizable bullet characters (default: ▪) and gray text
 - Text wraps within box boundaries with proper emoji-aware indentation
-- Dual-color system: bright bullets for visual emphasis, gray text/borders for readability
+- Dual-color system: bright bullets for visual emphasis, configurable text/border colors for readability
 - Configurable padding on all sides (top/right/bottom/left)
 - Runtime show/hide controls for all components
 - Full emoji and Unicode support with proper terminal width calculation
