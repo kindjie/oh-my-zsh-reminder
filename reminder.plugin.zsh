@@ -826,60 +826,116 @@ function todo_colors() {
     echo "    - Affirmation: $TODO_AFFIRMATION_COLOR"
 }
 
-# Show abbreviated help for the reminder plugin
+# Show concise help for core functionality
 function todo_help() {
-    echo "📝 Zsh Todo Reminder Plugin - Quick Reference"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    local show_full="$1"
+    
+    # Handle --full flag or redirect to full help
+    if [[ "$show_full" == "--full" || "$show_full" == "-f" ]]; then
+        todo_help_full
+        return
+    fi
+    
+    # Colors for formatting
+    local bold=$'\e[1m'
+    local reset=$'\e[0m'
+    local blue=$'\e[38;5;39m'
+    local green=$'\e[38;5;46m'
+    local yellow=$'\e[38;5;226m'
+    local cyan=$'\e[38;5;51m'
+    local gray=$'\e[38;5;244m'
+    
+    echo "${bold}${blue}📝 Todo Reminder - Core Commands${reset}"
+    echo "${gray}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
     echo
-    echo "📋 Task Management:"
-    echo "  todo \"task\"                        Add a new task"
-    echo "  task_done \"pattern\"                Remove completed task (tab completion)"
+    echo "${bold}${green}Essential Commands:${reset}"
+    echo "  ${cyan}todo${reset} \"task description\"       ${gray}Add a new task${reset}"
+    echo "  ${cyan}task_done${reset} \"pattern\"           ${gray}Complete/remove task${reset}"
+    echo "  ${cyan}todo_toggle_all${reset}               ${gray}Show/hide everything${reset}"
+    echo "  ${cyan}todo_colors${reset}                   ${gray}View color reference${reset}"
     echo
-    echo "👁️  Display Controls:"
-    echo "  todo_toggle_affirmation [show|hide|toggle] Control affirmations"
-    echo "  todo_toggle_box [show|hide|toggle]         Control todo box"
-    echo "  todo_toggle_all [show|hide|toggle]         Control everything"
-    echo "  todo_affirm                                Alias for toggle_affirmation"
-    echo "  todo_box                                   Alias for toggle_box"
-    echo "  todo_colors [max_colors]                   Show color reference (default: 72)"
+    echo "${bold}${yellow}Quick Examples:${reset}"
+    echo "  ${gray}todo \"Buy groceries\"${reset}"
+    echo "  ${gray}task_done \"Buy\"${reset}"
+    echo "  ${gray}todo_toggle_all hide${reset}"
     echo
-    echo "⚙️  Configuration (set before sourcing plugin):"
-    echo "  TODO_TITLE                         Box title (default: REMEMBER)"
-    echo "  TODO_BULLET_CHAR                   Task bullet (default: ▪)"
-    echo "  TODO_HEART_CHAR                    Affirmation heart (default: ♥)"
-    echo "  TODO_HEART_POSITION                left|right|both|none (default: left)"
-    echo "  TODO_BOX_WIDTH_FRACTION            Box width fraction (default: 0.5)"
-    echo "  TODO_PADDING_TOP/RIGHT/BOTTOM/LEFT Padding (default: 0,4,0,0)"
-    echo "  TODO_SHOW_AFFIRMATION              true|false (default: true)"
-    echo "  TODO_SHOW_TODO_BOX                 true|false (default: true)"
+    echo "${gray}💡 For full help with all options: ${cyan}todo_help --full${reset}"
+}
+
+# Show comprehensive help with all configuration options
+function todo_help_full() {
+    # Colors for formatting
+    local bold=$'\e[1m'
+    local reset=$'\e[0m'
+    local blue=$'\e[38;5;39m'
+    local green=$'\e[38;5;46m'
+    local yellow=$'\e[38;5;226m'
+    local cyan=$'\e[38;5;51m'
+    local magenta=$'\e[38;5;201m'
+    local gray=$'\e[38;5;244m'
+    local white=$'\e[38;5;255m'
+    
+    echo "${bold}${blue}📝 Zsh Todo Reminder Plugin - Complete Reference${reset}"
+    echo "${gray}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
     echo
-    echo "🎨 Color Configuration (256-color codes 0-255):"
-    echo "  TODO_TASK_COLORS                   Task bullet colors (default: 167,71,136,110,139,73)"
-    echo "  TODO_BORDER_COLOR                  Box border color (default: 240)"
-    echo "  TODO_BACKGROUND_COLOR              Box background color (default: 235)"
-    echo "  TODO_TEXT_COLOR                    Task text color (default: 240)"
-    echo "  TODO_TITLE_COLOR                   Box title color (default: 250)"
-    echo "  TODO_AFFIRMATION_COLOR             Affirmation text color (default: 109)"
+    echo "${bold}${green}📋 Task Management:${reset}"
+    echo "  ${cyan}todo${reset} \"task\"                        ${gray}Add a new task${reset}"
+    echo "  ${cyan}task_done${reset} \"pattern\"                ${gray}Remove completed task (tab completion)${reset}"
     echo
-    echo "📁 Files:"
-    echo "  ~/.todo.save                       Task storage"
-    echo "  /tmp/todo_affirmation              Affirmation cache"
+    echo "${bold}${green}👁️  Display Controls:${reset}"
+    echo "  ${cyan}todo_toggle_affirmation${reset} [show|hide|toggle] ${gray}Control affirmations${reset}"
+    echo "  ${cyan}todo_toggle_box${reset} [show|hide|toggle]         ${gray}Control todo box${reset}"
+    echo "  ${cyan}todo_toggle_all${reset} [show|hide|toggle]         ${gray}Control everything${reset}"
+    echo "  ${cyan}todo_affirm${reset}                                ${gray}Alias for toggle_affirmation${reset}"
+    echo "  ${cyan}todo_box${reset}                                   ${gray}Alias for toggle_box${reset}"
+    echo "  ${cyan}todo_colors${reset} [max_colors]                   ${gray}Show color reference (default: 72)${reset}"
     echo
-    echo "💡 Examples:"
-    echo "  todo \"Buy groceries\"               # Add task"
-    echo "  task_done \"Buy\"                    # Remove task"
-    echo "  todo_affirm hide                   # Hide affirmations"
-    echo "  todo_colors                        # Show color reference"
-    echo "  export TODO_HEART_CHAR=\"💖\"        # Use emoji heart"
-    echo "  export TODO_PADDING_LEFT=4         # Add left padding"
-    echo "  export TODO_TASK_COLORS=\"196,46,33,21,129,201\"  # Custom task colors"
-    echo "  export TODO_BORDER_COLOR=244       # Lighter border"
-    echo "  export TODO_AFFIRMATION_COLOR=33   # Blue affirmations"
+    echo "${bold}${magenta}⚙️  Configuration Variables:${reset} ${gray}(set before sourcing plugin)${reset}"
+    echo "  ${white}Display Settings:${reset}"
+    echo "    ${cyan}TODO_TITLE${reset}                         ${gray}Box title (default: REMEMBER)${reset}"
+    echo "    ${cyan}TODO_BULLET_CHAR${reset}                   ${gray}Task bullet (default: ▪)${reset}"
+    echo "    ${cyan}TODO_HEART_CHAR${reset}                    ${gray}Affirmation heart (default: ♥)${reset}"
+    echo "    ${cyan}TODO_HEART_POSITION${reset}                ${gray}left|right|both|none (default: left)${reset}"
+    echo "    ${cyan}TODO_BOX_WIDTH_FRACTION${reset}            ${gray}Box width fraction (default: 0.5)${reset}"
+    echo "    ${cyan}TODO_SHOW_AFFIRMATION${reset}              ${gray}true|false (default: true)${reset}"
+    echo "    ${cyan}TODO_SHOW_TODO_BOX${reset}                 ${gray}true|false (default: true)${reset}"
     echo
-    echo "🔗 Links:"
-    echo "  Repository: https://github.com/kindjie/zsh-todo-reminder"
-    echo "  Issues:     https://github.com/kindjie/zsh-todo-reminder/issues"
-    echo "  Releases:   https://github.com/kindjie/zsh-todo-reminder/releases"
+    echo "  ${white}Padding/Spacing:${reset}"
+    echo "    ${cyan}TODO_PADDING_TOP${reset}                   ${gray}Top padding (default: 0)${reset}"
+    echo "    ${cyan}TODO_PADDING_RIGHT${reset}                 ${gray}Right padding (default: 4)${reset}"
+    echo "    ${cyan}TODO_PADDING_BOTTOM${reset}                ${gray}Bottom padding (default: 0)${reset}"
+    echo "    ${cyan}TODO_PADDING_LEFT${reset}                  ${gray}Left padding (default: 0)${reset}"
+    echo
+    echo "${bold}${yellow}🎨 Color Configuration:${reset} ${gray}(256-color codes 0-255)${reset}"
+    echo "    ${cyan}TODO_TASK_COLORS${reset}                   ${gray}Task bullet colors (default: 167,71,136,110,139,73)${reset}"
+    echo "    ${cyan}TODO_BORDER_COLOR${reset}                  ${gray}Box border color (default: 240)${reset}"
+    echo "    ${cyan}TODO_BACKGROUND_COLOR${reset}              ${gray}Box background color (default: 235)${reset}"
+    echo "    ${cyan}TODO_TEXT_COLOR${reset}                    ${gray}Task text color (default: 240)${reset}"
+    echo "    ${cyan}TODO_TITLE_COLOR${reset}                   ${gray}Box title color (default: 250)${reset}"
+    echo "    ${cyan}TODO_AFFIRMATION_COLOR${reset}             ${gray}Affirmation text color (default: 109)${reset}"
+    echo
+    echo "${bold}${green}📁 Files:${reset}"
+    echo "  ${gray}~/.todo.save                       Task storage${reset}"
+    echo "  ${gray}/tmp/todo_affirmation              Affirmation cache${reset}"
+    echo
+    echo "${bold}${yellow}💡 Advanced Examples:${reset}"
+    echo "  ${gray}# Basic usage${reset}"
+    echo "  ${cyan}todo${reset} \"Buy groceries\"               ${gray}# Add task${reset}"
+    echo "  ${cyan}task_done${reset} \"Buy\"                    ${gray}# Remove task${reset}"
+    echo "  ${cyan}todo_affirm${reset} hide                   ${gray}# Hide affirmations${reset}"
+    echo "  ${cyan}todo_colors${reset}                        ${gray}# Show color reference${reset}"
+    echo
+    echo "  ${gray}# Customization${reset}"
+    echo "  ${white}export${reset} TODO_HEART_CHAR=\"💖\"        ${gray}# Use emoji heart${reset}"
+    echo "  ${white}export${reset} TODO_PADDING_LEFT=4         ${gray}# Add left padding${reset}"
+    echo "  ${white}export${reset} TODO_TASK_COLORS=\"196,46,33,21,129,201\"  ${gray}# Custom task colors${reset}"
+    echo "  ${white}export${reset} TODO_BORDER_COLOR=244       ${gray}# Lighter border${reset}"
+    echo "  ${white}export${reset} TODO_AFFIRMATION_COLOR=33   ${gray}# Blue affirmations${reset}"
+    echo
+    echo "${bold}${blue}🔗 Links:${reset}"
+    echo "  ${gray}Repository: https://github.com/kindjie/zsh-todo-reminder${reset}"
+    echo "  ${gray}Issues:     https://github.com/kindjie/zsh-todo-reminder/issues${reset}"
+    echo "  ${gray}Releases:   https://github.com/kindjie/zsh-todo-reminder/releases${reset}"
 }
 
 # Aliases for convenience

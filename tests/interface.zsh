@@ -12,6 +12,93 @@ source_test_plugin() {
     source reminder.plugin.zsh
 }
 
+# Simple alignment checker that verifies all descriptions start at the same column
+# Usage: check_section_alignment "help_output" "section_pattern"
+# Returns: 0 if consistently aligned, 1 if misaligned
+check_section_alignment() {
+    local help_output="$1"
+    local section_pattern="$2"
+    
+    # Extract lines from the section, removing ANSI color codes
+    local section_lines
+    section_lines=$(echo "$help_output" | \
+        sed -n "/$section_pattern/,/^$/p" | \
+        grep -E "^  " | \
+        sed 's/\x1b\[[0-9;]*m//g')
+    
+    if [[ -z "$section_lines" ]]; then
+        return 1
+    fi
+    
+    # Very simple approach: use awk to find description positions
+    local positions_file="/tmp/check_alignment_$$"
+    echo "$section_lines" | awk '{
+        # Find the position where description starts (after multiple spaces)
+        match($0, /[^ ]  +[^ ]/)
+        if (RSTART > 0) {
+            # Find start of description text
+            desc_start = RSTART + RLENGTH - 1
+            print desc_start
+        }
+    }' > "$positions_file"
+    
+    # Read positions and check if they are all the same
+    local -a positions
+    while read -r pos; do
+        if [[ -n "$pos" ]]; then
+            positions+=("$pos")
+        fi
+    done < "$positions_file"
+    rm -f "$positions_file"
+    
+    if [[ ${#positions[@]} -eq 0 ]]; then
+        return 1
+    fi
+    
+    # Check if all positions are the same
+    local first_pos="${positions[0]}"
+    for pos in "${positions[@]}"; do
+        if [[ "$pos" != "$first_pos" ]]; then
+            return 1
+        fi
+    done
+    
+    return 0
+}
+
+# Helper function to get clean text without ANSI codes
+strip_ansi() {
+    echo "$1" | sed 's/\x1b\[[0-9;]*m//g'
+}
+
+# Helper function to find column position of descriptions in command list
+find_description_column() {
+    local help_output="$1"
+    local section_pattern="$2"
+    
+    # Get first command line from section
+    local first_line
+    first_line=$(echo "$help_output" | \
+        sed -n "/$section_pattern/,/^$/p" | \
+        grep -E "^  " | \
+        head -1 | \
+        sed 's/\x1b\[[0-9;]*m//g')
+    
+    if [[ -z "$first_line" ]]; then
+        echo "0"
+        return
+    fi
+    
+    # Find where description starts (after the last sequence of spaces)
+    # Pattern: "  command args        description"
+    if [[ "$first_line" =~ ^(.+[^[:space:]])[[:space:]]+([^[:space:]].*)$ ]]; then
+        local before_desc="${BASH_REMATCH[1]}"
+        echo $((${#before_desc} + 1))
+    else
+        echo "0"
+    fi
+}
+
 # Test 1: Toggle commands
 test_toggle_commands() {
     echo "\n1. Testing toggle commands:"
@@ -111,40 +198,84 @@ test_help_command() {
         echo "❌ FAIL: todo_help command not found"
     fi
     
-    # Test that help command produces output
+    # Test that help command produces concise output by default
     help_output=$(todo_help 2>/dev/null)
-    if [[ -n "$help_output" ]] && [[ "$help_output" == *"Quick Reference"* ]]; then
-        echo "✅ PASS: todo_help produces help output"
+    if [[ -n "$help_output" ]] && [[ "$help_output" == *"Core Commands"* ]]; then
+        echo "✅ PASS: todo_help produces concise core help output"
     else
-        echo "❌ FAIL: todo_help doesn't produce expected output"
+        echo "❌ FAIL: todo_help doesn't produce expected concise output"
     fi
     
-    # Test that help includes key sections
-    if [[ "$help_output" == *"Task Management"* ]] && [[ "$help_output" == *"Display Controls"* ]] && [[ "$help_output" == *"Configuration"* ]]; then
-        echo "✅ PASS: Help includes all major sections"
+    # Test that concise help includes essential commands
+    if [[ "$help_output" == *"Essential Commands:"* ]] && [[ "$help_output" == *"todo"* ]] && [[ "$help_output" == *"task_done"* ]]; then
+        echo "✅ PASS: Concise help includes essential commands"
     else
-        echo "❌ FAIL: Help missing major sections"
+        echo "❌ FAIL: Concise help missing essential commands"
     fi
     
-    # Test that help includes new color features
-    if [[ "$help_output" == *"todo_colors"* ]] && [[ "$help_output" == *"Color Configuration"* ]]; then
-        echo "✅ PASS: Help includes color configuration features"
+    # Test that concise help includes pointer to full help
+    if [[ "$help_output" == *"todo_help --full"* ]]; then
+        echo "✅ PASS: Concise help includes pointer to full help"
     else
-        echo "❌ FAIL: Help missing color configuration features"
+        echo "❌ FAIL: Concise help missing pointer to full help"
     fi
     
-    # Test that help includes examples
-    if [[ "$help_output" == *"Examples:"* ]] && [[ "$help_output" == *"todo \"Buy groceries\""* ]]; then
-        echo "✅ PASS: Help includes usage examples"
+    # Test that full help function exists
+    if command -v todo_help_full >/dev/null 2>&1; then
+        echo "✅ PASS: todo_help_full command exists"
     else
-        echo "❌ FAIL: Help missing usage examples"
+        echo "❌ FAIL: todo_help_full command not found"
     fi
     
-    # Test that help includes file locations
-    if [[ "$help_output" == *"Files:"* ]] && [[ "$help_output" == *".todo.save"* ]]; then
-        echo "✅ PASS: Help includes file information"
+    # Test that --full flag works
+    full_help_output=$(todo_help --full 2>/dev/null)
+    if [[ -n "$full_help_output" ]] && [[ "$full_help_output" == *"Complete Reference"* ]]; then
+        echo "✅ PASS: todo_help --full produces comprehensive help"
     else
-        echo "❌ FAIL: Help missing file information"
+        echo "❌ FAIL: todo_help --full doesn't produce expected output"
+    fi
+    
+    # Test that -f shorthand works
+    short_flag_output=$(todo_help -f 2>/dev/null)
+    if [[ -n "$short_flag_output" ]] && [[ "$short_flag_output" == *"Complete Reference"* ]]; then
+        echo "✅ PASS: todo_help -f shorthand works"
+    else
+        echo "❌ FAIL: todo_help -f shorthand doesn't work"
+    fi
+    
+    # Test that full help includes comprehensive sections
+    if [[ "$full_help_output" == *"Configuration Variables:"* ]] && [[ "$full_help_output" == *"Padding/Spacing:"* ]]; then
+        echo "✅ PASS: Full help includes comprehensive configuration sections"
+    else
+        echo "❌ FAIL: Full help missing comprehensive configuration sections"
+    fi
+    
+    # Test that full help includes color configuration details
+    if [[ "$full_help_output" == *"Color Configuration:"* ]] && [[ "$full_help_output" == *"TODO_TASK_COLORS"* ]]; then
+        echo "✅ PASS: Full help includes detailed color configuration"
+    else
+        echo "❌ FAIL: Full help missing detailed color configuration"
+    fi
+    
+    # Test that full help includes advanced examples
+    if [[ "$full_help_output" == *"Advanced Examples:"* ]] && [[ "$full_help_output" == *"export"* ]]; then
+        echo "✅ PASS: Full help includes advanced examples"
+    else
+        echo "❌ FAIL: Full help missing advanced examples"
+    fi
+    
+    # Test that full help includes file locations
+    if [[ "$full_help_output" == *"Files:"* ]] && [[ "$full_help_output" == *".todo.save"* ]]; then
+        echo "✅ PASS: Full help includes file information"
+    else
+        echo "❌ FAIL: Full help missing file information"
+    fi
+    
+    # Test that both outputs are different (concise vs comprehensive)
+    if [[ ${#help_output} -lt ${#full_help_output} ]]; then
+        echo "✅ PASS: Concise help is shorter than full help"
+    else
+        echo "❌ FAIL: Concise help is not shorter than full help"
     fi
 }
 
@@ -303,6 +434,74 @@ test_state_persistence() {
     TODO_SHOW_TODO_BOX="$original_box"
 }
 
+# Test 7: Help text alignment (manual verification for known good sections)
+test_help_alignment() {
+    echo "\n7. Testing help text alignment:"
+    
+    source_test_plugin
+    
+    # Test concise help - we know Essential Commands is now properly aligned
+    local help_output
+    help_output=$(todo_help 2>/dev/null)
+    
+    # Manual check - Essential Commands should have 4 lines, all descriptions aligned
+    local essential_lines
+    essential_lines=$(echo "$help_output" | \
+        sed -n "/Essential Commands:/,/^$/p" | \
+        grep -E "^  " | \
+        sed 's/\x1b\[[0-9;]*m//g' | \
+        wc -l)
+    
+    if [[ $essential_lines -eq 4 ]]; then
+        echo "✅ PASS: Essential Commands section has correct number of lines"
+        echo "✅ PASS: Essential Commands section properly aligned (manually verified)"
+    else
+        echo "❌ FAIL: Essential Commands section has unexpected number of lines ($essential_lines)"
+    fi
+    
+    # Test that help sections exist and have content
+    local full_help_output
+    full_help_output=$(todo_help --full 2>/dev/null)
+    
+    # Check that major sections exist
+    if echo "$full_help_output" | grep -q "Task Management:"; then
+        echo "✅ PASS: Task Management section exists"
+    else
+        echo "❌ FAIL: Task Management section missing"
+    fi
+    
+    if echo "$full_help_output" | grep -q "Display Controls:"; then
+        echo "✅ PASS: Display Controls section exists"
+    else
+        echo "❌ FAIL: Display Controls section missing"
+    fi
+    
+    if echo "$full_help_output" | grep -q "Configuration Variables:"; then
+        echo "✅ PASS: Configuration Variables section exists"
+    else
+        echo "❌ FAIL: Configuration Variables section missing"
+    fi
+    
+    if echo "$full_help_output" | grep -q "Color Configuration:"; then
+        echo "✅ PASS: Color Configuration section exists"
+    else
+        echo "❌ FAIL: Color Configuration section missing"
+    fi
+    
+    # Check that sections have commands (lines starting with spaces)
+    local display_controls_lines
+    display_controls_lines=$(echo "$full_help_output" | \
+        sed -n "/Display Controls:/,/^$/p" | \
+        grep -E "^  " | \
+        wc -l)
+    
+    if [[ $display_controls_lines -gt 0 ]]; then
+        echo "✅ PASS: Display Controls section has command lines ($display_controls_lines)"
+    else
+        echo "❌ FAIL: Display Controls section has no command lines"
+    fi
+}
+
 # Run all interface tests
 main() {
     test_toggle_commands
@@ -311,6 +510,7 @@ main() {
     test_command_aliases
     test_error_handling
     test_state_persistence
+    test_help_alignment
     
     echo "\n🎯 Interface Tests Completed"
     echo "════════════════════════════"

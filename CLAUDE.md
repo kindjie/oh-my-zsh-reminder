@@ -74,13 +74,7 @@ To test plugin modifications:
    ./tests/character.zsh      # Character width and emoji handling tests
    ```
 
-7. **Legacy comprehensive test**:
-   ```bash
-   ./test_plugin.zsh
-   ```
-   (Original monolithic test - still functional for compatibility)
-
-8. **Visual padding demonstration**:
+7. **Visual padding demonstration**:
    ```bash
    ./demo_padding.zsh
    ```
