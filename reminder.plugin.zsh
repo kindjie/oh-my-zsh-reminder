@@ -134,7 +134,7 @@ function wrap_todo_text() {
     fi
     
     # For regular tasks, we need to handle bullet and text separately
-    local bullet="${bullet_color}●${gray_color}"
+    local bullet="${bullet_color}▪${gray_color}"
     local remaining_width=$((max_width - 2))  # Account for bullet and space
     
     # Simple word wrapping for the text part only
