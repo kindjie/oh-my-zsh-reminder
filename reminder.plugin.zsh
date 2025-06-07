@@ -66,30 +66,34 @@ function _todo_task_done {
 # compdef _todo_task_done todo_task_done
 alias task_done=todo_task_done
 
-# Wrap text to fit within specified width
+# Wrap text to fit within specified width, handling bullet and text colors separately
 function wrap_todo_text() {
     local text="$1"
     local max_width="$2"
-    local prefixed_text
+    local bullet_color="$3"
+    local is_title="$4"
+    local gray_color=$'\e[38;5;240m'
     
     # Check if this is a title (REMEMBER is a special case)
-    if [[ "$text" == "REMEMBER" ]]; then
-        # This is a title - no prefix, center it
-        prefixed_text="$text"
-    else
-        # This is a regular task - add bullet prefix
-        prefixed_text="- ${text}"
+    if [[ "$is_title" == "true" ]]; then
+        # This is a title - no prefix, use bullet color for title
+        echo "${bullet_color}${text}${gray_color}"
+        return
     fi
     
-    # Simple word wrapping - split on words that exceed width
-    local words=(${=prefixed_text})  # Split into words
+    # For regular tasks, we need to handle bullet and text separately
+    local bullet="${bullet_color}●${gray_color}"
+    local remaining_width=$((max_width - 2))  # Account for bullet and space
+    
+    # Simple word wrapping for the text part only
+    local words=(${=text})  # Split into words
     local lines=()
     local current_line=""
     
     for word in "${words[@]}"; do
         if [[ -z "$current_line" ]]; then
             current_line="$word"
-        elif [[ $((${#current_line} + ${#word} + 1)) -le $max_width ]]; then
+        elif [[ $((${#current_line} + ${#word} + 1)) -le $remaining_width ]]; then
             current_line="$current_line $word"
         else
             lines+=("$current_line")
@@ -101,7 +105,14 @@ function wrap_todo_text() {
         lines+=("$current_line")
     fi
     
-    printf '%s\n' "${lines[@]}"
+    # Output first line with bullet, subsequent lines with spacing
+    for (( i = 1; i <= ${#lines}; i++ )); do
+        if [[ $i -eq 1 ]]; then
+            echo "${bullet} ${lines[i]}"
+        else
+            echo "  ${lines[i]}"  # Indent continuation lines
+        fi
+    done
 }
 
 # Create a line with todo box on right and affirmation on left
@@ -130,6 +141,7 @@ function draw_todo_box() {
     unsetopt XTRACE
     local box_width=$((COLUMNS / 2))
     local content_width=$((box_width - 4))  # 2 for borders, 2 for padding
+    local gray_color=$'\e[38;5;240m'
     
     if [[ ${#todo_tasks} -eq 0 ]]; then
         return
@@ -160,28 +172,35 @@ function draw_todo_box() {
     
     # Collect all wrapped lines with colors
     local -a all_lines
-    local -a line_colors
     
     for (( i = 1; i <= ${#todo_tasks}; i++ )); do
+        local is_title="false"
+        if [[ "${todo_tasks[i]}" == "REMEMBER" ]]; then
+            is_title="true"
+        fi
+        
         while IFS= read -r line; do
             if [[ -n "$line" ]]; then
                 all_lines+=("$line")
-                line_colors+=("${todo_tasks_colors[i]}")
             fi
-        done <<< "$(wrap_todo_text "${todo_tasks[i]}" "$content_width")"
+        done <<< "$(wrap_todo_text "${todo_tasks[i]}" "$content_width" "${todo_tasks_colors[i]}" "$is_title")"
     done
     
     # Calculate middle line for affirmation
     local middle_line=$((${#all_lines} / 2 + 1))
     
-    # Top border (neutral color)
+    # Top border (low contrast)
     local top_border="┌$(printf '─%.0s' {1..$((box_width-2))})┐"
-    format_todo_line "" "$top_border" "$fg[white]"
+    format_todo_line "" "$top_border" "${gray_color}"
     
     # Content lines
     for (( i = 1; i <= ${#all_lines}; i++ )); do
-        local content_line="$(printf "%-${content_width}s" "${all_lines[i]}")"
-        local box_line="$fg[white]│ ${line_colors[i]}${content_line}$fg[white] │$fg[default]"
+        # Strip color codes to measure actual text width
+        local clean_line="$(echo "${all_lines[i]}" | sed 's/\x1b\[[0-9;]*m//g')"
+        local padding_needed=$((content_width - ${#clean_line}))
+        local padding="$(printf '%*s' $padding_needed '')"
+        local content_line="${all_lines[i]}${gray_color}${padding}"
+        local box_line="${gray_color}│ ${content_line} │$fg[default]"
         local left_text=""
         
         # Show placeholder affirmation on middle line
@@ -192,9 +211,9 @@ function draw_todo_box() {
         format_todo_line "$left_text" "$box_line" ""
     done
     
-    # Bottom border (neutral color)
+    # Bottom border (low contrast)
     local bottom_border="└$(printf '─%.0s' {1..$((box_width-2))})┘"
-    format_todo_line "" "$bottom_border" "$fg[white]"
+    format_todo_line "" "$bottom_border" "${gray_color}"
 }
 
 # Fetch new affirmation in background
