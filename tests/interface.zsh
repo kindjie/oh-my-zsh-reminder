@@ -257,12 +257,15 @@ test_error_handling() {
         fi
     done
     
-    # Test that commands handle missing parameters gracefully
+    # Test that commands handle empty parameters gracefully (should default to toggle)
+    original_state="$TODO_SHOW_AFFIRMATION"
     todo_toggle_affirmation "" >/dev/null 2>&1
-    if [[ $? -ne 0 ]]; then
-        echo "✅ PASS: Empty arguments handled gracefully"
+    if [[ $? -eq 0 && "$TODO_SHOW_AFFIRMATION" != "$original_state" ]]; then
+        echo "✅ PASS: Empty arguments default to toggle behavior"
+        # Restore original state
+        TODO_SHOW_AFFIRMATION="$original_state"
     else
-        echo "⚠️  WARNING: Empty arguments might not be handled"
+        echo "❌ FAIL: Empty arguments don't default to toggle behavior"
     fi
 }
 
