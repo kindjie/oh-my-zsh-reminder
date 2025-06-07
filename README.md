@@ -372,6 +372,22 @@ If tasks don't appear in new terminals:
 
 MIT License - see [LICENSE](LICENSE) file.
 
+## 💭 Motivation
+
+This project started as an experiment in "vibe coding" - letting an AI agent handle the implementation while I focused on the vision. As someone who works with LLMs professionally, I was skeptical about their capabilities for real development work. But I needed a simple terminal todo list, and this seemed like the perfect low-stakes testing ground.
+
+I purposely chose to build on an existing plugin rather than start from scratch, to test how well AI could understand and extend established code. What began as right-aligned text became something unexpectedly polished through countless iterations of guidance and refinement.
+
+### Observations from the Process
+
+- **Testing was critical**: Progress was nearly impossible without comprehensive automated tests. Setting up an environment that accurately reflected rendered terminal output took several attempts.
+- **Context management matters**: With limited context windows, I had to encourage documentation and strategically break up tasks to use `/clear` instead of `/compact`. The project consumed hundreds of thousands of tokens - I consistently hit Pro limits and needed to upgrade.
+- **Not everything worked**: Some features had to be abandoned after thousands of tokens of failed attempts, like a transient display mode that would only show above the current prompt. The AI struggled to reason about interactions with other zsh plugins like P10k.
+- **Surprisingly engaging**: The process was far more fun than solo coding - whether due to novelty or something inherent to collaborative AI development remains to be seen.
+- **Interesting side effects**: The motivational affirmations in test outputs seemed to subtly influence the AI's personality as contexts grew larger.
+
+Whether this demonstrates AI as a capable development partner is for you to decide - I'd love to hear your thoughts via GitHub issues!
+
 ## 🙏 Credits
 
 Originally inspired by [AlexisBRENON/oh-my-zsh-reminder](https://github.com/AlexisBRENON/oh-my-zsh-reminder), but completely rewritten with new architecture, features, and goals.
