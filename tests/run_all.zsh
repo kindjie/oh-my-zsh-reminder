@@ -31,6 +31,7 @@ TESTS_DIR="$(dirname "$0")"
 TEST_FILES=(
     "display.zsh"
     "configuration.zsh"
+    "config_management.zsh"
     "color.zsh"
     "interface.zsh"
     "character.zsh"
