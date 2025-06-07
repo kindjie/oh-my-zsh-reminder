@@ -1,8 +1,22 @@
-# oh-my-zsh-reminder
+# zsh-todo-reminder
 
 A beautiful, configurable zsh plugin that displays your TODO tasks in a right-aligned box with motivational affirmations.
 
-![Plugin Screenshot](screenshot.png)
+![Basic Display](docs/images/basic-display.png)
+
+## 📸 Screenshots
+
+### Default Display
+![Basic Display](docs/images/basic-display.png)
+*Clean todo box with motivational affirmations*
+
+### Customization Options
+![Customization Themes](docs/images/customization-themes.png)
+*Different themes showing title, bullet, and styling flexibility*
+
+### Runtime Controls
+![Toggle Controls](docs/images/toggle-controls.png)
+*Show/hide components on-the-fly without restart*
 
 ## ✨ Features
 
@@ -21,20 +35,20 @@ A beautiful, configurable zsh plugin that displays your TODO tasks in a right-al
 **With Antidote:**
 ```bash
 # Add to your .zsh_plugins.txt
-kindjie/oh-my-zsh-reminder kind:defer
+kindjie/zsh-todo-reminder kind:defer
 ```
 
 **With Oh My Zsh:**
 ```bash
-git clone https://github.com/kindjie/oh-my-zsh-reminder ~/.oh-my-zsh/custom/plugins/reminder
+git clone https://github.com/kindjie/zsh-todo-reminder ~/.oh-my-zsh/custom/plugins/reminder
 # Add 'reminder' to your plugins list in ~/.zshrc
 ```
 
 **Manual Installation:**
 ```bash
-git clone https://github.com/kindjie/oh-my-zsh-reminder
+git clone https://github.com/kindjie/zsh-todo-reminder
 # Source the plugin in your .zshrc:
-source /path/to/oh-my-zsh-reminder/reminder.plugin.zsh
+source /path/to/zsh-todo-reminder/reminder.plugin.zsh
 ```
 
 ### Basic Usage
