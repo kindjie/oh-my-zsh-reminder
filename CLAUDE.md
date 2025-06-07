@@ -9,16 +9,23 @@ This is an oh-my-zsh plugin that displays TODO reminders above the terminal prom
 ## Architecture
 
 - **Single File Plugin**: All functionality is contained in `reminder.plugin.zsh`
-- **Persistent Storage**: Tasks stored in `~/.todo.sav`, colors in `~/.todo_color.sav`
+- **Persistent Storage**: Tasks and colors stored in single file `~/.todo.save`
 - **Hook System**: Uses zsh's `precmd` hook to display tasks before each prompt
 - **Color Management**: Cycles through 6 colors (red, green, yellow, blue, magenta, cyan) for task differentiation
+- **Emoji Support**: Full Unicode character width detection for proper alignment with emojis
+- **Configurable Display**: Customizable bullet/heart characters, padding, show/hide states, and box dimensions
+- **Runtime Controls**: Toggle commands for showing/hiding components without restart
 
 ## Key Functions
 
 - `todo_add_task` (alias: `todo`): Adds new tasks
 - `todo_task_done` (alias: `task_done`): Removes completed tasks with tab completion
 - `todo_display`: Shows tasks before each prompt with right-aligned formatting
-- `show_affirm`: Fetches and displays motivational affirmations asynchronously
+- `fetch_affirmation_async`: Fetches and displays motivational affirmations asynchronously
+- `todo_toggle_affirmation/todo_toggle_box/todo_toggle_all`: Runtime visibility controls
+- `todo_help`: Abbreviated help command with quick reference
+- `format_affirmation`: Handles configurable heart positioning (left/right/both/none)
+- `wrap_todo_text`: Text wrapping with emoji-aware width calculation
 - `load_tasks`/`todo_save`: Handle persistent storage
 
 ## Development Notes
@@ -49,20 +56,29 @@ To test plugin modifications:
 4. **Verify task management**:
    - Add tasks: `todo "New task"`
    - Remove tasks: `task_done "partial match"`
-   - Check storage: `cat ~/.todo.sav`
+   - Check storage: `cat ~/.todo.save`
 
-5. **Run idempotent test script**:
+5. **Run comprehensive test suite**:
    ```bash
    ./test_plugin.zsh
    ```
-   (Safely tests with sample data, restores original state)
+   (Tests all features: emoji support, padding, toggles, character width detection)
+
+6. **Visual padding demonstration**:
+   ```bash
+   ./demo_padding.zsh
+   ```
+   (Shows all padding configurations with visual borders)
 
 ## Display Layout
 
-- Right side: Todo box (half terminal width) with low-contrast gray borders
-- Left side: Motivational affirmation (single line)
-- "REMEMBER" displays as title in bright color (no bullet)
-- Regular tasks display with bright colored "●" bullets and gray text
-- Text wraps within box boundaries with proper indentation
+- Right side: Todo box (configurable width, default 50%) with low-contrast gray borders
+- Left side: Motivational affirmation with configurable heart positioning
+- Configurable title (default: "REMEMBER") displays in bright color
+- Regular tasks display with customizable bullet characters (default: ▪) and gray text
+- Text wraps within box boundaries with proper emoji-aware indentation
 - Dual-color system: bright bullets for visual emphasis, gray text/borders for readability
+- Configurable padding on all sides (top/right/bottom/left)
+- Runtime show/hide controls for all components
+- Full emoji and Unicode support with proper terminal width calculation
 - No screen clearing - preserves command output

@@ -276,6 +276,20 @@ Tests cover:
 - Emoji box alignment
 - Data integrity
 
+### Visual Padding Demo
+
+See padding effects in action:
+```bash
+./demo_padding.zsh
+```
+
+The demo script shows:
+- How padding affects both affirmation and todo box positioning
+- Edge alignment with zero padding
+- Affirmation truncation with extreme padding values
+- Visual borders to clearly show padding boundaries
+- All padding combinations (top/right/bottom/left)
+
 ## 🐛 Troubleshooting
 
 ### Quick Help
