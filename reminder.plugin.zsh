@@ -11,14 +11,44 @@ typeset -i -x -g todo_color_index
 
 function load_tasks() {
 # Load previous tasks from saved file
-if [[ -e "$TODO_SAVE_TASKS_FILE" &&
-      -e "$TODO_SAVE_COLOR_FILE" ]]; then
+if [[ -e "$TODO_SAVE_TASKS_FILE" ]]; then
     TODO_TASKS="$(cat $TODO_SAVE_TASKS_FILE)"
-    TODO_TASKS_COLORS="$(head -n1 $TODO_SAVE_COLOR_FILE)"
-    todo_color_index="$(tail -n1 $TODO_SAVE_COLOR_FILE)"
     if [[ -z "$TODO_TASKS" ]]; then
-        todo_tasks[1]=()
-        todo_tasks_colors[1]=()
+        todo_tasks=()
+        todo_tasks_colors=()
+        todo_color_index=1
+        return
+    fi
+    
+    # Count actual number of tasks
+    local task_count=$(echo "$TODO_TASKS" | tr ':' '\n' | wc -l)
+    
+    # Load or regenerate colors
+    if [[ -e "$TODO_SAVE_COLOR_FILE" ]]; then
+        TODO_TASKS_COLORS="$(head -n1 $TODO_SAVE_COLOR_FILE 2>/dev/null)" || TODO_TASKS_COLORS=""
+        local index_line="$(tail -n1 $TODO_SAVE_COLOR_FILE 2>/dev/null)" || index_line=""
+        
+        # Validate color index is numeric
+        if [[ "$index_line" =~ ^[0-9]+$ ]]; then
+            todo_color_index="$index_line"
+        else
+            todo_color_index=""
+        fi
+        
+        # Validate color data
+        local color_count=0
+        if [[ -n "$TODO_TASKS_COLORS" ]]; then
+            color_count=$(echo "$TODO_TASKS_COLORS" | tr ':' '\n' | grep -c .)
+        fi
+        
+        # If color count doesn't match task count, regenerate colors
+        if [[ $color_count -ne $task_count ]] || [[ -z "$TODO_TASKS_COLORS" ]] || [[ -z "$todo_color_index" ]]; then
+            echo "Regenerating corrupted color file..." >&2
+            regenerate_colors_for_existing_tasks
+        fi
+    else
+        # Generate colors for existing tasks
+        regenerate_colors_for_existing_tasks
     fi
 else
     todo_tasks=()
@@ -27,7 +57,28 @@ else
 fi
 }
 
-todo_colors=(red green yellow blue magenta cyan)
+function regenerate_colors_for_existing_tasks() {
+    local task_count=$(echo "$TODO_TASKS" | tr ':' '\n' | wc -l)
+    local new_colors=()
+    local color_index=1
+    
+    for (( i = 1; i <= task_count; i++ )); do
+        local color_code=$'\e[38;5;'${todo_colors[color_index]}$'m'
+        new_colors+=("$color_code")
+        (( color_index = (color_index % ${#todo_colors}) + 1 ))
+    done
+    
+    # Save regenerated colors
+    local colors_string="$(IFS=:; echo "${new_colors[*]}")"
+    echo "$colors_string" > "$TODO_SAVE_COLOR_FILE"
+    echo "$color_index" >> "$TODO_SAVE_COLOR_FILE"
+    
+    # Reload the corrected data
+    TODO_TASKS_COLORS="$colors_string"
+    todo_color_index="$color_index"
+}
+
+todo_colors=(167 71 136 110 139 73)
 autoload -U add-zsh-hook
 add-zsh-hook precmd todo_display
 
@@ -35,7 +86,7 @@ function todo_add_task {
     if [[ $# -gt 0 ]]; then
       # Source: http://stackoverflow.com/a/8997314/1298019
       task=$(echo -E "$@" | tr '\n' '\000' | sed 's:\x00\x00.*:\n:g' | tr '\000' '\n')
-      color="${fg[${todo_colors[${todo_color_index}]}]}"
+      color=$'\e[38;5;'${todo_colors[${todo_color_index}]}$'m'
 	    load_tasks
       todo_tasks+="$task"
       todo_tasks_colors+="$color"
@@ -73,11 +124,12 @@ function wrap_todo_text() {
     local bullet_color="$3"
     local is_title="$4"
     local gray_color=$'\e[38;5;240m'
+    local title_color=$'\e[38;5;250m'
     
     # Check if this is a title (REMEMBER is a special case)
     if [[ "$is_title" == "true" ]]; then
         # This is a title - no prefix, use bullet color for title
-        echo "${bullet_color}${text}${gray_color}"
+        echo "${title_color}${text}${gray_color}"
         return
     fi
     
@@ -123,9 +175,10 @@ function format_todo_line() {
     
     local box_width=$((COLUMNS / 2))
     local left_width=$((COLUMNS - box_width - 4))
+    local affirmation_color=$'\e[38;5;109m'
     
     # Pad left content to proper width
-    printf "${fg[cyan]}%-${left_width}s$fg[default]" "$left_content"
+    printf "${affirmation_color}%-${left_width}s$fg[default]" "$left_content"
     
     # Print right content with box formatting
     if [[ -n "$right_content" ]]; then
@@ -142,6 +195,8 @@ function draw_todo_box() {
     local box_width=$((COLUMNS / 2))
     local content_width=$((box_width - 4))  # 2 for borders, 2 for padding
     local gray_color=$'\e[38;5;240m'
+    local bg_color=$'\e[48;5;235m'
+    local reset_bg=$'\e[49m'
     
     if [[ ${#todo_tasks} -eq 0 ]]; then
         return
@@ -191,7 +246,7 @@ function draw_todo_box() {
     
     # Top border (low contrast)
     local top_border="┌$(printf '─%.0s' {1..$((box_width-2))})┐"
-    format_todo_line "" "$top_border" "${gray_color}"
+    format_todo_line "" "${gray_color}${bg_color}$top_border${reset_bg}" ""
     
     # Content lines
     for (( i = 1; i <= ${#all_lines}; i++ )); do
@@ -200,7 +255,7 @@ function draw_todo_box() {
         local padding_needed=$((content_width - ${#clean_line}))
         local padding="$(printf '%*s' $padding_needed '')"
         local content_line="${all_lines[i]}${gray_color}${padding}"
-        local box_line="${gray_color}│ ${content_line} │$fg[default]"
+        local box_line="${gray_color}${bg_color}│ ${content_line} │${reset_bg}$fg[default]"
         local left_text=""
         
         # Show placeholder affirmation on middle line
@@ -213,7 +268,7 @@ function draw_todo_box() {
     
     # Bottom border (low contrast)
     local bottom_border="└$(printf '─%.0s' {1..$((box_width-2))})┘"
-    format_todo_line "" "$bottom_border" "${gray_color}"
+    format_todo_line "" "${gray_color}${bg_color}$bottom_border${reset_bg}" ""
 }
 
 # Fetch new affirmation in background

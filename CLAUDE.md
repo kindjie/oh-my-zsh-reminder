@@ -59,9 +59,10 @@ To test plugin modifications:
 
 ## Display Layout
 
-- Right side: Todo box (half terminal width) with white borders
+- Right side: Todo box (half terminal width) with low-contrast gray borders
 - Left side: Motivational affirmation (single line)
-- "REMEMBER" displays as title (no bullet)
-- Regular tasks display with "- " prefix
-- Text wraps within box boundaries
+- "REMEMBER" displays as title in bright color (no bullet)
+- Regular tasks display with bright colored "●" bullets and gray text
+- Text wraps within box boundaries with proper indentation
+- Dual-color system: bright bullets for visual emphasis, gray text/borders for readability
 - No screen clearing - preserves command output
