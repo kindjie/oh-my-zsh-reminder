@@ -976,12 +976,31 @@ function todo_colors() {
     echo "  • Lower numbers (0-15) are basic terminal colors"
     echo "  • Higher numbers (16-255) are extended colors"
     echo "  • Test your colors: echo -e '\\e[38;5;NUMmText\\e[0m'"
-    echo "  • Current plugin colors:"
-    echo "    - Task colors: $TODO_TASK_COLORS"
-    echo "    - Border fg: $TODO_BORDER_COLOR, Border bg: $TODO_BORDER_BG_COLOR"
-    echo "    - Content bg: $TODO_CONTENT_BG_COLOR"
-    echo "    - Text: $TODO_TEXT_COLOR, Title: $TODO_TITLE_COLOR"
-    echo "    - Affirmation: $TODO_AFFIRMATION_COLOR"
+    echo
+    echo "🎨 Current Plugin Colors (live preview):"
+    
+    # Show task colors with actual bullet character
+    echo -n "    Task colors: "
+    IFS=',' read -A current_task_colors <<< "$TODO_TASK_COLORS"
+    for i in "${current_task_colors[@]}"; do
+        printf "\\e[38;5;${i}m${TODO_BULLET_CHAR}\\e[0m($i) "
+    done
+    echo
+    
+    # Show border colors with example
+    printf "    Border: \\e[38;5;${TODO_BORDER_COLOR}m\\e[48;5;${TODO_BORDER_BG_COLOR}m┌──┐\\e[0m fg:$TODO_BORDER_COLOR bg:$TODO_BORDER_BG_COLOR\\n"
+    
+    # Show content background
+    printf "    Content: \\e[48;5;${TODO_CONTENT_BG_COLOR}m   \\e[0m bg:$TODO_CONTENT_BG_COLOR\\n"
+    
+    # Show text color
+    printf "    Text: \\e[38;5;${TODO_TEXT_COLOR}mSample task text\\e[0m ($TODO_TEXT_COLOR)\\n"
+    
+    # Show title color  
+    printf "    Title: \\e[38;5;${TODO_TITLE_COLOR}m${TODO_TITLE}\\e[0m ($TODO_TITLE_COLOR)\\n"
+    
+    # Show affirmation color with heart
+    printf "    Affirmation: \\e[38;5;${TODO_AFFIRMATION_COLOR}m${TODO_HEART_CHAR} Sample affirmation\\e[0m ($TODO_AFFIRMATION_COLOR)\\n"
 }
 
 # Show beginner-friendly help for core functionality

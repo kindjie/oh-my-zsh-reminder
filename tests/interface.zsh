@@ -299,7 +299,7 @@ test_colors_command() {
     fi
     
     # Test that todo_colors shows current configuration
-    if [[ "$colors_output" == *"Current plugin colors"* ]] && [[ "$colors_output" == *"Task colors: $TODO_TASK_COLORS"* ]]; then
+    if [[ "$colors_output" == *"Current Plugin Colors"* ]] && [[ "$colors_output" == *"Task colors:"* ]]; then
         echo "✅ PASS: todo_colors shows current configuration"
     else
         echo "❌ FAIL: todo_colors doesn't show current configuration"
