@@ -432,6 +432,7 @@ function todo_add_task() {
     else
         echo "Usage: todo \"task description\""
         echo "Example: todo \"Buy groceries\""
+        echo "💡 For more commands: todo_help"
     fi
 }
 
