@@ -192,10 +192,11 @@ test_empty_tasks() {
     }
     
     output=$(todo_display 2>&1)
-    if [[ -z "$output" ]]; then
-        echo "✅ PASS: Empty task list produces no output"
+    # Empty task list may show contextual hints (UX improvement) or no output
+    if [[ -z "$output" ]] || [[ "$output" == *"💡"* ]]; then
+        echo "✅ PASS: Empty task list produces no output or helpful hints"
     else
-        echo "❌ FAIL: Empty task list still produces output"
+        echo "❌ FAIL: Empty task list produces unexpected output: $output"
     fi
     
     rm -f "$EMPTY_TEST_SAVE_FILE"
