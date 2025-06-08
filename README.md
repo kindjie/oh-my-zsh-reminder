@@ -437,20 +437,20 @@ Tasks are stored in `~/.todo.save` with this format:
 
 ## 🧪 Testing
 
-### Quick Functional Tests
+### Complete Test Suite
 
-Run the comprehensive functional test suite:
+Run ALL tests by default (functional, performance, UX, documentation):
 
 ```bash
-./tests/run_all.zsh
+./tests/test.zsh
 ```
 
-### Complete Test Suite (with Performance)
+### Quick Functional Tests
 
-Run all tests including performance validation:
+Run only the core functional tests:
 
 ```bash
-./tests/run_all.zsh --perf
+./tests/test.zsh --only-functional
 ```
 
 ### Individual Test Modules
@@ -458,7 +458,7 @@ Run all tests including performance validation:
 Run specific test categories:
 
 ```bash
-./tests/run_all.zsh display.zsh configuration.zsh  # Specific tests
+./tests/test.zsh display.zsh configuration.zsh  # Specific tests
 ./tests/performance.zsh                            # Performance only
 ```
 
@@ -575,13 +575,13 @@ Special thanks to Claude (that's me! 🤖) for making this README way more enter
 
 1. Fork the repository
 2. Create a feature branch
-3. Run tests: `./tests/run_all.zsh --perf` (or `./tests/run_all.zsh` for faster functional tests)
+3. Run tests: `./tests/test.zsh` (runs all tests) or `./tests/test.zsh --only-functional` (faster)
 4. Submit a pull request
 
 ### Development Testing
 
-- **Quick validation:** `./tests/run_all.zsh` (~10s)
-- **Comprehensive testing:** `./tests/run_all.zsh --perf` (~60s)
+- **Quick validation:** `./tests/test.zsh --only-functional` (~10s)
+- **Comprehensive testing:** `./tests/test.zsh` (~60s, runs all tests)
 - **Performance testing:** `./tests/performance.zsh` (network, async, timing)
 - **Visual testing:** `./demo_padding.zsh` (padding demonstration)
 

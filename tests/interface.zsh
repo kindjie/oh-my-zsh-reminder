@@ -200,21 +200,21 @@ test_help_command() {
     
     # Test that help command produces concise output by default
     help_output=$(todo_help 2>/dev/null)
-    if [[ -n "$help_output" ]] && [[ "$help_output" == *"Core Commands"* ]]; then
+    if [[ -n "$help_output" ]] && [[ "$help_output" == *"Essential Commands"* ]]; then
         echo "✅ PASS: todo_help produces concise core help output"
     else
         echo "❌ FAIL: todo_help doesn't produce expected concise output"
     fi
     
     # Test that concise help includes essential commands
-    if [[ "$help_output" == *"Essential Commands:"* ]] && [[ "$help_output" == *"todo"* ]] && [[ "$help_output" == *"task_done"* ]]; then
+    if [[ "$help_output" == *"Essential Commands"* ]] && [[ "$help_output" == *"todo"* ]] && [[ "$help_output" == *"todo_remove"* ]]; then
         echo "✅ PASS: Concise help includes essential commands"
     else
         echo "❌ FAIL: Concise help missing essential commands"
     fi
     
     # Test that concise help includes pointer to full help
-    if [[ "$help_output" == *"todo_help --full"* ]]; then
+    if [[ "$help_output" == *"todo_help --more"* ]]; then
         echo "✅ PASS: Concise help includes pointer to full help"
     else
         echo "❌ FAIL: Concise help missing pointer to full help"
@@ -444,12 +444,13 @@ test_help_alignment() {
     local help_output
     help_output=$(todo_help 2>/dev/null)
     
-    # Manual check - Essential Commands should have 4 lines, all descriptions aligned
+    # Manual check - Essential Commands should have 6 command lines (excluding examples)
     local essential_lines
     essential_lines=$(echo "$help_output" | \
-        sed -n "/Essential Commands:/,/^$/p" | \
-        grep -E "^  " | \
         sed 's/\x1b\[[0-9;]*m//g' | \
+        sed -n '3,/^$/p' | \
+        grep -E "^  todo" | \
+        grep -v "#" | \
         wc -l)
     
     if [[ $essential_lines -eq 6 ]]; then

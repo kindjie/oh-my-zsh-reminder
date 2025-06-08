@@ -292,9 +292,9 @@ function test_claude_md_testing_instructions() {
         failed_instructions+=("Basic functionality test")
     fi
     
-    # Test: run_all.zsh exists and is executable
-    if [[ ! -x "tests/run_all.zsh" ]]; then
-        failed_instructions+=("run_all.zsh not executable")
+    # Test: test.zsh exists and is executable
+    if [[ ! -x "tests/test.zsh" ]]; then
+        failed_instructions+=("test.zsh not executable")
     fi
     
     # Test: Individual test files exist

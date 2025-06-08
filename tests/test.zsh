@@ -1,10 +1,9 @@
 #!/usr/bin/env zsh
 
-# Master test runner for the reminder plugin test suite
+# Test runner for the reminder plugin
 
-echo "🧪 Zsh Todo Reminder Plugin - Complete Test Suite"
-echo "═══════════════════════════════════════════════════"
-echo "Running comprehensive tests for all plugin functionality"
+echo "🧪 Zsh Todo Reminder Plugin - Test Suite"
+echo "══════════════════════════════════════════"
 echo
 
 # Color definitions for output
@@ -367,14 +366,17 @@ show_help() {
     local script_name="$(basename "${1:-$0}")"
     echo "Usage: $script_name [options] [test_files...]"
     echo
+    echo "By default, runs ALL tests (functional, performance, UX, documentation)"
+    echo
     echo "Options:"
-    echo "  -h, --help      Show this help message"
-    echo "  -l, --list      List available test files"
-    echo "  -v, --verbose   Run with verbose output"
-    echo "  -q, --quick     Run quick tests only (skip slow tests)"
-    echo "  -p, --perf      Include performance tests (adds ~30-60s)"
-    echo "  -u, --ux        Include UX/onboarding tests (adds ~10-20s)"
-    echo "  -d, --docs      Include documentation accuracy tests (adds ~5-10s)"
+    echo "  -h, --help           Show this help message"
+    echo "  -l, --list           List available test files"
+    echo "  -v, --verbose        Run with verbose output"
+    echo "  --only-functional    Run only functional tests (skip perf, ux, docs)"
+    echo "  --skip-perf          Skip performance tests"
+    echo "  --skip-ux            Skip UX tests"
+    echo "  --skip-docs          Skip documentation tests"
+    echo "  -m, --meta           Add Claude-powered analysis to test results"
     echo
     echo "Test Files:"
     for test_file in "${TEST_FILES[@]}"; do
@@ -382,13 +384,13 @@ show_help() {
     done
     echo
     echo "Examples:"
-    echo "  $script_name                          # Run all functional tests"
-    echo "  $script_name --perf                   # Run functional + performance tests"
-    echo "  $script_name --ux                     # Run functional + UX tests"
-    echo "  $script_name --docs                   # Run functional + documentation tests"
-    echo "  $script_name --perf --ux --docs       # Run all tests (complete suite)"
-    echo "  $script_name display.zsh color.zsh    # Run specific tests"
-    echo "  $script_name --list                   # List available tests"
+    echo "  $script_name                          # Run ALL tests (default)"
+    echo "  $script_name --only-functional        # Run only functional tests"
+    echo "  $script_name --skip-perf              # Run all except performance"
+    echo "  $script_name --skip-perf --skip-docs  # Run functional + UX only"
+    echo "  $script_name display.zsh              # Run specific test file"
+    echo "  $script_name --meta                   # Run all tests + Claude analysis"
+    echo "  $script_name --only-functional --meta # Functional tests + Claude analysis"
 }
 
 # Function to list available tests
@@ -409,12 +411,14 @@ main() {
     local script_name="$1"
     shift  # Remove script name from arguments
     
-    local run_all=true
+    # By default, run ALL tests (functional, performance, ux, docs)
+    local skip_functional=false
+    local skip_performance=false
+    local skip_ux=false
+    local skip_documentation=false
+    local run_meta=false
     local verbose=false
-    local quick=false
-    local run_performance=false
-    local run_ux=false
-    local run_documentation=false
+    local only_functional=false
     local specific_tests=()
     
     # Parse command line arguments
@@ -432,20 +436,24 @@ main() {
                 verbose=true
                 shift
                 ;;
-            -q|--quick)
-                quick=true
+            --only-functional|--functional)
+                only_functional=true
                 shift
                 ;;
-            -p|--perf)
-                run_performance=true
+            --skip-perf|--no-perf)
+                skip_performance=true
                 shift
                 ;;
-            -u|--ux)
-                run_ux=true
+            --skip-ux|--no-ux)
+                skip_ux=true
                 shift
                 ;;
-            -d|--docs)
-                run_documentation=true
+            --skip-docs|--no-docs)
+                skip_documentation=true
+                shift
+                ;;
+            -m|--meta)
+                run_meta=true
                 shift
                 ;;
             -*)
@@ -455,7 +463,11 @@ main() {
                 ;;
             *)
                 specific_tests+=("$1")
-                run_all=false
+                # If specific tests are provided, only run those
+                skip_functional=true
+                skip_performance=true
+                skip_ux=true
+                skip_documentation=true
                 shift
                 ;;
         esac
@@ -473,35 +485,84 @@ main() {
     
     local start_time=$(date +%s 2>/dev/null || date +%s)
     
-    # Run tests
-    if [[ "$run_all" == true ]]; then
-        echo "${CYAN}🚀 Running all functional tests...${RESET}"
+    # Handle --only-functional flag
+    if [[ "$only_functional" == true ]]; then
+        skip_performance=true
+        skip_ux=true
+        skip_documentation=true
+    fi
+    
+    # Determine what to run
+    local running_all=false
+    if [[ ${#specific_tests[@]} -eq 0 && "$skip_functional" == false && "$skip_performance" == false && "$skip_ux" == false && "$skip_documentation" == false ]]; then
+        running_all=true
+        echo "${CYAN}🚀 Running ALL tests (functional, performance, UX, documentation)...${RESET}"
         echo
+    elif [[ ${#specific_tests[@]} -gt 0 ]]; then
+        echo "${CYAN}🚀 Running specific tests...${RESET}"
+        echo
+        run_specific_tests "${specific_tests[@]}"
+    else
+        echo "${CYAN}🚀 Running selected test categories...${RESET}"
+        echo
+    fi
+    
+    # Run functional tests unless skipped
+    if [[ "$skip_functional" == false && ${#specific_tests[@]} -eq 0 ]]; then
         for test_file in "${TEST_FILES[@]}"; do
             run_test_file "$test_file"
         done
-    else
-        echo "${CYAN}🚀 Running selected tests...${RESET}"
-        echo
-        run_specific_tests "${specific_tests[@]}"
     fi
     
-    # Run performance tests if requested
-    if [[ "$run_performance" == true ]]; then
+    # Run performance tests unless skipped
+    if [[ "$skip_performance" == false && ${#specific_tests[@]} -eq 0 ]]; then
         echo
         run_performance_tests
     fi
     
-    # Run UX tests if requested
-    if [[ "$run_ux" == true ]]; then
+    # Run UX tests unless skipped
+    if [[ "$skip_ux" == false && ${#specific_tests[@]} -eq 0 ]]; then
         echo
         run_ux_tests
     fi
     
-    # Run documentation tests if requested
-    if [[ "$run_documentation" == true ]]; then
+    # Run documentation tests unless skipped
+    if [[ "$skip_documentation" == false && ${#specific_tests[@]} -eq 0 ]]; then
         echo
         run_documentation_tests
+    fi
+    
+    # Run meta-analysis if requested
+    if [[ "$run_meta" == true ]]; then
+        echo
+        echo "${MAGENTA}🤖 Running Claude meta-analysis...${RESET}"
+        
+        # Determine what tests were run
+        local meta_test_type="functional"
+        if [[ "$skip_performance" == false && "$skip_ux" == false && "$skip_documentation" == false ]]; then
+            meta_test_type="complete"
+        elif [[ "$skip_performance" == true && "$skip_ux" == true && "$skip_documentation" == true ]]; then
+            meta_test_type="functional"
+        elif [[ "$skip_functional" == true && "$skip_performance" == true && "$skip_documentation" == true ]]; then
+            meta_test_type="ux"
+        elif [[ "$skip_functional" == true && "$skip_ux" == true && "$skip_performance" == true ]]; then
+            meta_test_type="documentation"
+        elif [[ "$skip_functional" == true && "$skip_ux" == true && "$skip_documentation" == true ]]; then
+            meta_test_type="performance"
+        fi
+        
+        # Run meta-analysis
+        if [[ -x "$TESTS_DIR/meta_test.zsh" ]]; then
+            "$TESTS_DIR/meta_test.zsh" "$meta_test_type"
+            local meta_exit_code=$?
+            
+            if [[ $meta_exit_code -ne 0 ]]; then
+                FAILED_TESTS=$((FAILED_TESTS + 1))
+            fi
+        else
+            echo "${RED}❌ Meta-test script not found${RESET}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
     fi
     
     local end_time=$(date +%s 2>/dev/null || date +%s)
@@ -516,7 +577,7 @@ main() {
 }
 
 # Execute main function if run directly
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "$0" == *"run_all.zsh" ]]; then
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "$0" == *"test.zsh" ]]; then
     # Pass script name as first argument to main
     main "$0" "$@"
 fi

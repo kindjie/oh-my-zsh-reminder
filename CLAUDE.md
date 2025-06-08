@@ -60,7 +60,7 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - `documentation.zsh`: Documentation accuracy, example validation (optional with --docs)
 
 **Integration**:
-- `run_all.zsh` orchestrates all test execution with summary reporting
+- `test.zsh` orchestrates all test execution with summary reporting
 - Individual tests can be run independently for focused development
 - Performance tests separated with `--perf` flag due to longer execution time
 - All tests designed to run in CI/automated environments
@@ -89,35 +89,24 @@ To test plugin modifications:
 
 5. **Run complete functional test suite**:
    ```bash
-   ./tests/run_all.zsh
+   ./tests/test.zsh
    ```
-   (Runs all organized test modules with summary reporting - ~10 seconds)
+   (Runs ALL tests by default: functional, performance, UX, documentation - ~60 seconds)
 
-6. **Run comprehensive test suite with performance validation**:
+6. **Run only functional tests**:
    ```bash
-   ./tests/run_all.zsh --perf
+   ./tests/test.zsh --only-functional
    ```
-   (Includes all functional tests + 16 performance tests - ~60 seconds)
+   (Runs only core functional tests - ~10 seconds)
 
-7. **Run test suite with UX validation**:
+7. **Run specific test categories**:
    ```bash
-   ./tests/run_all.zsh --ux
+   ./tests/test.zsh --skip-perf        # Run all except performance tests
+   ./tests/test.zsh --skip-docs --skip-ux  # Run only functional + performance
+   ./tests/test.zsh --only-functional --meta  # Functional tests + Claude analysis
    ```
-   (Includes all functional tests + 18 UX tests - ~15 seconds)
 
-8. **Run test suite with documentation validation**:
-   ```bash
-   ./tests/run_all.zsh --docs
-   ```
-   (Includes all functional tests + 12 documentation tests - ~15 seconds)
-
-9. **Run complete test suite (all tests)**:
-   ```bash
-   ./tests/run_all.zsh --perf --ux --docs
-   ```
-   (Includes functional + performance + UX + documentation tests - ~80 seconds)
-
-10. **Run individual test modules**:
+8. **Run individual test modules**:
    ```bash
    ./tests/display.zsh        # Display functionality and layout tests
    ./tests/configuration.zsh  # Padding, characters, and config tests
@@ -129,25 +118,25 @@ To test plugin modifications:
    ./tests/documentation.zsh  # Documentation accuracy and example validation
    ```
 
-11. **Performance testing specifically**:
+9. **Performance testing specifically**:
    ```bash
    ./tests/performance.zsh
    ```
    (16 performance tests validating display speed, network behavior, and async design)
 
-12. **UX testing specifically**:
+10. **UX testing specifically**:
    ```bash
    ./tests/ux.zsh
    ```
    (18 UX tests validating onboarding, progressive disclosure, and usability)
 
-13. **Documentation testing specifically**:
+11. **Documentation testing specifically**:
    ```bash
    ./tests/documentation.zsh
    ```
    (12 documentation tests validating accuracy and example functionality)
 
-14. **Visual padding demonstration**:
+12. **Visual padding demonstration**:
    ```bash
    ./demo_padding.zsh
    ```
