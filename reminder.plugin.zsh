@@ -894,12 +894,14 @@ function todo_help() {
     echo "  ${cyan}todo${reset} \"task description\"       ${gray}Add a new task${reset}"
     echo "  ${cyan}task_done${reset} \"pattern\"           ${gray}Complete/remove task${reset}"
     echo "  ${cyan}todo_toggle_all${reset}               ${gray}Show/hide everything${reset}"
+    echo "  ${cyan}todo_config wizard${reset}             ${gray}Interactive setup wizard${reset}"
     echo "  ${cyan}todo_config preset${reset} <name>      ${gray}Apply theme (minimal/colorful/work/dark)${reset}"
     echo "  ${cyan}todo_colors${reset}                   ${gray}View color reference${reset}"
     echo
     echo "${bold}${yellow}Quick Examples:${reset}"
     echo "  ${gray}todo \"Buy groceries\"${reset}"
     echo "  ${gray}task_done \"Buy\"${reset}"
+    echo "  ${gray}todo_config wizard${reset}"
     echo "  ${gray}todo_config preset work${reset}"
     echo "  ${gray}todo_toggle_all hide${reset}"
     echo
@@ -1394,6 +1396,253 @@ function todo_config_save_preset() {
     fi
 }
 
+# Interactive configuration wizard
+function todo_config_wizard() {
+    echo "🧙 Todo Reminder Configuration Wizard"
+    echo "=====================================\n"
+    
+    echo "This wizard will help you customize your todo reminder display."
+    echo "Current settings will be shown in [brackets].\n"
+    
+    # Step 1: Choose a starting point
+    echo "1. Starting Point"
+    echo "   How would you like to begin?"
+    echo "   ${fg[cyan]}a)${reset_color} Start with current settings"
+    echo "   ${fg[cyan]}b)${reset_color} Apply a preset first (minimal, colorful, work, dark)"
+    echo "   ${fg[cyan]}c)${reset_color} Reset to defaults first"
+    printf "   Choice [a]: "
+    read -r start_choice
+    
+    case "${start_choice:-a}" in
+        b|B)
+            echo "\nAvailable presets:"
+            echo "   ${fg[yellow]}minimal${reset_color}  - Clean, simple appearance"
+            echo "   ${fg[yellow]}colorful${reset_color} - Bright and vibrant"
+            echo "   ${fg[yellow]}work${reset_color}     - Professional blue theme"
+            echo "   ${fg[yellow]}dark${reset_color}     - Dark theme"
+            printf "   Select preset: "
+            read -r preset_choice
+            if [[ -n "$preset_choice" ]]; then
+                echo "Applying preset '$preset_choice'..."
+                todo_config preset "$preset_choice" >/dev/null 2>&1
+                if [[ $? -eq 0 ]]; then
+                    echo "✅ Preset applied successfully"
+                else
+                    echo "❌ Invalid preset. Continuing with current settings."
+                fi
+            fi
+            ;;
+        c|C)
+            echo "Resetting to defaults..."
+            todo_config reset >/dev/null 2>&1
+            echo "✅ Reset to defaults"
+            ;;
+        *)
+            echo "Keeping current settings"
+            ;;
+    esac
+    
+    echo "\n2. Display Components"
+    echo "   Which components would you like to show?"
+    
+    # Affirmation toggle
+    local current_affirmation="${TODO_SHOW_AFFIRMATION:-true}"
+    printf "   Show motivational affirmations? [${current_affirmation}] (y/n): "
+    read -r affirmation_choice
+    case "${affirmation_choice:-${current_affirmation:0:1}}" in
+        n|N|false) TODO_SHOW_AFFIRMATION="false" ;;
+        *) TODO_SHOW_AFFIRMATION="true" ;;
+    esac
+    
+    # Todo box toggle
+    local current_box="${TODO_SHOW_TODO_BOX:-true}"
+    printf "   Show todo box? [${current_box}] (y/n): "
+    read -r box_choice
+    case "${box_choice:-${current_box:0:1}}" in
+        n|N|false) TODO_SHOW_TODO_BOX="false" ;;
+        *) TODO_SHOW_TODO_BOX="true" ;;
+    esac
+    
+    # Only ask about box-specific settings if box is enabled
+    if [[ "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+        echo "\n3. Box Appearance"
+        
+        # Title
+        printf "   Box title [${TODO_TITLE}]: "
+        read -r title_input
+        if [[ -n "$title_input" ]]; then
+            TODO_TITLE="$title_input"
+        fi
+        
+        # Box width
+        local current_width_pct=$(echo "$TODO_BOX_WIDTH_FRACTION * 100" | bc 2>/dev/null || echo "50")
+        printf "   Box width as percentage of terminal [${current_width_pct}%%]: "
+        read -r width_input
+        if [[ -n "$width_input" && "$width_input" =~ ^[0-9]+$ ]]; then
+            if [[ $width_input -ge 20 && $width_input -le 100 ]]; then
+                TODO_BOX_WIDTH_FRACTION=$(echo "scale=2; $width_input / 100" | bc 2>/dev/null || echo "0.5")
+            else
+                echo "   ⚠️  Width must be between 20-100%. Keeping current value."
+            fi
+        fi
+        
+        # Bullet character
+        printf "   Bullet character [${TODO_BULLET_CHAR}]: "
+        read -r bullet_input
+        if [[ -n "$bullet_input" ]]; then
+            TODO_BULLET_CHAR="$bullet_input"
+        fi
+    fi
+    
+    # Only ask about affirmation settings if affirmations are enabled
+    if [[ "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
+        echo "\n4. Affirmation Settings"
+        
+        # Heart character
+        printf "   Heart character [${TODO_HEART_CHAR}]: "
+        read -r heart_input
+        if [[ -n "$heart_input" ]]; then
+            TODO_HEART_CHAR="$heart_input"
+        fi
+        
+        # Heart position
+        echo "   Heart position options: left, right, both, none"
+        printf "   Heart position [${TODO_HEART_POSITION}]: "
+        read -r position_input
+        if [[ -n "$position_input" ]]; then
+            case "$position_input" in
+                left|right|both|none)
+                    TODO_HEART_POSITION="$position_input"
+                    ;;
+                *)
+                    echo "   ⚠️  Invalid position. Keeping current value."
+                    ;;
+            esac
+        fi
+    fi
+    
+    echo "\n5. Colors (optional)"
+    echo "   Use 'todo_colors 16' to see available color codes"
+    printf "   Customize colors? (y/n) [n]: "
+    read -r color_choice
+    
+    if [[ "$color_choice" =~ ^[yY] ]]; then
+        # Task colors
+        echo "   Current task colors: ${TODO_TASK_COLORS}"
+        printf "   New task colors (comma-separated, e.g. 196,46,33): "
+        read -r task_colors_input
+        if [[ -n "$task_colors_input" ]]; then
+            # Basic validation - check if it looks like comma-separated numbers
+            if [[ "$task_colors_input" =~ ^[0-9,]+$ ]]; then
+                TODO_TASK_COLORS="$task_colors_input"
+            else
+                echo "   ⚠️  Invalid format. Keeping current colors."
+            fi
+        fi
+        
+        # Border color
+        printf "   Border color [${TODO_BORDER_COLOR}]: "
+        read -r border_color_input
+        if [[ -n "$border_color_input" && "$border_color_input" =~ ^[0-9]+$ ]]; then
+            if [[ $border_color_input -ge 0 && $border_color_input -le 255 ]]; then
+                TODO_BORDER_COLOR="$border_color_input"
+            else
+                echo "   ⚠️  Color must be 0-255. Keeping current value."
+            fi
+        fi
+        
+        # Text color
+        printf "   Text color [${TODO_TEXT_COLOR}]: "
+        read -r text_color_input
+        if [[ -n "$text_color_input" && "$text_color_input" =~ ^[0-9]+$ ]]; then
+            if [[ $text_color_input -ge 0 && $text_color_input -le 255 ]]; then
+                TODO_TEXT_COLOR="$text_color_input"
+            else
+                echo "   ⚠️  Color must be 0-255. Keeping current value."
+            fi
+        fi
+    fi
+    
+    echo "\n6. Layout (optional)"
+    printf "   Adjust spacing/padding? (y/n) [n]: "
+    read -r layout_choice
+    
+    if [[ "$layout_choice" =~ ^[yY] ]]; then
+        # Left padding
+        printf "   Left padding (spaces) [${TODO_PADDING_LEFT}]: "
+        read -r left_padding_input
+        if [[ -n "$left_padding_input" && "$left_padding_input" =~ ^[0-9]+$ ]]; then
+            TODO_PADDING_LEFT="$left_padding_input"
+        fi
+        
+        # Top padding
+        printf "   Top padding (blank lines) [${TODO_PADDING_TOP}]: "
+        read -r top_padding_input
+        if [[ -n "$top_padding_input" && "$top_padding_input" =~ ^[0-9]+$ ]]; then
+            TODO_PADDING_TOP="$top_padding_input"
+        fi
+    fi
+    
+    echo "\n7. Preview & Save"
+    echo "   Let's see how your configuration looks:"
+    printf "   %50s\\n" | tr ' ' '─'
+    
+    # Show a preview (add some sample tasks if none exist)
+    local had_tasks=false
+    if [[ ${#todo_tasks[@]} -eq 0 ]]; then
+        todo_add_task "Sample task for preview" >/dev/null 2>&1
+        todo_add_task "Another preview task" >/dev/null 2>&1
+    else
+        had_tasks=true
+    fi
+    
+    # Display preview
+    todo_display
+    
+    # Clean up sample tasks if we added them
+    if [[ "$had_tasks" == false ]]; then
+        # Reset tasks array to empty
+        todo_tasks=()
+        todo_tasks_colors=()
+        todo_color_index=1
+        # Clear the save file
+        printf "" > "$TODO_SAVE_FILE"
+    fi
+    
+    printf "   %50s\\n" | tr ' ' '─'
+    printf "   Save this configuration? (y/n) [y]: "
+    read -r save_choice
+    
+    case "${save_choice:-y}" in
+        n|N)
+            echo "   Configuration not saved (changes are temporary)"
+            ;;
+        *)
+            # Ask if they want to save as a preset
+            printf "   Save as a custom preset? (y/n) [n]: "
+            read -r preset_save_choice
+            if [[ "$preset_save_choice" =~ ^[yY] ]]; then
+                printf "   Preset name: "
+                read -r preset_name
+                if [[ -n "$preset_name" ]]; then
+                    todo_config save-preset "$preset_name" >/dev/null 2>&1
+                    if [[ $? -eq 0 ]]; then
+                        echo "   ✅ Configuration saved as preset '$preset_name'"
+                    else
+                        echo "   ⚠️  Could not save preset"
+                    fi
+                fi
+            fi
+            echo "   ✅ Configuration applied and will persist across sessions"
+            ;;
+    esac
+    
+    echo "\n🎉 Wizard Complete!"
+    echo "   Use 'todo_config export' to back up your settings"
+    echo "   Use 'todo_config --help' for more configuration options"
+    echo "   Use 'todo_help' for general plugin help"
+}
+
 # Main configuration command dispatcher
 function todo_config() {
     local command="$1"
@@ -1418,6 +1667,9 @@ function todo_config() {
         "save-preset")
             todo_config_save_preset "$@"
             ;;
+        "wizard")
+            todo_config_wizard "$@"
+            ;;
         *)
             echo "Usage: todo_config <command> [args]" >&2
             echo "Commands:" >&2
@@ -1427,6 +1679,7 @@ function todo_config() {
             echo "  reset [--colors-only]           Reset to defaults" >&2
             echo "  preset <name>                   Apply built-in preset" >&2
             echo "  save-preset <name>              Save current as preset" >&2
+            echo "  wizard                          Interactive setup wizard" >&2
             return 1
             ;;
     esac

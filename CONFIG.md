@@ -5,6 +5,9 @@ The Todo Reminder plugin now includes simple configuration management features.
 ## Quick Start
 
 ```bash
+# Interactive setup wizard (recommended for first-time setup)
+todo_config wizard
+
 # Apply a preset theme
 todo_config preset work
 
@@ -20,6 +23,23 @@ todo_config import ~/.my-todo-theme.conf
 ```
 
 ## Commands
+
+### Interactive Setup Wizard
+```bash
+todo_config wizard                    # Launch interactive configuration wizard
+```
+
+The wizard provides a step-by-step guided setup for all configuration options:
+
+1. **Starting Point**: Choose to keep current settings, apply a preset, or reset to defaults
+2. **Display Components**: Enable/disable affirmations and todo box
+3. **Box Appearance**: Customize title, width, and bullet character
+4. **Affirmation Settings**: Configure heart character and position
+5. **Colors**: Optional color customization with validation
+6. **Layout**: Optional spacing and padding adjustments
+7. **Preview & Save**: See a live preview and save as preset
+
+The wizard includes input validation, helpful defaults, and the ability to save custom presets.
 
 ### Export Configuration
 ```bash
@@ -83,6 +103,17 @@ TODO_PADDING_LEFT="2"
 ```
 
 ## Examples
+
+### First-Time Setup with Wizard
+```bash
+todo_config wizard
+# Follow the interactive prompts to:
+# 1. Choose starting point (preset, defaults, or current)
+# 2. Enable/disable components (affirmations, todo box)
+# 3. Customize appearance (title, width, bullet, heart)
+# 4. Optionally adjust colors and layout
+# 5. Preview and save (optionally as custom preset)
+```
 
 ### Create a Work Theme
 ```bash

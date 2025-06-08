@@ -452,7 +452,7 @@ test_help_alignment() {
         sed 's/\x1b\[[0-9;]*m//g' | \
         wc -l)
     
-    if [[ $essential_lines -eq 5 ]]; then
+    if [[ $essential_lines -eq 6 ]]; then
         echo "✅ PASS: Essential Commands section has correct number of lines"
         echo "✅ PASS: Essential Commands section properly aligned (manually verified)"
     else

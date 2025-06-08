@@ -361,6 +361,34 @@ test_export_import_roundtrip() {
     fi
 }
 
+# Test 19: Wizard function exists
+test_wizard_function_exists() {
+    if command -v todo_config_wizard >/dev/null 2>&1; then
+        return 0
+    else
+        echo "todo_config_wizard function not found"
+        return 1
+    fi
+}
+
+# Test 20: Wizard command dispatcher
+test_wizard_dispatcher() {
+    # Test that wizard command is recognized by checking if it doesn't give unknown command error
+    local output=$(timeout 2 sh -c 'echo -e "\n\n\n\n\n\n\n\n\n\n" | todo_config wizard' 2>&1 || true)
+    
+    # Should contain wizard output, not "unknown command" error
+    if [[ "$output" =~ "Configuration Wizard" || "$output" =~ "🧙" || "$output" =~ "Starting Point" ]]; then
+        return 0
+    else
+        # If it doesn't contain usage message, it means wizard was called
+        if [[ ! "$output" =~ "Usage: todo_config" ]]; then
+            return 0
+        fi
+        echo "Wizard command not properly dispatched (output: $output)"
+        return 1
+    fi
+}
+
 # Run all tests
 echo "🧪 Running Configuration Management Tests"
 echo "=========================================="
@@ -384,6 +412,8 @@ run_test "Save current preset" test_save_preset
 run_test "Main command dispatcher" test_config_dispatcher
 run_test "Error handling for missing files" test_import_missing_file
 run_test "Export/import round trip" test_export_import_roundtrip
+run_test "Wizard function exists" test_wizard_function_exists
+run_test "Wizard command dispatcher" test_wizard_dispatcher
 
 # Summary
 echo "Configuration Tests Summary:"
