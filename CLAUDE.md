@@ -56,6 +56,8 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - `interface.zsh`: Commands, toggles, help system, user interactions
 - `character.zsh`: Character width detection, Unicode/emoji support
 - `performance.zsh`: Speed validation, async behavior, network resilience
+- `ux.zsh`: User experience, onboarding, progressive disclosure (optional with --ux)
+- `documentation.zsh`: Documentation accuracy, example validation (optional with --docs)
 
 **Integration**:
 - `run_all.zsh` orchestrates all test execution with summary reporting
@@ -97,7 +99,25 @@ To test plugin modifications:
    ```
    (Includes all functional tests + 16 performance tests - ~60 seconds)
 
-7. **Run individual test modules**:
+7. **Run test suite with UX validation**:
+   ```bash
+   ./tests/run_all.zsh --ux
+   ```
+   (Includes all functional tests + 18 UX tests - ~15 seconds)
+
+8. **Run test suite with documentation validation**:
+   ```bash
+   ./tests/run_all.zsh --docs
+   ```
+   (Includes all functional tests + 12 documentation tests - ~15 seconds)
+
+9. **Run complete test suite (all tests)**:
+   ```bash
+   ./tests/run_all.zsh --perf --ux --docs
+   ```
+   (Includes functional + performance + UX + documentation tests - ~80 seconds)
+
+10. **Run individual test modules**:
    ```bash
    ./tests/display.zsh        # Display functionality and layout tests
    ./tests/configuration.zsh  # Padding, characters, and config tests
@@ -105,15 +125,29 @@ To test plugin modifications:
    ./tests/interface.zsh      # Commands, toggles, and help tests
    ./tests/character.zsh      # Character width and emoji handling tests
    ./tests/performance.zsh    # Performance and network behavior tests
+   ./tests/ux.zsh             # User experience and onboarding tests
+   ./tests/documentation.zsh  # Documentation accuracy and example validation
    ```
 
-8. **Performance testing specifically**:
+11. **Performance testing specifically**:
    ```bash
    ./tests/performance.zsh
    ```
    (16 performance tests validating display speed, network behavior, and async design)
 
-9. **Visual padding demonstration**:
+12. **UX testing specifically**:
+   ```bash
+   ./tests/ux.zsh
+   ```
+   (18 UX tests validating onboarding, progressive disclosure, and usability)
+
+13. **Documentation testing specifically**:
+   ```bash
+   ./tests/documentation.zsh
+   ```
+   (12 documentation tests validating accuracy and example functionality)
+
+14. **Visual padding demonstration**:
    ```bash
    ./demo_padding.zsh
    ```
@@ -159,3 +193,106 @@ The performance test suite validates the plugin's async design and ensures displ
 - Runtime show/hide controls for all components
 - Full emoji and Unicode support with proper terminal width calculation
 - No screen clearing - preserves command output
+
+## User Experience Philosophy & Target Audience
+
+### Multi-Tier User Base Design
+
+This plugin is designed to serve a diverse user base through **progressive disclosure** and **dual-track UX strategy**:
+
+#### Primary Users (90%): Casual Developers & Terminal Newcomers
+- **Profile**: MacBook users, VSCode terminal, minimal zsh experience beyond basic commands
+- **Mental Model**: Coming from GUI todo apps, expect visual feedback and immediate gratification
+- **Needs**: Simple installation, clear commands, works without configuration
+- **Pain Points**: Intimidated by terminal configuration, fear of breaking things
+- **Success Metrics**: Can add/remove tasks successfully within 2 minutes of installation
+
+#### Secondary Users (10%): Advanced Terminal Power Users  
+- **Profile**: Complex zsh setups, plugin managers, extensive terminal workflows
+- **Mental Model**: Expect powerful configuration, performance, and integration
+- **Needs**: Rich customization, aesthetic control, efficient muscle-memory commands
+- **Pain Points**: Want full control without compromising functionality
+- **Success Metrics**: Can customize appearance and integrate into existing workflow
+
+### UX Design Principles
+
+#### 1. **Layer 1: Essential Commands (Beginner Success)**
+```bash
+todo "task description"          # Add a task
+todo_remove "partial match"      # Remove a task (clearer than task_done)
+todo_hide                       # Hide everything
+todo_show                       # Show everything
+todo_help                       # Quick help (5-6 lines only)
+```
+- **Goal**: 90% of users should never need beyond Layer 1
+- **Principle**: Immediate success with zero configuration
+
+#### 2. **Layer 2: Customization (Natural Discovery)**
+```bash
+todo_setup                      # Interactive setup wizard
+todo_colors                     # Show color options  
+todo_toggle                     # Toggle visibility states
+todo_help --more               # Full documentation
+```
+- **Goal**: Users naturally discover when ready for customization
+- **Principle**: Progressive disclosure through contextual hints
+
+#### 3. **Layer 3: Advanced (Power User Preservation)**
+```bash
+todo_config export              # Export settings
+todo_config preset colorful     # Apply themes
+# All current 30+ configuration variables preserved
+```
+- **Goal**: Preserve all existing power features
+- **Principle**: Advanced features don't intimidate beginners
+
+### Critical UX Issues to Address
+
+#### 1. **Onboarding Experience (CRITICAL)**
+- **Current Issue**: Plugin loads silently with no guidance
+- **Solution**: First-run welcome message with clear next steps
+- **Success Feedback**: Immediate confirmation when tasks are added/removed
+
+#### 2. **Command Discovery (HIGH)**
+- **Current Issue**: Essential features buried in complex help output  
+- **Solution**: Simplified `todo_help` showing only 5-6 essential commands
+- **Tab Completion**: Currently broken (commented out) - must be fixed
+
+#### 3. **Command Naming Clarity (HIGH)**
+- **Current Issue**: `task_done` implies completion, actually means deletion
+- **Solution**: Rename to `todo_remove` or provide clearer aliases
+- **Consistency**: Ensure all main commands follow `todo_*` pattern
+
+#### 4. **Progressive Hints (MEDIUM)**
+- **Empty State**: Show helpful message when no tasks exist
+- **Growth Guidance**: Suggest customization after several tasks added
+- **Error Recovery**: Clear guidance when things go wrong
+
+### Implementation Guidelines
+
+#### Preserve Power, Add Approachability
+- **Never remove** existing advanced features
+- **Add** beginner-friendly entry points
+- **Maintain** backward compatibility for existing users
+
+#### Dual-Track Help System
+- `todo_help` → Essential commands only (beginner focus)
+- `todo_help --more` → Current comprehensive documentation
+- `todo_help <topic>` → Contextual help for specific areas
+
+#### Smart Defaults Strategy
+- **Works immediately** after installation with no configuration
+- **Gentle introduction** to advanced features through contextual hints
+- **Fallback gracefully** when dependencies (curl/jq) missing
+
+#### First-Run Experience Design
+```bash
+# After sourcing plugin for first time
+┌─ Welcome to Todo Reminder! ─────────────────────────┐
+│ ✨ Get started: todo "Your first task"              │
+│ 📚 Quick help: todo_help                           │
+│ ⚙️  Customize: todo_setup                          │
+└─────────────────────────────────────────────────────┘
+```
+
+This approach **expands the user base** to include terminal newcomers while **preserving all existing functionality** for power users. The key insight is that advanced users will naturally discover deeper features, while beginners need immediate success with simple commands.

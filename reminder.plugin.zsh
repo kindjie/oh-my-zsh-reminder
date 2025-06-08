@@ -247,6 +247,40 @@ say \$width;
 typeset -a TODO_COLORS
 TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
 
+# Check for first run and show welcome message
+TODO_FIRST_RUN_FILE="${TODO_FIRST_RUN_FILE:-$HOME/.todo_first_run}"
+if [[ ! -f "$TODO_FIRST_RUN_FILE" ]]; then
+    # Show welcome message on first run
+    function show_welcome_message() {
+        local bold=$'\e[1m'
+        local reset=$'\e[0m'
+        local blue=$'\e[38;5;39m'
+        local green=$'\e[38;5;46m'
+        local cyan=$'\e[38;5;51m'
+        local gray=$'\e[38;5;244m'
+        
+        echo
+        echo "${bold}${blue}┌─ Welcome to Todo Reminder! ─────────────────────────┐${reset}"
+        echo "${bold}${blue}│${reset} ${green}✨ Get started:${reset} ${cyan}todo \"Your first task\"${reset}              ${bold}${blue}│${reset}"
+        echo "${bold}${blue}│${reset} ${green}📚 Quick help:${reset} ${cyan}todo_help${reset}                           ${bold}${blue}│${reset}"
+        echo "${bold}${blue}│${reset} ${green}⚙️  Customize:${reset} ${cyan}todo_setup${reset}                          ${bold}${blue}│${reset}"
+        echo "${bold}${blue}└─────────────────────────────────────────────────────┘${reset}"
+        echo "${gray}💡 Your tasks will appear above the prompt automatically${reset}"
+        echo
+        
+        # Mark first run as complete and remove this hook
+        touch "$TODO_FIRST_RUN_FILE"
+        add-zsh-hook -d precmd show_welcome_message
+        unfunction show_welcome_message
+    }
+    
+    # Schedule welcome message to show after current command completes
+    if ! (( ${+functions[add-zsh-hook]} )); then
+        autoload -U add-zsh-hook
+    fi
+    add-zsh-hook precmd show_welcome_message
+fi
+
 
 # Allow to use colors (ensure autoload first for deferred loading)
 autoload -U colors
@@ -389,6 +423,15 @@ function todo_add_task() {
         (( todo_color_index %= ${#TODO_COLORS} ))
         (( todo_color_index += 1 ))
         todo_save
+        
+        # Success feedback for users
+        echo "✅ Task added: \"$task\""
+        if [[ ${#todo_tasks} -eq 1 ]]; then
+            echo "💡 Your tasks appear above the prompt. Remove with: todo_remove \"$(echo "$task" | cut -c1-10)\""
+        fi
+    else
+        echo "Usage: todo \"task description\""
+        echo "Example: todo \"Buy groceries\""
     fi
 }
 
@@ -400,6 +443,9 @@ function todo_task_done() {
 
     if [[ -z "$pattern" ]]; then
         echo "Usage: todo_task_done <pattern>" >&2
+        echo "       todo_remove <pattern>" >&2
+        echo "Example: todo_remove \"Buy groceries\"" >&2
+        echo "💡 Use tab completion to see available tasks" >&2
         return 1
     fi
 
@@ -407,11 +453,29 @@ function todo_task_done() {
     local index=${(M)todo_tasks[(i)${pattern}*]}
 
     if [[ $index -le ${#todo_tasks} ]]; then
+        local removed_task="${todo_tasks[index]}"
         todo_tasks[index]=()
         todo_tasks_colors[index]=()
         todo_save
+        
+        # Success feedback
+        echo "✅ Task completed: \"$removed_task\""
+        if [[ ${#todo_tasks} -eq 0 ]]; then
+            echo "🎉 All tasks done! Add new ones with: todo \"task description\""
+        fi
     else
-        echo "No task found matching: $pattern" >&2
+        echo "❌ No task found matching: $pattern" >&2
+        if [[ ${#todo_tasks} -gt 0 ]]; then
+            echo "💡 Available tasks:" >&2
+            local i=1
+            for task in "${todo_tasks[@]}"; do
+                echo "   $i. $task" >&2
+                ((i++))
+            done
+            echo "💡 Try: todo_remove \"$(echo "${todo_tasks[1]}" | cut -c1-10)\"" >&2
+        else
+            echo "💡 No tasks exist. Add one with: todo \"task description\"" >&2
+        fi
         return 1
     fi
 }
@@ -423,7 +487,11 @@ function _todo_task_done() {
     fi
 }
 
-# compdef _todo_task_done todo_task_done
+# Enable tab completion if compdef is available
+if command -v compdef >/dev/null 2>&1; then
+    compdef _todo_task_done todo_task_done
+    compdef _todo_task_done todo_remove
+fi
 alias task_done=todo_task_done
 
 # Wrap text to fit within specified width, handling bullet and text colors separately
@@ -700,6 +768,54 @@ function todo_display() {
         for (( i = 0; i < TODO_PADDING_BOTTOM; i++ )); do
             echo
         done
+        
+        # Show progressive hints based on task count
+        show_progressive_hints
+    else
+        # Show empty state hint occasionally (not every prompt)
+        show_empty_state_hint
+    fi
+}
+
+# Show contextual hints for empty state
+function show_empty_state_hint() {
+    # Only show hint occasionally to avoid being annoying
+    # Create a hash based on current time to show hint ~10% of the time
+    # Use seconds + microseconds for better randomness in tests
+    local time_hash
+    if command -v date >/dev/null 2>&1 && date +%N >/dev/null 2>&1; then
+        # GNU date with nanoseconds
+        time_hash=$(( ($(date +%s) + $(date +%N) / 1000000) % 10 ))
+    else
+        # Fallback for macOS/BSD date
+        time_hash=$(( $(date +%s) % 10 ))
+    fi
+    
+    if [[ $time_hash -eq 0 ]]; then
+        local gray=$'\e[38;5;244m'
+        local cyan=$'\e[38;5;51m'
+        local reset=$'\e[0m'
+        echo "${gray}💡 No tasks yet? Try: ${cyan}todo \"Something to remember\"${reset}"
+    fi
+}
+
+# Show progressive discovery hints based on usage patterns
+function show_progressive_hints() {
+    # Only show hints occasionally to avoid spam
+    local time_hash=$(( $(date +%s) % 20 ))
+    if [[ $time_hash -ne 0 ]]; then
+        return
+    fi
+    
+    local gray=$'\e[38;5;244m'
+    local cyan=$'\e[38;5;51m'
+    local reset=$'\e[0m'
+    
+    # Show different hints based on task count
+    if [[ ${#todo_tasks} -ge 5 && ${#todo_tasks} -lt 8 ]]; then
+        echo "${gray}💡 Lots of tasks? Customize colors: ${cyan}todo_setup${reset}"
+    elif [[ ${#todo_tasks} -ge 8 ]]; then
+        echo "${gray}💡 Many tasks! Hide display when focused: ${cyan}todo_hide${reset}"
     fi
 }
 
@@ -868,12 +984,12 @@ function todo_colors() {
     echo "    - Affirmation: $TODO_AFFIRMATION_COLOR"
 }
 
-# Show concise help for core functionality
+# Show beginner-friendly help for core functionality
 function todo_help() {
     local show_full="$1"
     
-    # Handle --full flag or redirect to full help
-    if [[ "$show_full" == "--full" || "$show_full" == "-f" ]]; then
+    # Handle --more/--full flag or redirect to full help
+    if [[ "$show_full" == "--full" || "$show_full" == "-f" || "$show_full" == "--more" || "$show_full" == "-m" ]]; then
         todo_help_full
         return
     fi
@@ -887,25 +1003,22 @@ function todo_help() {
     local cyan=$'\e[38;5;51m'
     local gray=$'\e[38;5;244m'
     
-    echo "${bold}${blue}📝 Todo Reminder - Core Commands${reset}"
-    echo "${gray}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
+    echo "${bold}${blue}📝 Todo Reminder - Essential Commands${reset}"
+    echo "${gray}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
     echo
-    echo "${bold}${green}Essential Commands:${reset}"
     echo "  ${cyan}todo${reset} \"task description\"       ${gray}Add a new task${reset}"
-    echo "  ${cyan}task_done${reset} \"pattern\"           ${gray}Complete/remove task${reset}"
-    echo "  ${cyan}todo_toggle_all${reset}               ${gray}Show/hide everything${reset}"
-    echo "  ${cyan}todo_config wizard${reset}             ${gray}Interactive setup wizard${reset}"
-    echo "  ${cyan}todo_config preset${reset} <name>      ${gray}Apply theme (minimal/colorful/work/dark)${reset}"
-    echo "  ${cyan}todo_colors${reset}                   ${gray}View color reference${reset}"
+    echo "  ${cyan}todo_remove${reset} \"pattern\"         ${gray}Remove completed task (with tab completion)${reset}"
+    echo "  ${cyan}todo_hide${reset}                       ${gray}Hide todo display${reset}"
+    echo "  ${cyan}todo_show${reset}                       ${gray}Show todo display${reset}"
+    echo "  ${cyan}todo_setup${reset}                      ${gray}Interactive customization wizard${reset}"
+    echo "  ${cyan}todo_colors${reset}                     ${gray}View color reference for customization${reset}"
     echo
-    echo "${bold}${yellow}Quick Examples:${reset}"
-    echo "  ${gray}todo \"Buy groceries\"${reset}"
-    echo "  ${gray}task_done \"Buy\"${reset}"
-    echo "  ${gray}todo_config wizard${reset}"
-    echo "  ${gray}todo_config preset work${reset}"
-    echo "  ${gray}todo_toggle_all hide${reset}"
+    echo "${bold}${yellow}Quick Start:${reset}"
+    echo "  ${gray}todo \"Buy groceries\"     ${cyan}# Add your first task${reset}"
+    echo "  ${gray}todo_remove \"Buy\"        ${cyan}# Remove when done (try tab completion!)${reset}"
+    echo "  ${gray}todo_setup                ${cyan}# Customize colors and appearance${reset}"
     echo
-    echo "${gray}💡 For full help with all options: ${cyan}todo_help --full${reset}"
+    echo "${gray}💡 More commands and options: ${cyan}todo_help --more${reset}"
 }
 
 # Show comprehensive help with all configuration options
@@ -1688,4 +1801,11 @@ function todo_config() {
 # Aliases for convenience
 alias todo_affirm=todo_toggle_affirmation
 alias todo_box=todo_toggle_box
+
+# Beginner-friendly aliases (Layer 1 commands)
+alias todo_remove=todo_task_done
+alias todo_hide="todo_toggle_all hide"
+alias todo_show="todo_toggle_all show"
+alias todo_toggle=todo_toggle_all
+alias todo_setup=todo_config_wizard
 

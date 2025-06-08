@@ -38,6 +38,8 @@ TEST_FILES=(
 )
 
 PERFORMANCE_TEST_FILE="performance.zsh"
+UX_TEST_FILE="ux.zsh"
+DOCUMENTATION_TEST_FILE="documentation.zsh"
 
 # Global test tracking
 TOTAL_TESTS=0
@@ -156,6 +158,114 @@ run_performance_tests() {
     return $exit_code
 }
 
+# Function to run UX tests
+run_ux_tests() {
+    local ux_path="$TESTS_DIR/$UX_TEST_FILE"
+    
+    if [[ ! -f "$ux_path" ]]; then
+        echo "${RED}❌ UX test file not found: $UX_TEST_FILE${RESET}"
+        return 1
+    fi
+    
+    echo "${MAGENTA}🎨 Running UX tests...${RESET}"
+    echo "This validates user experience, onboarding, and progressive disclosure."
+    echo
+    
+    # Run UX tests with timeout
+    local output
+    local exit_code
+    
+    if timeout 60 "$ux_path" > /tmp/ux_output 2>&1; then
+        output=$(cat /tmp/ux_output)
+        exit_code=0
+    else
+        output=$(cat /tmp/ux_output 2>/dev/null || echo "UX tests timed out or failed")
+        exit_code=1
+    fi
+    
+    # Clean up temp file
+    rm -f /tmp/ux_output
+    
+    # Display relevant output
+    echo "$output"
+    
+    # Count UX test results
+    local ux_passed=$(echo "$output" | grep -c "✅ PASS")
+    local ux_failed=$(echo "$output" | grep -c "❌ FAIL")
+    local ux_warnings=$(echo "$output" | grep -c "⚠️")
+    
+    # Update global counters
+    TOTAL_TESTS=$((TOTAL_TESTS + ux_passed + ux_failed))
+    PASSED_TESTS=$((PASSED_TESTS + ux_passed))
+    FAILED_TESTS=$((FAILED_TESTS + ux_failed))
+    WARNING_TESTS=$((WARNING_TESTS + ux_warnings))
+    
+    # Report UX results
+    echo "────────────────────────────────────────────────────"
+    if [[ $ux_failed -eq 0 ]]; then
+        echo "${GREEN}✅ UX tests: $ux_passed passed, $ux_warnings warnings${RESET}"
+    else
+        echo "${RED}❌ UX tests: $ux_passed passed, $ux_failed failed, $ux_warnings warnings${RESET}"
+    fi
+    echo
+    
+    return $exit_code
+}
+
+# Function to run documentation tests
+run_documentation_tests() {
+    local doc_path="$TESTS_DIR/$DOCUMENTATION_TEST_FILE"
+    
+    if [[ ! -f "$doc_path" ]]; then
+        echo "${RED}❌ Documentation test file not found: $DOCUMENTATION_TEST_FILE${RESET}"
+        return 1
+    fi
+    
+    echo "${MAGENTA}📚 Running documentation tests...${RESET}"
+    echo "This validates that documentation accurately represents the implementation."
+    echo
+    
+    # Run documentation tests with timeout
+    local output
+    local exit_code
+    
+    if timeout 60 "$doc_path" > /tmp/doc_output 2>&1; then
+        output=$(cat /tmp/doc_output)
+        exit_code=0
+    else
+        output=$(cat /tmp/doc_output 2>/dev/null || echo "Documentation tests timed out or failed")
+        exit_code=1
+    fi
+    
+    # Clean up temp file
+    rm -f /tmp/doc_output
+    
+    # Display relevant output
+    echo "$output"
+    
+    # Count documentation test results
+    local doc_passed=$(echo "$output" | grep -c "✅ PASS")
+    local doc_failed=$(echo "$output" | grep -c "❌ FAIL")
+    local doc_warnings=$(echo "$output" | grep -c "⚠️")
+    
+    # Update global counters
+    TOTAL_TESTS=$((TOTAL_TESTS + doc_passed + doc_failed))
+    PASSED_TESTS=$((PASSED_TESTS + doc_passed))
+    FAILED_TESTS=$((FAILED_TESTS + doc_failed))
+    WARNING_TESTS=$((WARNING_TESTS + doc_warnings))
+    
+    # Report documentation results
+    echo "────────────────────────────────────────────────────"
+    if [[ $doc_failed -eq 0 ]]; then
+        echo "${GREEN}✅ Documentation tests: $doc_passed passed, $doc_warnings warnings${RESET}"
+    else
+        echo "${RED}❌ Documentation tests: $doc_passed passed, $doc_failed failed, $doc_warnings warnings${RESET}"
+    fi
+    echo
+    
+    return $exit_code
+}
+
 # Function to display summary
 display_summary() {
     echo "🎯 Test Suite Summary"
@@ -263,6 +373,8 @@ show_help() {
     echo "  -v, --verbose   Run with verbose output"
     echo "  -q, --quick     Run quick tests only (skip slow tests)"
     echo "  -p, --perf      Include performance tests (adds ~30-60s)"
+    echo "  -u, --ux        Include UX/onboarding tests (adds ~10-20s)"
+    echo "  -d, --docs      Include documentation accuracy tests (adds ~5-10s)"
     echo
     echo "Test Files:"
     for test_file in "${TEST_FILES[@]}"; do
@@ -272,6 +384,9 @@ show_help() {
     echo "Examples:"
     echo "  $script_name                          # Run all functional tests"
     echo "  $script_name --perf                   # Run functional + performance tests"
+    echo "  $script_name --ux                     # Run functional + UX tests"
+    echo "  $script_name --docs                   # Run functional + documentation tests"
+    echo "  $script_name --perf --ux --docs       # Run all tests (complete suite)"
     echo "  $script_name display.zsh color.zsh    # Run specific tests"
     echo "  $script_name --list                   # List available tests"
 }
@@ -298,6 +413,8 @@ main() {
     local verbose=false
     local quick=false
     local run_performance=false
+    local run_ux=false
+    local run_documentation=false
     local specific_tests=()
     
     # Parse command line arguments
@@ -321,6 +438,14 @@ main() {
                 ;;
             -p|--perf)
                 run_performance=true
+                shift
+                ;;
+            -u|--ux)
+                run_ux=true
+                shift
+                ;;
+            -d|--docs)
+                run_documentation=true
                 shift
                 ;;
             -*)
@@ -365,6 +490,18 @@ main() {
     if [[ "$run_performance" == true ]]; then
         echo
         run_performance_tests
+    fi
+    
+    # Run UX tests if requested
+    if [[ "$run_ux" == true ]]; then
+        echo
+        run_ux_tests
+    fi
+    
+    # Run documentation tests if requested
+    if [[ "$run_documentation" == true ]]; then
+        echo
+        run_documentation_tests
     fi
     
     local end_time=$(date +%s 2>/dev/null || date +%s)
