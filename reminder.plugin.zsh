@@ -977,7 +977,7 @@ function todo_colors() {
     echo "  • Higher numbers (16-255) are extended colors"
     echo "  • Test your colors: echo -e '\\e[38;5;NUMmText\\e[0m'"
     echo
-    echo "🎨 Current Plugin Colors (live preview):"
+    echo "🎨 Current Plugin Colors:"
     
     # Show task colors with actual bullet character
     echo -n "    Task colors: "
