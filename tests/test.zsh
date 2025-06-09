@@ -97,6 +97,7 @@ run_test_file() {
     elif [[ $file_failed -gt 0 || $file_warnings -gt 0 ]]; then
         echo "${BLUE}▶ $test_file${RESET}"
         echo "$output" | grep -E "(❌ FAIL:|⚠️  WARNING:)"
+        echo
     fi
     
     # Report file results
@@ -145,18 +146,19 @@ run_performance_tests() {
     # Clean up temp file
     rm -f /tmp/perf_output
     
-    # Display relevant output in verbose mode, or failures only
-    if [[ "$verbose" == true ]]; then
-        echo "$output" | tail -20
-    elif [[ $perf_failed -gt 0 ]]; then
-        echo "${MAGENTA}▶ Performance tests${RESET}"
-        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
-    fi
-    
-    # Count performance test results
+    # Count performance test results first
     local perf_passed=$(echo "$output" | grep -c "✅ PASS")
     local perf_failed=$(echo "$output" | grep -c "❌ FAIL")
     local perf_warnings=$(echo "$output" | grep -c "⚠️")
+    
+    # Display relevant output in verbose mode, or failures only
+    if [[ "$verbose" == true ]]; then
+        echo "$output" | tail -20
+    elif [[ $perf_failed -gt 0 || $perf_warnings -gt 0 ]]; then
+        echo "${MAGENTA}▶ Performance tests${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
+        echo
+    fi
     
     # Update global counters
     TOTAL_TESTS=$((TOTAL_TESTS + perf_passed + perf_failed))
@@ -212,18 +214,19 @@ run_ux_tests() {
     # Clean up temp file
     rm -f /tmp/ux_output
     
-    # Display relevant output in verbose mode, or failures only
-    if [[ "$verbose" == true ]]; then
-        echo "$output"
-    elif [[ $ux_failed -gt 0 ]]; then
-        echo "${MAGENTA}▶ UX tests${RESET}"
-        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
-    fi
-    
-    # Count UX test results
+    # Count UX test results first
     local ux_passed=$(echo "$output" | grep -c "✅ PASS")
     local ux_failed=$(echo "$output" | grep -c "❌ FAIL")
     local ux_warnings=$(echo "$output" | grep -c "⚠️")
+    
+    # Display relevant output in verbose mode, or failures only
+    if [[ "$verbose" == true ]]; then
+        echo "$output"
+    elif [[ $ux_failed -gt 0 || $ux_warnings -gt 0 ]]; then
+        echo "${MAGENTA}▶ UX tests${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
+        echo
+    fi
     
     # Update global counters
     TOTAL_TESTS=$((TOTAL_TESTS + ux_passed + ux_failed))
@@ -279,18 +282,19 @@ run_documentation_tests() {
     # Clean up temp file
     rm -f /tmp/doc_output
     
-    # Display relevant output in verbose mode, or failures only
-    if [[ "$verbose" == true ]]; then
-        echo "$output"
-    elif [[ $doc_failed -gt 0 ]]; then
-        echo "${MAGENTA}▶ Documentation tests${RESET}"
-        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
-    fi
-    
-    # Count documentation test results
+    # Count documentation test results first
     local doc_passed=$(echo "$output" | grep -c "✅ PASS")
     local doc_failed=$(echo "$output" | grep -c "❌ FAIL")
     local doc_warnings=$(echo "$output" | grep -c "⚠️")
+    
+    # Display relevant output in verbose mode, or failures only
+    if [[ "$verbose" == true ]]; then
+        echo "$output"
+    elif [[ $doc_failed -gt 0 || $doc_warnings -gt 0 ]]; then
+        echo "${MAGENTA}▶ Documentation tests${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
+        echo
+    fi
     
     # Update global counters
     TOTAL_TESTS=$((TOTAL_TESTS + doc_passed + doc_failed))
