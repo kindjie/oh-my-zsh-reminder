@@ -1553,251 +1553,502 @@ function todo_config_save_preset() {
     fi
 }
 
+# Helper function to show a preview of the current configuration
+function show_wizard_preview() {
+    local preview_title="${1:-Preview}"
+    
+    echo "${fg[bold]}${fg[blue]}═══ $preview_title ═══${reset_color}"
+    echo
+    echo "${fg[green]}user@computer${reset_color}:${fg[cyan]}~/projects${reset_color}$ todo \"Buy groceries\""
+    echo "✅ Task added: \"Buy groceries\""
+    echo
+    
+    # Add some sample tasks temporarily for preview
+    local had_tasks=false
+    if [[ ${#todo_tasks[@]} -eq 0 ]]; then
+        todo_tasks=("Review quarterly reports" "Schedule team meeting" "Update documentation")
+        todo_tasks_colors=($'\e[38;5;167m' $'\e[38;5;71m' $'\e[38;5;136m')
+        todo_color_index=4
+        TODO_TASKS="${todo_tasks[1]}"$'\x00'"${todo_tasks[2]}"$'\x00'"${todo_tasks[3]}"
+        TODO_TASKS_COLORS="${todo_tasks_colors[1]}"$'\x00'"${todo_tasks_colors[2]}"$'\x00'"${todo_tasks_colors[3]}"
+    else
+        had_tasks=true
+    fi
+    
+    # Use the actual todo_display function
+    todo_display
+    
+    # Clean up sample tasks if we added them
+    if [[ "$had_tasks" == false ]]; then
+        todo_tasks=()
+        todo_tasks_colors=()
+        todo_color_index=1
+        TODO_TASKS=""
+        TODO_TASKS_COLORS=""
+    fi
+    
+    echo "${fg[green]}user@computer${reset_color}:${fg[cyan]}~/projects${reset_color}$ █"
+    echo
+}
+
+# Helper function to read a single character without requiring Enter
+function read_single_char() {
+    local prompt="$1"
+    local valid_chars="$2"
+    local default_char="$3"
+    local char
+    
+    while true; do
+        printf "$prompt"
+        
+        # Try different methods for single character input
+        if command -v read >/dev/null 2>&1; then
+            # First try zsh's read -k
+            if read -k1 char 2>/dev/null; then
+                echo  # New line after character input
+            # Fallback to bash read -n
+            elif read -n1 char 2>/dev/null; then
+                echo  # New line after character input
+            # Final fallback to regular read
+            else
+                read -r char
+            fi
+        else
+            read -r char
+        fi
+        
+        # Handle empty input (Enter pressed immediately)
+        if [[ -z "$char" && -n "$default_char" ]]; then
+            char="$default_char"
+        fi
+        
+        # Convert to lowercase for comparison
+        local char_lower="${char:l}"
+        local valid_lower="${valid_chars:l}"
+        
+        # Check if character is valid (case insensitive)
+        if [[ "$valid_lower" == *"$char_lower"* ]]; then
+            echo "$char"
+            return 0
+        else
+            echo "   ${fg[red]}Invalid choice. Please select one of: $valid_chars${reset_color}"
+        fi
+    done
+}
+
+# Helper function to show a step header
+function show_step_header() {
+    local step_num="$1"
+    local step_title="$2"
+    local step_desc="$3"
+    
+    echo "${fg[magenta]}═══════════════════════════════════════════════════════════════════════════${reset_color}"
+    echo "${fg[magenta]}║${reset_color} ${fg[bold]}${fg[yellow]}Step $step_num: $step_title${reset_color}                                                    ${fg[magenta]}║${reset_color}"
+    echo "${fg[magenta]}║${reset_color} $step_desc                                                          ${fg[magenta]}║${reset_color}"
+    echo "${fg[magenta]}═══════════════════════════════════════════════════════════════════════════${reset_color}"
+    echo
+}
+
+# Helper function to show color options with visual indicators
+function show_color_option() {
+    local option_key="$1"
+    local option_desc="$2"
+    local color_code="$3"
+    
+    if [[ -n "$color_code" ]]; then
+        local color_sample=$'\e[48;5;'${color_code}$'m\e[38;5;255m'
+        printf "   ${fg[cyan]}%s)${reset_color} %-20s ${color_sample}   %3s   ${reset_color}\n" "$option_key" "$option_desc" "$color_code"
+    else
+        printf "   ${fg[cyan]}%s)${reset_color} %s\n" "$option_key" "$option_desc"
+    fi
+}
+
 # Interactive configuration wizard
 function todo_config_wizard() {
-    echo "🧙 Todo Reminder Configuration Wizard"
-    echo "=====================================\n"
-    
+    # Clear screen and show header
+    clear
+    echo "${fg[bold]}${fg[blue]}🧙 Todo Reminder Configuration Wizard${reset_color}"
+    echo "${fg[blue]}══════════════════════════════════════${reset_color}"
+    echo
     echo "This wizard will help you customize your todo reminder display."
-    echo "Current settings will be shown in [brackets].\n"
+    echo "Use single keystrokes to navigate - no need to press Enter!"
+    echo
+    
+    # Show initial preview
+    show_wizard_preview "Current Configuration"
     
     # Step 1: Choose a starting point
-    echo "1. Starting Point"
-    echo "   How would you like to begin?"
-    echo "   ${fg[cyan]}a)${reset_color} Start with current settings"
-    echo "   ${fg[cyan]}b)${reset_color} Apply a preset first (minimal, colorful, work, dark)"
-    echo "   ${fg[cyan]}c)${reset_color} Reset to defaults first"
-    printf "   Choice [a]: "
-    read -r start_choice
+    show_step_header "1" "Starting Point" "Choose how to begin your customization"
     
-    case "${start_choice:-a}" in
+    echo "   ${fg[cyan]}a)${reset_color} Start with current settings"
+    echo "   ${fg[cyan]}b)${reset_color} Apply a preset first"
+    echo "   ${fg[cyan]}c)${reset_color} Reset to defaults first"
+    echo
+    
+    local start_choice=$(read_single_char "   ${fg[yellow]}Your choice [a]: ${reset_color}" "abcABC" "a")
+    
+    case "${start_choice}" in
         b|B)
-            echo "\nAvailable presets:"
-            echo "   ${fg[yellow]}minimal${reset_color}  - Clean, simple appearance"
-            echo "   ${fg[yellow]}colorful${reset_color} - Bright and vibrant"
-            echo "   ${fg[yellow]}work${reset_color}     - Professional blue theme"
-            echo "   ${fg[yellow]}dark${reset_color}     - Dark theme"
-            printf "   Select preset: "
-            read -r preset_choice
-            if [[ -n "$preset_choice" ]]; then
-                echo "Applying preset '$preset_choice'..."
-                todo_config preset "$preset_choice" >/dev/null 2>&1
-                if [[ $? -eq 0 ]]; then
-                    echo "✅ Preset applied successfully"
-                else
-                    echo "❌ Invalid preset. Continuing with current settings."
-                fi
+            clear
+            show_wizard_preview "Preset Selection"
+            show_step_header "1b" "Preset Selection" "Choose a preset theme to start with"
+            
+            show_color_option "1" "minimal  - Clean, simple" "250"
+            show_color_option "2" "colorful - Bright, vibrant" "196"
+            show_color_option "3" "work     - Professional blue" "33"
+            show_color_option "4" "dark     - Dark theme" "235"
+            echo
+            
+            local preset_choice=$(read_single_char "   ${fg[yellow]}Select preset [1]: ${reset_color}" "1234" "1")
+            
+            case "$preset_choice" in
+                1) preset_name="minimal" ;;
+                2) preset_name="colorful" ;;
+                3) preset_name="work" ;;
+                4) preset_name="dark" ;;
+            esac
+            
+            echo "   ${fg[green]}Applying preset '$preset_name'...${reset_color}"
+            todo_config preset "$preset_name" >/dev/null 2>&1
+            if [[ $? -eq 0 ]]; then
+                echo "   ✅ Preset applied successfully"
+            else
+                echo "   ❌ Invalid preset. Continuing with current settings."
             fi
+            sleep 1
             ;;
         c|C)
-            echo "Resetting to defaults..."
+            echo "   ${fg[green]}Resetting to defaults...${reset_color}"
             todo_config reset >/dev/null 2>&1
-            echo "✅ Reset to defaults"
+            echo "   ✅ Reset to defaults"
+            sleep 1
             ;;
         *)
-            echo "Keeping current settings"
+            echo "   ${fg[green]}Keeping current settings${reset_color}"
+            sleep 1
             ;;
     esac
     
-    echo "\n2. Display Components"
-    echo "   Which components would you like to show?"
+    # Step 2: Display Components
+    clear
+    show_wizard_preview "Display Components"
+    show_step_header "2" "Display Components" "Choose which elements to show in your terminal"
     
     # Affirmation toggle
     local current_affirmation="${TODO_SHOW_AFFIRMATION:-true}"
-    printf "   Show motivational affirmations? [${current_affirmation}] (y/n): "
-    read -r affirmation_choice
-    case "${affirmation_choice:-${current_affirmation:0:1}}" in
-        n|N|false) TODO_SHOW_AFFIRMATION="false" ;;
+    local affirmation_indicator="${fg[green]}♥ You're doing great!${reset_color}"
+    [[ "$current_affirmation" == "false" ]] && affirmation_indicator="${fg[gray]}(hidden)${reset_color}"
+    
+    echo "   Show motivational affirmations? Current: $affirmation_indicator"
+    echo "   ${fg[cyan]}y)${reset_color} Yes, show affirmations"
+    echo "   ${fg[cyan]}n)${reset_color} No, hide affirmations"
+    echo
+    
+    local affirmation_choice=$(read_single_char "   ${fg[yellow]}Your choice [${current_affirmation:0:1}]: ${reset_color}" "ynYN" "${current_affirmation:0:1}")
+    case "${affirmation_choice}" in
+        n|N) TODO_SHOW_AFFIRMATION="false" ;;
         *) TODO_SHOW_AFFIRMATION="true" ;;
     esac
     
-    # Todo box toggle
+    # Todo box toggle  
     local current_box="${TODO_SHOW_TODO_BOX:-true}"
-    printf "   Show todo box? [${current_box}] (y/n): "
-    read -r box_choice
-    case "${box_choice:-${current_box:0:1}}" in
-        n|N|false) TODO_SHOW_TODO_BOX="false" ;;
+    local box_indicator="${fg[blue]}┌─ REMEMBER ─┐${reset_color}"
+    [[ "$current_box" == "false" ]] && box_indicator="${fg[gray]}(hidden)${reset_color}"
+    
+    echo "   Show todo box? Current: $box_indicator"
+    echo "   ${fg[cyan]}y)${reset_color} Yes, show todo box"
+    echo "   ${fg[cyan]}n)${reset_color} No, hide todo box"
+    echo
+    
+    local box_choice=$(read_single_char "   ${fg[yellow]}Your choice [${current_box:0:1}]: ${reset_color}" "ynYN" "${current_box:0:1}")
+    case "${box_choice}" in
+        n|N) TODO_SHOW_TODO_BOX="false" ;;
         *) TODO_SHOW_TODO_BOX="true" ;;
     esac
     
     # Only ask about box-specific settings if box is enabled
     if [[ "$TODO_SHOW_TODO_BOX" == "true" ]]; then
-        echo "\n3. Box Appearance"
+        # Step 3: Box Appearance
+        clear
+        show_wizard_preview "Box Appearance"
+        show_step_header "3" "Box Appearance" "Customize how your todo box looks"
         
         # Title
-        printf "   Box title [${TODO_TITLE}]: "
-        read -r title_input
-        if [[ -n "$title_input" ]]; then
-            TODO_TITLE="$title_input"
-        fi
+        echo "   Box title options:"
+        echo "   ${fg[cyan]}1)${reset_color} ${fg[yellow]}REMEMBER${reset_color} (default)"
+        echo "   ${fg[cyan]}2)${reset_color} ${fg[yellow]}TODO${reset_color}"
+        echo "   ${fg[cyan]}3)${reset_color} ${fg[yellow]}TASKS${reset_color}"
+        echo "   ${fg[cyan]}4)${reset_color} ${fg[yellow]}NOTES${reset_color}"
+        echo "   ${fg[cyan]}c)${reset_color} Custom title"
+        echo
+        
+        local title_choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "1234cC" "1")
+        case "$title_choice" in
+            1) TODO_TITLE="REMEMBER" ;;
+            2) TODO_TITLE="TODO" ;;
+            3) TODO_TITLE="TASKS" ;;
+            4) TODO_TITLE="NOTES" ;;
+            c|C) 
+                echo
+                printf "   ${fg[yellow]}Enter custom title: ${reset_color}"
+                read -r title_input
+                if [[ -n "$title_input" ]]; then
+                    TODO_TITLE="$title_input"
+                    echo "   ${fg[green]}✅ Title set to: $title_input${reset_color}"
+                else
+                    echo "   ${fg[yellow]}⚠️  No title entered, keeping default${reset_color}"
+                fi
+                echo
+                ;;
+        esac
+        
+        # Add spacing between sections
+        echo "   ────────────────────────────────────────"
+        echo
         
         # Box width
         local current_width_pct=$(echo "$TODO_BOX_WIDTH_FRACTION * 100" | bc 2>/dev/null || echo "50")
-        printf "   Box width as percentage of terminal [${current_width_pct}%%]: "
-        read -r width_input
-        if [[ -n "$width_input" && "$width_input" =~ ^[0-9]+$ ]]; then
-            if [[ $width_input -ge 20 && $width_input -le 100 ]]; then
-                TODO_BOX_WIDTH_FRACTION=$(echo "scale=2; $width_input / 100" | bc 2>/dev/null || echo "0.5")
-            else
-                echo "   ⚠️  Width must be between 20-100%. Keeping current value."
-            fi
-        fi
+        echo "   Box width options:"
+        echo "   ${fg[cyan]}1)${reset_color} Small (30%)"
+        echo "   ${fg[cyan]}2)${reset_color} Medium (50%) ${fg[gray]}[current: ${current_width_pct}%]${reset_color}"
+        echo "   ${fg[cyan]}3)${reset_color} Large (70%)"
+        echo "   ${fg[cyan]}4)${reset_color} Full width (90%)"
+        echo
+        
+        local width_choice=$(read_single_char "   ${fg[yellow]}Your choice [2]: ${reset_color}" "1234" "2")
+        case "$width_choice" in
+            1) TODO_BOX_WIDTH_FRACTION="0.3" ;;
+            2) TODO_BOX_WIDTH_FRACTION="0.5" ;;
+            3) TODO_BOX_WIDTH_FRACTION="0.7" ;;
+            4) TODO_BOX_WIDTH_FRACTION="0.9" ;;
+        esac
+        
+        # Add spacing between sections  
+        echo "   ────────────────────────────────────────"
+        echo
         
         # Bullet character
-        printf "   Bullet character [${TODO_BULLET_CHAR}]: "
-        read -r bullet_input
-        if [[ -n "$bullet_input" ]]; then
-            TODO_BULLET_CHAR="$bullet_input"
-        fi
+        echo "   Task bullet character options:"
+        echo "   ${fg[cyan]}1)${reset_color} ${fg[red]}▪${reset_color} (small square)"
+        echo "   ${fg[cyan]}2)${reset_color} ${fg[red]}•${reset_color} (bullet)"
+        echo "   ${fg[cyan]}3)${reset_color} ${fg[red]}→${reset_color} (arrow)"
+        echo "   ${fg[cyan]}4)${reset_color} ${fg[red]}★${reset_color} (star)"
+        echo "   ${fg[cyan]}5)${reset_color} ${fg[red]}◆${reset_color} (diamond)"
+        echo
+        
+        local bullet_choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "12345" "1")
+        case "$bullet_choice" in
+            1) TODO_BULLET_CHAR="▪" ;;
+            2) TODO_BULLET_CHAR="•" ;;
+            3) TODO_BULLET_CHAR="→" ;;
+            4) TODO_BULLET_CHAR="★" ;;
+            5) TODO_BULLET_CHAR="◆" ;;
+        esac
     fi
     
     # Only ask about affirmation settings if affirmations are enabled
     if [[ "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
-        echo "\n4. Affirmation Settings"
+        # Step 4: Affirmation Settings
+        clear
+        show_wizard_preview "Affirmation Settings"
+        show_step_header "4" "Affirmation Settings" "Customize your motivational messages"
         
         # Heart character
-        printf "   Heart character [${TODO_HEART_CHAR}]: "
-        read -r heart_input
-        if [[ -n "$heart_input" ]]; then
-            TODO_HEART_CHAR="$heart_input"
-        fi
+        echo "   Heart character options:"
+        echo "   ${fg[cyan]}1)${reset_color} ${fg[red]}♥${reset_color} (heart)"
+        echo "   ${fg[cyan]}2)${reset_color} ${fg[red]}💖${reset_color} (emoji heart)"
+        echo "   ${fg[cyan]}3)${reset_color} ${fg[red]}★${reset_color} (star)"
+        echo "   ${fg[cyan]}4)${reset_color} ${fg[red]}💡${reset_color} (lightbulb)"
+        echo "   ${fg[cyan]}5)${reset_color} ${fg[red]}🌟${reset_color} (star emoji)"
+        echo
+        
+        local heart_choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "12345" "1")
+        case "$heart_choice" in
+            1) TODO_HEART_CHAR="♥" ;;
+            2) TODO_HEART_CHAR="💖" ;;
+            3) TODO_HEART_CHAR="★" ;;
+            4) TODO_HEART_CHAR="💡" ;;
+            5) TODO_HEART_CHAR="🌟" ;;
+        esac
         
         # Heart position
-        echo "   Heart position options: left, right, both, none"
-        printf "   Heart position [${TODO_HEART_POSITION}]: "
-        read -r position_input
-        if [[ -n "$position_input" ]]; then
-            case "$position_input" in
-                left|right|both|none)
-                    TODO_HEART_POSITION="$position_input"
-                    ;;
-                *)
-                    echo "   ⚠️  Invalid position. Keeping current value."
-                    ;;
-            esac
-        fi
+        echo "   Heart position options:"
+        echo "   ${fg[cyan]}1)${reset_color} ${TODO_HEART_CHAR} You're doing great! (left)"
+        echo "   ${fg[cyan]}2)${reset_color} You're doing great! ${TODO_HEART_CHAR} (right)"
+        echo "   ${fg[cyan]}3)${reset_color} ${TODO_HEART_CHAR} You're doing great! ${TODO_HEART_CHAR} (both)"
+        echo "   ${fg[cyan]}4)${reset_color} You're doing great! (none)"
+        echo
+        
+        local position_choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "1234" "1")
+        case "$position_choice" in
+            1) TODO_HEART_POSITION="left" ;;
+            2) TODO_HEART_POSITION="right" ;;
+            3) TODO_HEART_POSITION="both" ;;
+            4) TODO_HEART_POSITION="none" ;;
+        esac
     fi
     
-    echo "\n5. Colors (optional)"
-    echo "   Use 'todo_colors 16' to see available color codes"
-    printf "   Customize colors? (y/n) [n]: "
-    read -r color_choice
+    # Step 5: Colors (optional)
+    clear
+    show_wizard_preview "Color Customization"
+    show_step_header "5" "Colors" "Customize the color scheme (optional)"
     
-    if [[ "$color_choice" =~ ^[yY] ]]; then
+    echo "   Customize colors?"
+    echo "   ${fg[cyan]}y)${reset_color} Yes, customize colors"
+    echo "   ${fg[cyan]}n)${reset_color} No, keep current colors"
+    echo
+    
+    local color_choice=$(read_single_char "   ${fg[yellow]}Your choice [n]: ${reset_color}" "ynYN" "n")
+    
+    if [[ "$color_choice" =~ ^[yY]$ ]]; then
         # Task colors
-        echo "   Current task colors: ${TODO_TASK_COLORS}"
-        printf "   New task colors (comma-separated, e.g. 196,46,33): "
-        read -r task_colors_input
-        if [[ -n "$task_colors_input" ]]; then
-            # Basic validation - check if it looks like comma-separated numbers
-            if [[ "$task_colors_input" =~ ^[0-9,]+$ ]]; then
-                TODO_TASK_COLORS="$task_colors_input"
-            else
-                echo "   ⚠️  Invalid format. Keeping current colors."
-            fi
-        fi
+        echo "   Task bullet color themes:"
+        show_color_option "1" "Warm (red/orange)" "196,202,208"
+        show_color_option "2" "Cool (blue/cyan)" "33,39,45"
+        show_color_option "3" "Nature (green)" "46,82,118"
+        show_color_option "4" "Current colors" "$TODO_TASK_COLORS"
+        echo "   ${fg[cyan]}c)${reset_color} Custom colors"
+        echo
         
-        # Border color
-        printf "   Border color [${TODO_BORDER_COLOR}]: "
-        read -r border_color_input
-        if [[ -n "$border_color_input" && "$border_color_input" =~ ^[0-9]+$ ]]; then
-            if [[ $border_color_input -ge 0 && $border_color_input -le 255 ]]; then
-                TODO_BORDER_COLOR="$border_color_input"
-            else
-                echo "   ⚠️  Color must be 0-255. Keeping current value."
-            fi
-        fi
+        local task_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234cC" "4")
+        case "$task_color_choice" in
+            1) TODO_TASK_COLORS="196,202,208,214,220,226" ;;
+            2) TODO_TASK_COLORS="33,39,45,51,57,63" ;;
+            3) TODO_TASK_COLORS="46,82,118,154,190,226" ;;
+            4) ;; # Keep current
+            c|C)
+                printf "   ${fg[yellow]}Enter colors (comma-separated, e.g. 196,46,33): ${reset_color}"
+                read -r task_colors_input
+                if [[ -n "$task_colors_input" && "$task_colors_input" =~ ^[0-9,]+$ ]]; then
+                    TODO_TASK_COLORS="$task_colors_input"
+                else
+                    echo "   ⚠️  Invalid format. Keeping current colors."
+                fi
+                ;;
+        esac
         
-        # Text color
-        printf "   Text color [${TODO_TEXT_COLOR}]: "
-        read -r text_color_input
-        if [[ -n "$text_color_input" && "$text_color_input" =~ ^[0-9]+$ ]]; then
-            if [[ $text_color_input -ge 0 && $text_color_input -le 255 ]]; then
-                TODO_TEXT_COLOR="$text_color_input"
-            else
-                echo "   ⚠️  Color must be 0-255. Keeping current value."
-            fi
-        fi
+        # Border color themes
+        echo "   Border color themes:"
+        show_color_option "1" "Light gray" "250"
+        show_color_option "2" "Dark gray" "240"
+        show_color_option "3" "Blue accent" "39"
+        show_color_option "4" "Current" "$TODO_BORDER_COLOR"
+        echo
+        
+        local border_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234" "4")
+        case "$border_color_choice" in
+            1) TODO_BORDER_COLOR="250" ;;
+            2) TODO_BORDER_COLOR="240" ;;
+            3) TODO_BORDER_COLOR="39" ;;
+            4) ;; # Keep current
+        esac
+        
+        # Background color themes
+        echo "   Background color themes:"
+        show_color_option "1" "Very dark" "232"
+        show_color_option "2" "Dark" "235"
+        show_color_option "3" "Medium" "238"
+        show_color_option "4" "Current" "$TODO_CONTENT_BG_COLOR"
+        echo
+        
+        local bg_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234" "4")
+        case "$bg_color_choice" in
+            1) TODO_BORDER_BG_COLOR="232"; TODO_CONTENT_BG_COLOR="232" ;;
+            2) TODO_BORDER_BG_COLOR="235"; TODO_CONTENT_BG_COLOR="235" ;;
+            3) TODO_BORDER_BG_COLOR="238"; TODO_CONTENT_BG_COLOR="238" ;;
+            4) ;; # Keep current
+        esac
     fi
     
-    echo "\n6. Layout (optional)"
-    printf "   Adjust spacing/padding? (y/n) [n]: "
-    read -r layout_choice
+    # Step 6: Layout (optional)
+    clear
+    show_wizard_preview "Layout & Spacing"
+    show_step_header "6" "Layout" "Adjust spacing and positioning (optional)"
     
-    if [[ "$layout_choice" =~ ^[yY] ]]; then
+    echo "   Adjust spacing/padding?"
+    echo "   ${fg[cyan]}y)${reset_color} Yes, customize spacing"
+    echo "   ${fg[cyan]}n)${reset_color} No, keep current layout"
+    echo
+    
+    local layout_choice=$(read_single_char "   ${fg[yellow]}Your choice [n]: ${reset_color}" "ynYN" "n")
+    
+    if [[ "$layout_choice" =~ ^[yY]$ ]]; then
         # Left padding
-        printf "   Left padding (spaces) [${TODO_PADDING_LEFT}]: "
-        read -r left_padding_input
-        if [[ -n "$left_padding_input" && "$left_padding_input" =~ ^[0-9]+$ ]]; then
-            TODO_PADDING_LEFT="$left_padding_input"
-        fi
+        echo "   Left padding options:"
+        echo "   ${fg[cyan]}1)${reset_color} None (0 spaces)"
+        echo "   ${fg[cyan]}2)${reset_color} Small (2 spaces)"
+        echo "   ${fg[cyan]}3)${reset_color} Medium (4 spaces)"
+        echo "   ${fg[cyan]}4)${reset_color} Large (8 spaces)"
+        echo
+        
+        local left_padding_choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "1234" "1")
+        case "$left_padding_choice" in
+            1) TODO_PADDING_LEFT="0" ;;
+            2) TODO_PADDING_LEFT="2" ;;
+            3) TODO_PADDING_LEFT="4" ;;
+            4) TODO_PADDING_LEFT="8" ;;
+        esac
         
         # Top padding
-        printf "   Top padding (blank lines) [${TODO_PADDING_TOP}]: "
-        read -r top_padding_input
-        if [[ -n "$top_padding_input" && "$top_padding_input" =~ ^[0-9]+$ ]]; then
-            TODO_PADDING_TOP="$top_padding_input"
-        fi
+        echo "   Top padding options:"
+        echo "   ${fg[cyan]}1)${reset_color} None (0 lines)"
+        echo "   ${fg[cyan]}2)${reset_color} Small (1 line)"
+        echo "   ${fg[cyan]}3)${reset_color} Medium (2 lines)"
+        echo
+        
+        local top_padding_choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "123" "1")
+        case "$top_padding_choice" in
+            1) TODO_PADDING_TOP="0" ;;
+            2) TODO_PADDING_TOP="1" ;;
+            3) TODO_PADDING_TOP="2" ;;
+        esac
     fi
     
-    echo "\n7. Preview & Save"
-    echo "   Let's see how your configuration looks:"
-    printf "   %50s\\n" | tr ' ' '─'
+    # Reinitialize color array after any changes
+    TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
     
-    # Show a preview (add some sample tasks if none exist)
-    local had_tasks=false
-    if [[ ${#todo_tasks[@]} -eq 0 ]]; then
-        todo_add_task "Sample task for preview" >/dev/null 2>&1
-        todo_add_task "Another preview task" >/dev/null 2>&1
-    else
-        had_tasks=true
-    fi
+    # Step 7: Final Preview & Save
+    clear
+    show_wizard_preview "Final Configuration"
+    show_step_header "7" "Preview & Save" "Review your customized configuration"
     
-    # Display preview
-    todo_display
+    echo "   Save this configuration?"
+    echo "   ${fg[cyan]}y)${reset_color} Yes, save and apply"
+    echo "   ${fg[cyan]}n)${reset_color} No, discard changes"
+    echo "   ${fg[cyan]}p)${reset_color} Save as custom preset"
+    echo
     
-    # Clean up sample tasks if we added them
-    if [[ "$had_tasks" == false ]]; then
-        # Reset tasks array to empty
-        todo_tasks=()
-        todo_tasks_colors=()
-        todo_color_index=1
-        # Clear the save file
-        printf "" > "$TODO_SAVE_FILE"
-    fi
+    local save_choice=$(read_single_char "   ${fg[yellow]}Your choice [y]: ${reset_color}" "ynpYNP" "y")
     
-    printf "   %50s\\n" | tr ' ' '─'
-    printf "   Save this configuration? (y/n) [y]: "
-    read -r save_choice
-    
-    case "${save_choice:-y}" in
+    case "${save_choice}" in
         n|N)
-            echo "   Configuration not saved (changes are temporary)"
+            echo "   ${fg[yellow]}Configuration not saved (changes are temporary)${reset_color}"
             ;;
-        *)
-            # Ask if they want to save as a preset
-            printf "   Save as a custom preset? (y/n) [n]: "
-            read -r preset_save_choice
-            if [[ "$preset_save_choice" =~ ^[yY] ]]; then
-                printf "   Preset name: "
-                read -r preset_name
-                if [[ -n "$preset_name" ]]; then
-                    todo_config save-preset "$preset_name" >/dev/null 2>&1
-                    if [[ $? -eq 0 ]]; then
-                        echo "   ✅ Configuration saved as preset '$preset_name'"
-                    else
-                        echo "   ⚠️  Could not save preset"
-                    fi
+        p|P)
+            printf "   ${fg[yellow]}Enter preset name: ${reset_color}"
+            read -r preset_name
+            if [[ -n "$preset_name" ]]; then
+                todo_config save-preset "$preset_name" >/dev/null 2>&1
+                if [[ $? -eq 0 ]]; then
+                    echo "   ✅ Configuration saved as preset '$preset_name'"
+                else
+                    echo "   ⚠️  Could not save preset"
                 fi
             fi
             echo "   ✅ Configuration applied and will persist across sessions"
             ;;
+        *)
+            echo "   ✅ Configuration applied and will persist across sessions"
+            ;;
     esac
     
-    echo "\n🎉 Wizard Complete!"
-    echo "   Use 'todo_config export' to back up your settings"
-    echo "   Use 'todo_config --help' for more configuration options"
-    echo "   Use 'todo_help' for general plugin help"
+    echo
+    echo "${fg[bold]}${fg[green]}🎉 Wizard Complete!${reset_color}"
+    echo "${fg[blue]}═══════════════════${reset_color}"
+    echo "📋 Use ${fg[cyan]}todo \"task\"${reset_color} to add your first task"
+    echo "⚙️  Use ${fg[cyan]}todo_config export${reset_color} to back up your settings"
+    echo "❓ Use ${fg[cyan]}todo_help${reset_color} for general plugin help"
+    echo
 }
 
 # Main configuration command dispatcher
