@@ -447,6 +447,8 @@ function test_contextual_hints_timing() {
             function date() {
                 if [[ \"\$1\" == \"+%s\" ]]; then
                     echo $i
+                elif [[ \"\$1\" == \"+%N\" ]]; then
+                    echo \"000000000\"  # Fixed nanoseconds to make calculation predictable
                 else
                     command date \"\$@\"
                 fi
@@ -458,16 +460,19 @@ function test_contextual_hints_timing() {
         fi
     done
     
-    # With modulo 10, exactly one hint should appear (when i=0, time_hash=0)
-    if [[ $hint_count -eq 1 ]]; then
+    # Test that hints appear occasionally but not every time (0% < rate < 100%)
+    if [[ $hint_count -gt 0 && $hint_count -lt $total_tests ]]; then
         echo "✅ PASS: $test_name"
-        echo "  Hints appeared $hint_count/$total_tests times (controlled randomness working)"
+        echo "  Hints appeared $hint_count/$total_tests times (occasional, not spam)"
         ((passed_count++))
     else
-        echo "⚠️  WARNING: $test_name"
-        echo "  Hints appeared $hint_count/$total_tests times (randomness logic may vary by system)"
-        echo "  This is acceptable as long as hints don't appear every time"
-        ((passed_count++))
+        echo "❌ FAIL: $test_name"
+        if [[ $hint_count -eq 0 ]]; then
+            echo "  Hints never appeared (0/$total_tests times) - may be disabled or broken"
+        else
+            echo "  Hints spam every prompt ($hint_count/$total_tests times) - too frequent"
+        fi
+        ((failed_count++))
     fi
 }
 

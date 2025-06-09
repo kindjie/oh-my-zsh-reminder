@@ -16,6 +16,7 @@ TODO_BULLET_CHAR="${TODO_BULLET_CHAR:-▪}"                 # Task bullet charac
 # Show/hide state configuration
 TODO_SHOW_AFFIRMATION="${TODO_SHOW_AFFIRMATION:-true}"    # Show affirmations: "true", "false"
 TODO_SHOW_TODO_BOX="${TODO_SHOW_TODO_BOX:-true}"          # Show todo box: "true", "false"
+TODO_SHOW_HINTS="${TODO_SHOW_HINTS:-true}"                # Show contextual hints: "true", "false"
 
 # Padding/margin configuration (in characters)
 TODO_PADDING_TOP="${TODO_PADDING_TOP:-0}"                 # Top padding/margin
@@ -76,6 +77,11 @@ fi
 
 if [[ "$TODO_SHOW_TODO_BOX" != "true" && "$TODO_SHOW_TODO_BOX" != "false" ]]; then
     echo "Error: TODO_SHOW_TODO_BOX must be 'true' or 'false', got: '$TODO_SHOW_TODO_BOX'" >&2
+    return 1
+fi
+
+if [[ "$TODO_SHOW_HINTS" != "true" && "$TODO_SHOW_HINTS" != "false" ]]; then
+    echo "Error: TODO_SHOW_HINTS must be 'true' or 'false', got: '$TODO_SHOW_HINTS'" >&2
     return 1
 fi
 
@@ -780,6 +786,11 @@ function todo_display() {
 
 # Show contextual hints for empty state
 function show_empty_state_hint() {
+    # Skip if hints are disabled
+    if [[ "$TODO_SHOW_HINTS" != "true" ]]; then
+        return
+    fi
+    
     # Only show hint occasionally to avoid being annoying
     # Create a hash based on current time to show hint ~10% of the time
     # Use seconds + microseconds for better randomness in tests
@@ -796,12 +807,17 @@ function show_empty_state_hint() {
         local gray=$'\e[38;5;244m'
         local cyan=$'\e[38;5;51m'
         local reset=$'\e[0m'
-        echo "${gray}💡 No tasks yet? Try: ${cyan}todo \"Something to remember\"${reset}"
+        echo "${gray}💡 No tasks yet? Try: ${cyan}todo \"Something to remember\"${gray} (disable: TODO_SHOW_HINTS=false)${reset}"
     fi
 }
 
 # Show progressive discovery hints based on usage patterns
 function show_progressive_hints() {
+    # Skip if hints are disabled
+    if [[ "$TODO_SHOW_HINTS" != "true" ]]; then
+        return
+    fi
+    
     # Only show hints occasionally to avoid spam
     local time_hash=$(( $(date +%s) % 20 ))
     if [[ $time_hash -ne 0 ]]; then
@@ -814,9 +830,9 @@ function show_progressive_hints() {
     
     # Show different hints based on task count
     if [[ ${#todo_tasks} -ge 5 && ${#todo_tasks} -lt 8 ]]; then
-        echo "${gray}💡 Lots of tasks? Customize colors: ${cyan}todo_setup${reset}"
+        echo "${gray}💡 Lots of tasks? Customize colors: ${cyan}todo_setup${gray} (disable: TODO_SHOW_HINTS=false)${reset}"
     elif [[ ${#todo_tasks} -ge 8 ]]; then
-        echo "${gray}💡 Many tasks! Hide display when focused: ${cyan}todo_hide${reset}"
+        echo "${gray}💡 Many tasks! Hide display when focused: ${cyan}todo_hide${gray} (disable: TODO_SHOW_HINTS=false)${reset}"
     fi
 }
 
@@ -1086,6 +1102,7 @@ function todo_help_full() {
     echo "    ${cyan}TODO_BOX_WIDTH_FRACTION${reset}            ${gray}Box width fraction (default: 0.5)${reset}"
     echo "    ${cyan}TODO_SHOW_AFFIRMATION${reset}              ${gray}true|false (default: true)${reset}"
     echo "    ${cyan}TODO_SHOW_TODO_BOX${reset}                 ${gray}true|false (default: true)${reset}"
+    echo "    ${cyan}TODO_SHOW_HINTS${reset}                    ${gray}true|false (default: true)${reset}"
     echo
     echo "  ${white}Padding/Spacing:${reset}"
     echo "    ${cyan}TODO_PADDING_TOP${reset}                   ${gray}Top padding (default: 0)${reset}"
@@ -1196,7 +1213,8 @@ function todo_config_export() {
         config_content+="TODO_BULLET_CHAR=\"$TODO_BULLET_CHAR\"\n"
         config_content+="TODO_BOX_WIDTH_FRACTION=\"$TODO_BOX_WIDTH_FRACTION\"\n"
         config_content+="TODO_SHOW_AFFIRMATION=\"$TODO_SHOW_AFFIRMATION\"\n"
-        config_content+="TODO_SHOW_TODO_BOX=\"$TODO_SHOW_TODO_BOX\"\n\n"
+        config_content+="TODO_SHOW_TODO_BOX=\"$TODO_SHOW_TODO_BOX\"\n"
+        config_content+="TODO_SHOW_HINTS=\"$TODO_SHOW_HINTS\"\n\n"
         
         # Padding settings
         config_content+="TODO_PADDING_TOP=\"$TODO_PADDING_TOP\"\n"
@@ -1276,6 +1294,11 @@ function todo_config_import() {
     if [[ ! "$TODO_SHOW_TODO_BOX" =~ ^(true|false)$ ]]; then
         echo "Warning: Invalid TODO_SHOW_TODO_BOX value, resetting to true" >&2
         TODO_SHOW_TODO_BOX="true"
+    fi
+    
+    if [[ ! "$TODO_SHOW_HINTS" =~ ^(true|false)$ ]]; then
+        echo "Warning: Invalid TODO_SHOW_HINTS value, resetting to true" >&2
+        TODO_SHOW_HINTS="true"
     fi
     
     if [[ "$colors_only" == "--colors-only" ]]; then
@@ -1396,6 +1419,7 @@ function todo_config_reset() {
         TODO_BOX_WIDTH_FRACTION="0.5"
         TODO_SHOW_AFFIRMATION="true"
         TODO_SHOW_TODO_BOX="true"
+        TODO_SHOW_HINTS="true"
         TODO_PADDING_TOP="0"
         TODO_PADDING_RIGHT="4"
         TODO_PADDING_BOTTOM="0"
