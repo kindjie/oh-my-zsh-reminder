@@ -51,8 +51,10 @@ run_test_file() {
     local test_file="$1"
     local test_path="$TESTS_DIR/$test_file"
     
-    echo "${BLUE}▶ Running $test_file...${RESET}"
-    echo "────────────────────────────────────────────────────"
+    if [[ "$verbose" == true ]]; then
+        echo "${BLUE}▶ Running $test_file...${RESET}"
+        echo "────────────────────────────────────────────────────"
+    fi
     
     if [[ ! -f "$test_path" ]]; then
         echo "${RED}❌ Test file not found: $test_path${RESET}"
@@ -77,9 +79,6 @@ run_test_file() {
     
     cd "$original_pwd"
     
-    # Display the output
-    echo "$output"
-    
     # Parse test results from output
     local file_passed=$(echo "$output" | grep -c "✅ PASS:")
     local file_failed=$(echo "$output" | grep -c "❌ FAIL:")
@@ -91,14 +90,27 @@ run_test_file() {
     FAILED_TESTS=$((FAILED_TESTS + file_failed))
     WARNING_TESTS=$((WARNING_TESTS + file_warnings))
     
+    # Show full output in verbose mode, or only failures by default
+    if [[ "$verbose" == true ]]; then
+        echo "$output"
+        echo "────────────────────────────────────────────────────"
+    elif [[ $file_failed -gt 0 || $file_warnings -gt 0 ]]; then
+        echo "${BLUE}▶ $test_file${RESET}"
+        echo "$output" | grep -E "(❌ FAIL:|⚠️  WARNING:)"
+    fi
+    
     # Report file results
-    echo "────────────────────────────────────────────────────"
     if [[ $file_failed -eq 0 ]]; then
-        echo "${GREEN}✅ $test_file: $file_passed passed, $file_warnings warnings${RESET}"
+        if [[ "$verbose" == true ]]; then
+            echo "${GREEN}✅ $test_file: $file_passed passed, $file_warnings warnings${RESET}"
+        fi
     else
         echo "${RED}❌ $test_file: $file_passed passed, $file_failed failed, $file_warnings warnings${RESET}"
     fi
-    echo
+    
+    if [[ "$verbose" == true ]]; then
+        echo
+    fi
     
     return $exit_code
 }
@@ -112,9 +124,11 @@ run_performance_tests() {
         return 1
     fi
     
-    echo "${MAGENTA}🚀 Running performance tests...${RESET}"
-    echo "This may take 30-60 seconds to complete all 16 performance tests."
-    echo
+    if [[ "$verbose" == true ]]; then
+        echo "${MAGENTA}🚀 Running performance tests...${RESET}"
+        echo "This may take 30-60 seconds to complete all 16 performance tests."
+        echo
+    fi
     
     # Run performance tests with timeout
     local output
@@ -131,8 +145,13 @@ run_performance_tests() {
     # Clean up temp file
     rm -f /tmp/perf_output
     
-    # Display relevant output
-    echo "$output" | tail -20
+    # Display relevant output in verbose mode, or failures only
+    if [[ "$verbose" == true ]]; then
+        echo "$output" | tail -20
+    elif [[ $perf_failed -gt 0 ]]; then
+        echo "${MAGENTA}▶ Performance tests${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
+    fi
     
     # Count performance test results
     local perf_passed=$(echo "$output" | grep -c "✅ PASS")
@@ -146,13 +165,19 @@ run_performance_tests() {
     WARNING_TESTS=$((WARNING_TESTS + perf_warnings))
     
     # Report performance results
-    echo "────────────────────────────────────────────────────"
+    if [[ "$verbose" == true ]]; then
+        echo "────────────────────────────────────────────────────"
+    fi
     if [[ $perf_failed -eq 0 ]]; then
-        echo "${GREEN}✅ Performance tests: $perf_passed passed, $perf_warnings warnings${RESET}"
+        if [[ "$verbose" == true ]]; then
+            echo "${GREEN}✅ Performance tests: $perf_passed passed, $perf_warnings warnings${RESET}"
+        fi
     else
         echo "${RED}❌ Performance tests: $perf_passed passed, $perf_failed failed, $perf_warnings warnings${RESET}"
     fi
-    echo
+    if [[ "$verbose" == true ]]; then
+        echo
+    fi
     
     return $exit_code
 }
@@ -166,9 +191,11 @@ run_ux_tests() {
         return 1
     fi
     
-    echo "${MAGENTA}🎨 Running UX tests...${RESET}"
-    echo "This validates user experience, onboarding, and progressive disclosure."
-    echo
+    if [[ "$verbose" == true ]]; then
+        echo "${MAGENTA}🎨 Running UX tests...${RESET}"
+        echo "This validates user experience, onboarding, and progressive disclosure."
+        echo
+    fi
     
     # Run UX tests with timeout
     local output
@@ -185,8 +212,13 @@ run_ux_tests() {
     # Clean up temp file
     rm -f /tmp/ux_output
     
-    # Display relevant output
-    echo "$output"
+    # Display relevant output in verbose mode, or failures only
+    if [[ "$verbose" == true ]]; then
+        echo "$output"
+    elif [[ $ux_failed -gt 0 ]]; then
+        echo "${MAGENTA}▶ UX tests${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
+    fi
     
     # Count UX test results
     local ux_passed=$(echo "$output" | grep -c "✅ PASS")
@@ -200,13 +232,19 @@ run_ux_tests() {
     WARNING_TESTS=$((WARNING_TESTS + ux_warnings))
     
     # Report UX results
-    echo "────────────────────────────────────────────────────"
+    if [[ "$verbose" == true ]]; then
+        echo "────────────────────────────────────────────────────"
+    fi
     if [[ $ux_failed -eq 0 ]]; then
-        echo "${GREEN}✅ UX tests: $ux_passed passed, $ux_warnings warnings${RESET}"
+        if [[ "$verbose" == true ]]; then
+            echo "${GREEN}✅ UX tests: $ux_passed passed, $ux_warnings warnings${RESET}"
+        fi
     else
         echo "${RED}❌ UX tests: $ux_passed passed, $ux_failed failed, $ux_warnings warnings${RESET}"
     fi
-    echo
+    if [[ "$verbose" == true ]]; then
+        echo
+    fi
     
     return $exit_code
 }
@@ -220,9 +258,11 @@ run_documentation_tests() {
         return 1
     fi
     
-    echo "${MAGENTA}📚 Running documentation tests...${RESET}"
-    echo "This validates that documentation accurately represents the implementation."
-    echo
+    if [[ "$verbose" == true ]]; then
+        echo "${MAGENTA}📚 Running documentation tests...${RESET}"
+        echo "This validates that documentation accurately represents the implementation."
+        echo
+    fi
     
     # Run documentation tests with timeout
     local output
@@ -239,8 +279,13 @@ run_documentation_tests() {
     # Clean up temp file
     rm -f /tmp/doc_output
     
-    # Display relevant output
-    echo "$output"
+    # Display relevant output in verbose mode, or failures only
+    if [[ "$verbose" == true ]]; then
+        echo "$output"
+    elif [[ $doc_failed -gt 0 ]]; then
+        echo "${MAGENTA}▶ Documentation tests${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
+    fi
     
     # Count documentation test results
     local doc_passed=$(echo "$output" | grep -c "✅ PASS")
@@ -254,13 +299,19 @@ run_documentation_tests() {
     WARNING_TESTS=$((WARNING_TESTS + doc_warnings))
     
     # Report documentation results
-    echo "────────────────────────────────────────────────────"
+    if [[ "$verbose" == true ]]; then
+        echo "────────────────────────────────────────────────────"
+    fi
     if [[ $doc_failed -eq 0 ]]; then
-        echo "${GREEN}✅ Documentation tests: $doc_passed passed, $doc_warnings warnings${RESET}"
+        if [[ "$verbose" == true ]]; then
+            echo "${GREEN}✅ Documentation tests: $doc_passed passed, $doc_warnings warnings${RESET}"
+        fi
     else
         echo "${RED}❌ Documentation tests: $doc_passed passed, $doc_failed failed, $doc_warnings warnings${RESET}"
     fi
-    echo
+    if [[ "$verbose" == true ]]; then
+        echo
+    fi
     
     return $exit_code
 }
