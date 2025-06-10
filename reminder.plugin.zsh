@@ -39,9 +39,11 @@ else
     TODO_CONTENT_BG_COLOR="${TODO_CONTENT_BG_COLOR:-235}"             # Box content background color
 fi
 
-TODO_TEXT_COLOR="${TODO_TEXT_COLOR:-240}"                         # Task text color
+TODO_TEXT_COLOR="${TODO_TEXT_COLOR:-240}"                         # Task text color (legacy)
+TODO_TASK_TEXT_COLOR="${TODO_TASK_TEXT_COLOR:-240}"               # Task text color
 TODO_TITLE_COLOR="${TODO_TITLE_COLOR:-250}"                       # Box title color
 TODO_AFFIRMATION_COLOR="${TODO_AFFIRMATION_COLOR:-109}"           # Affirmation text color
+TODO_BULLET_COLOR="${TODO_BULLET_COLOR:-39}"                      # Bullet color
 
 # Box drawing characters configuration
 TODO_BOX_TOP_LEFT="${TODO_BOX_TOP_LEFT:-┌}"                       # Top left corner
@@ -95,7 +97,7 @@ for padding_var in TODO_PADDING_TOP TODO_PADDING_RIGHT TODO_PADDING_BOTTOM TODO_
 done
 
 # Validate color configurations are numeric
-for color_var in TODO_BORDER_COLOR TODO_BORDER_BG_COLOR TODO_CONTENT_BG_COLOR TODO_TEXT_COLOR TODO_TITLE_COLOR TODO_AFFIRMATION_COLOR; do
+for color_var in TODO_BORDER_COLOR TODO_BORDER_BG_COLOR TODO_CONTENT_BG_COLOR TODO_TEXT_COLOR TODO_TASK_TEXT_COLOR TODO_TITLE_COLOR TODO_AFFIRMATION_COLOR TODO_BULLET_COLOR; do
     local color_value="${(P)color_var}"
     if [[ ! "$color_value" =~ ^[0-9]+$ ]] || [[ $color_value -gt 255 ]]; then
         echo "Error: $color_var must be a number between 0-255, got: '$color_value'" >&2
@@ -251,7 +253,7 @@ say \$width;
 
 # Initialize color palette from configuration
 typeset -a TODO_COLORS
-TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
 
 # Check for first run and show welcome message
 TODO_FIRST_RUN_FILE="${TODO_FIRST_RUN_FILE:-$HOME/.todo_first_run}"
@@ -509,7 +511,7 @@ function wrap_todo_text() {
     local max_width="$2"
     local bullet_color="$3"
     local is_title="$4"
-    local gray_color=$'\e[38;5;'${TODO_TEXT_COLOR}$'m'
+    local gray_color=$'\e[38;5;'${TODO_TASK_TEXT_COLOR}$'m'
     local title_color=$'\e[38;5;'${TODO_TITLE_COLOR}$'m'
 
     # Check if this is a title (REMEMBER is a special case)
@@ -520,6 +522,7 @@ function wrap_todo_text() {
     fi
 
     # For regular tasks, we need to handle bullet and text separately
+    # Use the original task-specific bullet color for visual distinction
     local bullet="${bullet_color}${TODO_BULLET_CHAR}${gray_color}"
 
     # Account for bullet display width and space
@@ -1199,8 +1202,10 @@ function todo_config_export() {
         config_content+="TODO_BORDER_BG_COLOR=\"$TODO_BORDER_BG_COLOR\"\n"
         config_content+="TODO_CONTENT_BG_COLOR=\"$TODO_CONTENT_BG_COLOR\"\n"
         config_content+="TODO_TEXT_COLOR=\"$TODO_TEXT_COLOR\"\n"
+        config_content+="TODO_TASK_TEXT_COLOR=\"$TODO_TASK_TEXT_COLOR\"\n"
         config_content+="TODO_TITLE_COLOR=\"$TODO_TITLE_COLOR\"\n"
         config_content+="TODO_AFFIRMATION_COLOR=\"$TODO_AFFIRMATION_COLOR\"\n"
+        config_content+="TODO_BULLET_COLOR=\"$TODO_BULLET_COLOR\"\n"
     else
         # Export all configuration settings
         config_content+="# Todo Reminder Configuration\n"
@@ -1228,8 +1233,10 @@ function todo_config_export() {
         config_content+="TODO_BORDER_BG_COLOR=\"$TODO_BORDER_BG_COLOR\"\n"
         config_content+="TODO_CONTENT_BG_COLOR=\"$TODO_CONTENT_BG_COLOR\"\n"
         config_content+="TODO_TEXT_COLOR=\"$TODO_TEXT_COLOR\"\n"
+        config_content+="TODO_TASK_TEXT_COLOR=\"$TODO_TASK_TEXT_COLOR\"\n"
         config_content+="TODO_TITLE_COLOR=\"$TODO_TITLE_COLOR\"\n"
-        config_content+="TODO_AFFIRMATION_COLOR=\"$TODO_AFFIRMATION_COLOR\"\n\n"
+        config_content+="TODO_AFFIRMATION_COLOR=\"$TODO_AFFIRMATION_COLOR\"\n"
+        config_content+="TODO_BULLET_COLOR=\"$TODO_BULLET_COLOR\"\n\n"
         
         # Box drawing characters
         config_content+="TODO_BOX_TOP_LEFT=\"$TODO_BOX_TOP_LEFT\"\n"
@@ -1283,7 +1290,7 @@ function todo_config_import() {
     fi
     
     # Reinitialize color array and validate settings
-    TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
     
     # Basic validation of imported values
     if [[ ! "$TODO_SHOW_AFFIRMATION" =~ ^(true|false)$ ]]; then
@@ -1344,7 +1351,7 @@ function todo_config_set() {
         "colors")
             if [[ "$value" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
                 TODO_TASK_COLORS="$value"
-                TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
                 echo "Task colors set to: $value"
             else
                 echo "Error: Colors must be comma-separated numbers (0-255)" >&2
@@ -1406,9 +1413,11 @@ function todo_config_reset() {
         TODO_BORDER_BG_COLOR="235"
         TODO_CONTENT_BG_COLOR="235"
         TODO_TEXT_COLOR="240"
+        TODO_TASK_TEXT_COLOR="240"
         TODO_TITLE_COLOR="250"
         TODO_AFFIRMATION_COLOR="109"
-        TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+        TODO_BULLET_COLOR="39"
+        TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
         echo "Color configuration reset to defaults"
     else
         # Reset all settings to defaults
@@ -1429,15 +1438,17 @@ function todo_config_reset() {
         TODO_BORDER_BG_COLOR="235"
         TODO_CONTENT_BG_COLOR="235"
         TODO_TEXT_COLOR="240"
+        TODO_TASK_TEXT_COLOR="240"
         TODO_TITLE_COLOR="250"
         TODO_AFFIRMATION_COLOR="109"
+        TODO_BULLET_COLOR="39"
         TODO_BOX_TOP_LEFT="┌"
         TODO_BOX_TOP_RIGHT="┐"
         TODO_BOX_BOTTOM_LEFT="└"
         TODO_BOX_BOTTOM_RIGHT="┘"
         TODO_BOX_HORIZONTAL="─"
         TODO_BOX_VERTICAL="│"
-        TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+        TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
         echo "Configuration reset to defaults"
     fi
 }
@@ -1461,12 +1472,14 @@ function todo_config_preset() {
             TODO_TASK_COLORS="250,248,246,244,242,240"
             TODO_BORDER_COLOR="238"
             TODO_TEXT_COLOR="245"
+            TODO_TASK_TEXT_COLOR="245"
             TODO_TITLE_COLOR="255"
             TODO_AFFIRMATION_COLOR="250"
+            TODO_BULLET_COLOR="250"
             TODO_SHOW_AFFIRMATION="false"
             TODO_PADDING_LEFT="0"
             TODO_PADDING_RIGHT="2"
-            TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
             echo "Applied minimal preset"
             ;;
         "colorful")
@@ -1477,12 +1490,14 @@ function todo_config_preset() {
             TODO_TASK_COLORS="196,202,208,214,220,226"
             TODO_BORDER_COLOR="201"
             TODO_TEXT_COLOR="255"
+            TODO_TASK_TEXT_COLOR="255"
             TODO_TITLE_COLOR="226"
             TODO_AFFIRMATION_COLOR="213"
+            TODO_BULLET_COLOR="226"
             TODO_SHOW_AFFIRMATION="true"
             TODO_PADDING_LEFT="1"
             TODO_PADDING_RIGHT="1"
-            TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
             echo "Applied colorful preset"
             ;;
         "work")
@@ -1493,13 +1508,15 @@ function todo_config_preset() {
             TODO_TASK_COLORS="21,33,39,45,51,57"
             TODO_BORDER_COLOR="33"
             TODO_TEXT_COLOR="250"
+            TODO_TASK_TEXT_COLOR="250"
             TODO_TITLE_COLOR="39"
             TODO_AFFIRMATION_COLOR="75"
+            TODO_BULLET_COLOR="39"
             TODO_SHOW_AFFIRMATION="true"
             TODO_PADDING_LEFT="2"
             TODO_PADDING_RIGHT="2"
             TODO_BOX_WIDTH_FRACTION="0.4"
-            TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
             echo "Applied work preset"
             ;;
         "dark")
@@ -1512,12 +1529,14 @@ function todo_config_preset() {
             TODO_BORDER_BG_COLOR="232"
             TODO_CONTENT_BG_COLOR="233"
             TODO_TEXT_COLOR="244"
+            TODO_TASK_TEXT_COLOR="244"
             TODO_TITLE_COLOR="255"
             TODO_AFFIRMATION_COLOR="103"
+            TODO_BULLET_COLOR="166"
             TODO_SHOW_AFFIRMATION="true"
             TODO_PADDING_LEFT="0"
             TODO_PADDING_RIGHT="4"
-            TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
+            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
             echo "Applied dark preset"
             ;;
         *)
@@ -1645,6 +1664,51 @@ function show_step_header() {
 }
 
 # Helper function to show color options with visual indicators
+function show_designer_color_palette() {
+    # Show the perfect color picker grid for selection
+    echo
+    echo "🎨 Designer Color Palette"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo
+    
+    # System Colors (0-15) - 8 per row
+    echo "System Colors (0-15):"
+    show_color_square_row 0 8
+    show_color_square_row 8 8  
+    echo
+    
+    # Extended colors (16-231) - Designer Palette (96 colors: 16-111)
+    echo "Designer Palette (16-111):"
+    local n=16
+    for ((n=16; n<=96; n+=12)); do
+        show_color_square_row $n 12
+        # Add spacing every 3 rows
+        if [[ $((($n - 16) / 12 % 3)) -eq 2 ]]; then
+            echo
+        fi
+    done
+    show_color_square_row 108 4  # Last row: 108-111
+    echo
+    
+    # Additional colors (112-231)
+    echo "Extended Colors (112-231):"
+    for ((n=112; n<=220; n+=12)); do
+        show_color_square_row $n 12
+        # Add spacing every 3 rows
+        if [[ $((($n - 112) / 12 % 3)) -eq 2 ]]; then
+            echo
+        fi
+    done
+    show_color_square_row 228 4  # Last row: 228-231
+    echo
+    
+    # Grayscale (232-255)
+    echo "Grayscale Ramp (232-255):"
+    show_color_square_row 232 12
+    show_color_square_row 244 12
+    echo
+}
+
 function show_color_option() {
     local option_key="$1"
     local option_desc="$2"
@@ -1909,142 +1973,231 @@ function todo_config_wizard() {
         esac
     fi
     
-    # Step 5: Colors (optional)
-    clear
-    show_wizard_preview "Color Customization"
-    show_step_header "5" "Colors" "Customize the color scheme (optional)"
+    # Step 5: Color Customization (unified)
+    while true; do
+        clear
+        show_wizard_preview "Color Customization"
+        show_step_header "5" "Color Customization" "Customize colors with live preview"
     
-    echo "   Customize colors?"
-    echo "   ${fg[cyan]}y)${reset_color} Yes, customize colors"
-    echo "   ${fg[cyan]}n)${reset_color} No, keep current colors"
-    echo
-    
-    local color_choice=$(read_single_char "   ${fg[yellow]}Your choice [n]: ${reset_color}" "ynYN" "n")
-    
-    if [[ "$color_choice" =~ ^[yY]$ ]]; then
-        # Task colors
-        echo "   Task bullet color themes:"
-        show_color_option "1" "Warm (red/orange)" "196,208,220,226,227,228"
-        show_color_option "2" "Cool (blue/cyan)" "33,39,45,51,87,123"
-        show_color_option "3" "Nature (green)" "22,28,34,40,70,106"
-        show_color_option "4" "Current colors" "$TODO_TASK_COLORS"
-        echo "   ${fg[cyan]}c)${reset_color} Custom colors"
+        echo "   Current colors:"
+        printf "   ${fg[cyan]}1)${reset_color} Title color:       %s " "$TODO_TITLE_COLOR"
+        printf "\e[38;5;${TODO_TITLE_COLOR}m████\e[0m\n"
+        printf "   ${fg[cyan]}2)${reset_color} Task text color:   %s " "$TODO_TASK_TEXT_COLOR"
+        printf "\e[38;5;${TODO_TASK_TEXT_COLOR}m████\e[0m\n"
+        printf "   ${fg[cyan]}3)${reset_color} Affirmation color: %s " "$TODO_AFFIRMATION_COLOR"
+        printf "\e[38;5;${TODO_AFFIRMATION_COLOR}m████\e[0m\n"
+        printf "   ${fg[cyan]}4)${reset_color} Task bullet colors: "
+        # Show first few colors from the rotation
+        local first_colors=(${(@s:,:)TODO_TASK_COLORS})
+        for i in {1..3}; do
+            if [[ -n "${first_colors[i]}" ]]; then
+                printf "\e[38;5;${first_colors[i]}m▪\e[0m"
+            fi
+        done
+        echo " (rotating)"
+        printf "   ${fg[cyan]}5)${reset_color} Border color:      %s " "$TODO_BORDER_COLOR"
+        printf "\e[38;5;${TODO_BORDER_COLOR}m████\e[0m\n"
+        printf "   ${fg[cyan]}6)${reset_color} Background colors: %s " "$TODO_CONTENT_BG_COLOR"
+        printf "\e[38;5;${TODO_CONTENT_BG_COLOR}m████\e[0m\n"
+        echo
+        echo "   ${fg[cyan]}c)${reset_color} Continue to next step"
         echo
         
-        local task_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234cC" "4")
-        case "$task_color_choice" in
-            1) TODO_TASK_COLORS="196,208,220,226,227,228" ;;
-            2) TODO_TASK_COLORS="33,39,45,51,87,123" ;;
-            3) TODO_TASK_COLORS="22,28,34,40,70,106" ;;
-            4) ;; # Keep current
-            c|C)
-                echo
-                echo "   ${fg[yellow]}📋 Designer Color Palette - Choose from 96 carefully selected colors:${reset_color}"
-                echo "   ${fg[gray]}Format: [number][color square] - Enter comma-separated numbers${reset_color}"
+        local color_element_choice=$(read_single_char "   ${fg[yellow]}Select [1-6] to customize or 'c' to continue [c]: ${reset_color}" "123456cC" "c")
+        
+        if [[ "$color_element_choice" =~ ^[cC]$ ]]; then
+            # Continue to next step - exit color customization loop
+            break
+        else
+        
+        # Handle the selected color element
+        case "$color_element_choice" in
+            1|2|3)
+                # Individual text colors (title, task text, affirmation)
+                local element_name
+                case "$color_element_choice" in
+                    1) element_name="Title" ;;
+                    2) element_name="Task text" ;;
+                    3) element_name="Affirmation" ;;
+                esac
+                
+                clear
+                show_wizard_preview "Color Customization"
+                show_step_header "5" "Color Customization" "Customize colors with live preview"
+                echo "   ${element_name} color options:"
+                show_color_option "1" "Bright white" "255"
+                show_color_option "2" "Light gray" "250"
+                show_color_option "3" "Medium gray" "245"
+                show_color_option "4" "Dark gray" "240"
+                show_color_option "5" "Blue accent" "39"
+                show_color_option "6" "Green accent" "46"
+                echo "   ${fg[cyan]}c)${reset_color} Custom color (full palette)"
                 echo
                 
-                # System Colors (0-15)
-                echo "   System Colors (0-15):"
-                printf "   "
-                for i in {0..7}; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
-                printf "   "
-                for i in {8..15}; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                local color_option=$(read_single_char "   ${fg[yellow]}Your choice [2]: ${reset_color}" "123456cC" "2")
+                local new_color=""
+                
+                case "$color_option" in
+                    1) new_color="255" ;;
+                    2) new_color="250" ;;
+                    3) new_color="245" ;;
+                    4) new_color="240" ;;
+                    5) new_color="39" ;;
+                    6) new_color="46" ;;
+                    c|C)
+                        # Show Designer Palette for custom color selection
+                        clear
+                        show_wizard_preview "Color Customization"
+                        show_step_header "5" "Color Customization" "Choose color for ${element_name:l}"
+                        
+                        # Use the perfect color picker
+                        show_designer_color_palette
+                        
+                        printf "   ${fg[yellow]}Enter color number (0-255): ${reset_color}"
+                        read -r custom_color
+                        if [[ "$custom_color" =~ ^[0-9]+$ ]] && [[ "$custom_color" -ge 0 ]] && [[ "$custom_color" -le 255 ]]; then
+                            new_color="$custom_color"
+                        else
+                            continue  # Invalid input, go back to main menu
+                        fi
+                        ;;
+                esac
+                
+                # Apply the color change
+                case "$color_element_choice" in
+                    1) TODO_TITLE_COLOR="$new_color" ;;
+                    2) TODO_TASK_TEXT_COLOR="$new_color" ;;
+                    3) TODO_AFFIRMATION_COLOR="$new_color" ;;
+                esac
+                ;;
+                
+            4)
+                # Task bullet color themes
+                clear
+                show_wizard_preview "Color Customization"
+                show_step_header "5" "Color Customization" "Customize colors with live preview"
+                echo "   Task bullet color themes:"
+                show_color_option "1" "Warm (red/orange)" "196,208,220,226,227,228"
+                show_color_option "2" "Cool (blue/cyan)" "33,39,45,51,87,123"
+                show_color_option "3" "Nature (green)" "22,28,34,40,70,106"
+                show_color_option "4" "Current colors" "$TODO_TASK_COLORS"
+                echo "   ${fg[cyan]}c)${reset_color} Custom colors"
                 echo
                 
-                # Essential Reds
-                echo "   Essential Reds:"
-                printf "   "
-                for i in 196 197 203 204 210 211 88 124 160 161 167 168; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                local color_option=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234cC" "4")
+                
+                case "$color_option" in
+                    1) TODO_TASK_COLORS="196,208,220,226,227,228" ;;
+                    2) TODO_TASK_COLORS="33,39,45,51,87,123" ;;
+                    3) TODO_TASK_COLORS="22,28,34,40,70,106" ;;
+                    4) ;; # Keep current
+                    c|C)
+                        # Custom task bullet colors with Designer Palette
+                        clear
+                        show_wizard_preview "Color Customization"
+                        show_step_header "5" "Color Customization" "Choose colors for task bullets"
+                        
+                        # Use the perfect color picker
+                        show_designer_color_palette
+                        
+                        echo "   ${fg[gray]}Task colors rotate for each task - enter multiple colors separated by commas${reset_color}"
+                        echo
+                        printf "   ${fg[yellow]}Enter colors (comma-separated, e.g. 196,46,33,226,39,129): ${reset_color}"
+                        read -r task_colors_input
+                        if [[ -n "$task_colors_input" && "$task_colors_input" =~ ^[0-9,\ ]+$ ]]; then
+                            task_colors_input="${task_colors_input// /}"
+                            TODO_TASK_COLORS="$task_colors_input"
+                        fi
+                        ;;
+                esac
+                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})  # Update the colors array
+                ;;
+                
+            5)
+                # Border color
+                clear
+                show_wizard_preview "Color Customization"
+                show_step_header "5" "Color Customization" "Customize colors with live preview"
+                echo "   Border color options:"
+                show_color_option "1" "Light gray" "250"
+                show_color_option "2" "Dark gray" "240"
+                show_color_option "3" "Blue accent" "39"
+                show_color_option "4" "Current" "$TODO_BORDER_COLOR"
+                echo "   ${fg[cyan]}c)${reset_color} Custom color (full palette)"
                 echo
                 
-                # Essential Greens  
-                echo "   Essential Greens:"
-                printf "   "
-                for i in 28 34 40 46 76 82 22 29 35 41 47 83; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                local border_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234cC" "4")
+                case "$border_color_choice" in
+                    1) TODO_BORDER_COLOR="250" ;;
+                    2) TODO_BORDER_COLOR="240" ;;
+                    3) TODO_BORDER_COLOR="39" ;;
+                    4) ;; # Keep current
+                    c|C)
+                        # Custom border color with Designer Palette
+                        clear
+                        show_wizard_preview "Color Customization"
+                        show_step_header "5" "Color Customization" "Choose color for border"
+                        
+                        # Use the perfect color picker
+                        show_designer_color_palette
+                        
+                        printf "   ${fg[yellow]}Enter color number (0-255): ${reset_color}"
+                        read -r custom_color
+                        if [[ "$custom_color" =~ ^[0-9]+$ ]] && [[ "$custom_color" -ge 0 ]] && [[ "$custom_color" -le 255 ]]; then
+                            TODO_BORDER_COLOR="$custom_color"
+                        fi
+                        ;;
+                esac
+                ;;
+                
+            6)
+                # Background colors
+                clear
+                show_wizard_preview "Color Customization"
+                show_step_header "5" "Color Customization" "Customize colors with live preview"
+                echo "   Background color options:"
+                show_color_option "1" "Very dark" "232"
+                show_color_option "2" "Dark" "235"
+                show_color_option "3" "Medium" "238"
+                show_color_option "4" "Current" "$TODO_CONTENT_BG_COLOR"
+                echo "   ${fg[cyan]}c)${reset_color} Custom color (full palette)"
                 echo
                 
-                # Essential Blues
-                echo "   Essential Blues:"
-                printf "   "
-                for i in 33 39 45 51 69 75 81 87 25 31 37 67; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
-                echo
-                
-                # Essential Yellows & Oranges
-                echo "   Yellows & Oranges:"
-                printf "   "
-                for i in 220 221 226 227 228 178 214 215 208 209 172 173; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
-                echo
-                
-                # Purples & Magentas
-                echo "   Purples & Magentas:"
-                printf "   "
-                for i in 125 126 127 129 135 141 147 165 171 177 183 189; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
-                echo
-                
-                # Cyans & Teals
-                echo "   Cyans & Teals:"
-                printf "   "
-                for i in 23 30 36 42 48 49 50 51 73 79 80 86; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
-                echo
-                
-                # Grayscale (232-255)
-                echo "   Grayscale (232-255):"
-                printf "   "
-                for i in {232..243}; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
-                printf "   "
-                for i in {244..255}; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
-                echo
-                
-                echo "   💡 For the full 256-color palette, use: ${fg[cyan]}todo_colors${reset_color}"
-                echo
-                printf "   ${fg[yellow]}Enter colors (comma-separated, e.g. 196,46,33): ${reset_color}"
-                read -r task_colors_input
-                if [[ -n "$task_colors_input" && "$task_colors_input" =~ ^[0-9,\ ]+$ ]]; then
-                    # Clean up spaces and validate each color
-                    task_colors_input="${task_colors_input// /}"
-                    TODO_TASK_COLORS="$task_colors_input"
-                    echo "   ✅ Colors updated!"
-                else
-                    echo "   ⚠️  Invalid format. Keeping current colors."
-                fi
-                echo
+                local bg_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234cC" "4")
+                case "$bg_color_choice" in
+                    1) TODO_BORDER_BG_COLOR="232"; TODO_CONTENT_BG_COLOR="232" ;;
+                    2) TODO_BORDER_BG_COLOR="235"; TODO_CONTENT_BG_COLOR="235" ;;
+                    3) TODO_BORDER_BG_COLOR="238"; TODO_CONTENT_BG_COLOR="238" ;;
+                    4) ;; # Keep current
+                    c|C)
+                        # Custom background color with Designer Palette
+                        clear
+                        show_wizard_preview "Color Customization"
+                        show_step_header "5" "Color Customization" "Choose color for background"
+                        
+                        # Use the perfect color picker
+                        show_designer_color_palette
+                        
+                        printf "   ${fg[yellow]}Enter color number (0-255): ${reset_color}"
+                        read -r custom_color
+                        if [[ "$custom_color" =~ ^[0-9]+$ ]] && [[ "$custom_color" -ge 0 ]] && [[ "$custom_color" -le 255 ]]; then
+                            TODO_BORDER_BG_COLOR="$custom_color"
+                            TODO_CONTENT_BG_COLOR="$custom_color"
+                        fi
+                        ;;
+                esac
                 ;;
         esac
         
-        # Border color themes
-        echo "   Border color themes:"
-        show_color_option "1" "Light gray" "250"
-        show_color_option "2" "Dark gray" "240"
-        show_color_option "3" "Blue accent" "39"
-        show_color_option "4" "Current" "$TODO_BORDER_COLOR"
-        echo
-        
-        local border_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234" "4")
-        case "$border_color_choice" in
-            1) TODO_BORDER_COLOR="250" ;;
-            2) TODO_BORDER_COLOR="240" ;;
-            3) TODO_BORDER_COLOR="39" ;;
-            4) ;; # Keep current
-        esac
-        
-        # Background color themes
-        echo "   Background color themes:"
-        show_color_option "1" "Very dark" "232"
-        show_color_option "2" "Dark" "235"
-        show_color_option "3" "Medium" "238"
-        show_color_option "4" "Current" "$TODO_CONTENT_BG_COLOR"
-        echo
-        
-        local bg_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234" "4")
-        case "$bg_color_choice" in
-            1) TODO_BORDER_BG_COLOR="232"; TODO_CONTENT_BG_COLOR="232" ;;
-            2) TODO_BORDER_BG_COLOR="235"; TODO_CONTENT_BG_COLOR="235" ;;
-            3) TODO_BORDER_BG_COLOR="238"; TODO_CONTENT_BG_COLOR="238" ;;
-            4) ;; # Keep current
-        esac
-    fi
+        # After customizing a color, loop back to color menu
+        continue
+        fi  # Close the else block
+    done  # End color customization loop
     
-    # Step 6: Layout (optional)
+    # Reinitialize color array after any changes
+    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+    
+    # Step 6: Layout (optional) - renumbered from step 7
     clear
     show_wizard_preview "Layout & Spacing"
     show_step_header "6" "Layout" "Adjust spacing and positioning (optional)"
@@ -2057,39 +2210,141 @@ function todo_config_wizard() {
     local layout_choice=$(read_single_char "   ${fg[yellow]}Your choice [n]: ${reset_color}" "ynYN" "n")
     
     if [[ "$layout_choice" =~ ^[yY]$ ]]; then
-        # Left padding
-        echo "   Left padding options:"
-        echo "   ${fg[cyan]}1)${reset_color} None (0 spaces)"
-        echo "   ${fg[cyan]}2)${reset_color} Small (2 spaces)"
-        echo "   ${fg[cyan]}3)${reset_color} Medium (4 spaces)"
-        echo "   ${fg[cyan]}4)${reset_color} Large (8 spaces)"
-        echo
-        
-        local left_padding_choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "1234" "1")
-        case "$left_padding_choice" in
-            1) TODO_PADDING_LEFT="0" ;;
-            2) TODO_PADDING_LEFT="2" ;;
-            3) TODO_PADDING_LEFT="4" ;;
-            4) TODO_PADDING_LEFT="8" ;;
-        esac
-        
-        # Top padding
-        echo "   Top padding options:"
-        echo "   ${fg[cyan]}1)${reset_color} None (0 lines)"
-        echo "   ${fg[cyan]}2)${reset_color} Small (1 line)"
-        echo "   ${fg[cyan]}3)${reset_color} Medium (2 lines)"
-        echo
-        
-        local top_padding_choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "123" "1")
-        case "$top_padding_choice" in
-            1) TODO_PADDING_TOP="0" ;;
-            2) TODO_PADDING_TOP="1" ;;
-            3) TODO_PADDING_TOP="2" ;;
-        esac
+        # Padding customization loop
+        while true; do
+            clear
+            show_wizard_preview "Layout & Spacing"
+            show_step_header "6" "Layout" "Customize padding and spacing"
+            
+            echo "   Current padding:"
+            echo "   ${fg[cyan]}1)${reset_color} Top padding:    ${TODO_PADDING_TOP:-0} lines"
+            echo "   ${fg[cyan]}2)${reset_color} Right padding:  ${TODO_PADDING_RIGHT:-4} spaces"
+            echo "   ${fg[cyan]}3)${reset_color} Bottom padding: ${TODO_PADDING_BOTTOM:-0} lines"
+            echo "   ${fg[cyan]}4)${reset_color} Left padding:   ${TODO_PADDING_LEFT:-0} spaces"
+            echo
+            echo "   ${fg[cyan]}c)${reset_color} Continue to next step"
+            echo
+            
+            local padding_choice=$(read_single_char "   ${fg[yellow]}Select [1-4] to customize or 'c' to continue [c]: ${reset_color}" "1234cC" "c")
+            
+            if [[ "$padding_choice" =~ ^[cC]$ ]]; then
+                break
+            else
+                # Handle padding selection
+                case "$padding_choice" in
+                    1)
+                        echo "   Top padding options:"
+                        echo "   ${fg[cyan]}1)${reset_color} None (0 lines)"
+                        echo "   ${fg[cyan]}2)${reset_color} Small (1 line)"
+                        echo "   ${fg[cyan]}3)${reset_color} Medium (2 lines)"
+                        echo "   ${fg[cyan]}4)${reset_color} Large (3 lines)"
+                        echo "   ${fg[cyan]}c)${reset_color} Custom number"
+                        echo
+                        local choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "1234cC" "1")
+                        case "$choice" in
+                            1) TODO_PADDING_TOP="0" ;;
+                            2) TODO_PADDING_TOP="1" ;;
+                            3) TODO_PADDING_TOP="2" ;;
+                            4) TODO_PADDING_TOP="3" ;;
+                            c|C)
+                                printf "   ${fg[yellow]}Enter top padding (lines): ${reset_color}"
+                                read -r custom_padding
+                                if [[ "$custom_padding" =~ ^[0-9]+$ ]] && [[ "$custom_padding" -ge 0 ]] && [[ "$custom_padding" -le 10 ]]; then
+                                    TODO_PADDING_TOP="$custom_padding"
+                                    echo "   ✅ Top padding set to $custom_padding lines"
+                                else
+                                    echo "   ⚠️  Invalid input. Please enter a number 0-10"
+                                fi
+                                sleep 1
+                                ;;
+                        esac
+                        ;;
+                    2)
+                        echo "   Right padding options:"
+                        echo "   ${fg[cyan]}1)${reset_color} None (0 spaces)"
+                        echo "   ${fg[cyan]}2)${reset_color} Small (2 spaces)"
+                        echo "   ${fg[cyan]}3)${reset_color} Medium (4 spaces)"
+                        echo "   ${fg[cyan]}4)${reset_color} Large (8 spaces)"
+                        echo "   ${fg[cyan]}c)${reset_color} Custom number"
+                        echo
+                        local choice=$(read_single_char "   ${fg[yellow]}Your choice [3]: ${reset_color}" "1234cC" "3")
+                        case "$choice" in
+                            1) TODO_PADDING_RIGHT="0" ;;
+                            2) TODO_PADDING_RIGHT="2" ;;
+                            3) TODO_PADDING_RIGHT="4" ;;
+                            4) TODO_PADDING_RIGHT="8" ;;
+                            c|C)
+                                printf "   ${fg[yellow]}Enter right padding (spaces): ${reset_color}"
+                                read -r custom_padding
+                                if [[ "$custom_padding" =~ ^[0-9]+$ ]] && [[ "$custom_padding" -ge 0 ]] && [[ "$custom_padding" -le 20 ]]; then
+                                    TODO_PADDING_RIGHT="$custom_padding"
+                                    echo "   ✅ Right padding set to $custom_padding spaces"
+                                else
+                                    echo "   ⚠️  Invalid input. Please enter a number 0-20"
+                                fi
+                                sleep 1
+                                ;;
+                        esac
+                        ;;
+                    3)
+                        echo "   Bottom padding options:"
+                        echo "   ${fg[cyan]}1)${reset_color} None (0 lines)"
+                        echo "   ${fg[cyan]}2)${reset_color} Small (1 line)"
+                        echo "   ${fg[cyan]}3)${reset_color} Medium (2 lines)"
+                        echo "   ${fg[cyan]}4)${reset_color} Large (3 lines)"
+                        echo "   ${fg[cyan]}c)${reset_color} Custom number"
+                        echo
+                        local choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "1234cC" "1")
+                        case "$choice" in
+                            1) TODO_PADDING_BOTTOM="0" ;;
+                            2) TODO_PADDING_BOTTOM="1" ;;
+                            3) TODO_PADDING_BOTTOM="2" ;;
+                            4) TODO_PADDING_BOTTOM="3" ;;
+                            c|C)
+                                printf "   ${fg[yellow]}Enter bottom padding (lines): ${reset_color}"
+                                read -r custom_padding
+                                if [[ "$custom_padding" =~ ^[0-9]+$ ]] && [[ "$custom_padding" -ge 0 ]] && [[ "$custom_padding" -le 10 ]]; then
+                                    TODO_PADDING_BOTTOM="$custom_padding"
+                                    echo "   ✅ Bottom padding set to $custom_padding lines"
+                                else
+                                    echo "   ⚠️  Invalid input. Please enter a number 0-10"
+                                fi
+                                sleep 1
+                                ;;
+                        esac
+                        ;;
+                    4)
+                        echo "   Left padding options:"
+                        echo "   ${fg[cyan]}1)${reset_color} None (0 spaces)"
+                        echo "   ${fg[cyan]}2)${reset_color} Small (2 spaces)"
+                        echo "   ${fg[cyan]}3)${reset_color} Medium (4 spaces)"
+                        echo "   ${fg[cyan]}4)${reset_color} Large (8 spaces)"
+                        echo "   ${fg[cyan]}c)${reset_color} Custom number"
+                        echo
+                        local choice=$(read_single_char "   ${fg[yellow]}Your choice [1]: ${reset_color}" "1234cC" "1")
+                        case "$choice" in
+                            1) TODO_PADDING_LEFT="0" ;;
+                            2) TODO_PADDING_LEFT="2" ;;
+                            3) TODO_PADDING_LEFT="4" ;;
+                            4) TODO_PADDING_LEFT="8" ;;
+                            c|C)
+                                printf "   ${fg[yellow]}Enter left padding (spaces): ${reset_color}"
+                                read -r custom_padding
+                                if [[ "$custom_padding" =~ ^[0-9]+$ ]] && [[ "$custom_padding" -ge 0 ]] && [[ "$custom_padding" -le 20 ]]; then
+                                    TODO_PADDING_LEFT="$custom_padding"
+                                    echo "   ✅ Left padding set to $custom_padding spaces"
+                                else
+                                    echo "   ⚠️  Invalid input. Please enter a number 0-20"
+                                fi
+                                sleep 1
+                                ;;
+                        esac
+                        ;;
+                esac
+                # Continue the loop to show updated values
+            fi
+        done
     fi
-    
-    # Reinitialize color array after any changes
-    TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
     
     # Step 7: Final Preview & Save
     clear
@@ -2099,42 +2354,22 @@ function todo_config_wizard() {
     echo "   Save this configuration?"
     echo "   ${fg[cyan]}y)${reset_color} Yes, save and apply"
     echo "   ${fg[cyan]}n)${reset_color} No, discard changes"
-    echo "   ${fg[cyan]}p)${reset_color} Save as custom preset"
     echo
     
-    local save_choice=$(read_single_char "   ${fg[yellow]}Your choice [y]: ${reset_color}" "ynpYNP" "y")
+    local save_choice=$(read_single_char "   ${fg[yellow]}Your choice [y]: ${reset_color}" "ynYN" "y")
     
     case "${save_choice}" in
         n|N)
             echo "   ${fg[yellow]}Configuration not saved (changes are temporary)${reset_color}"
             ;;
-        p|P)
-            printf "   ${fg[yellow]}Enter preset name: ${reset_color}"
-            read -r preset_name
-            if [[ -n "$preset_name" ]]; then
-                todo_config save-preset "$preset_name" >/dev/null 2>&1
-                if [[ $? -eq 0 ]]; then
-                    echo "   ✅ Configuration saved as preset '$preset_name'"
-                else
-                    echo "   ⚠️  Could not save preset"
-                fi
-            fi
-            echo "   ✅ Configuration applied and will persist across sessions"
-            ;;
         *)
             echo "   ✅ Configuration applied and will persist across sessions"
-            echo "   💡 To save permanently: ${fg[cyan]}todo_config export ~/.todo-reminder-config.zsh${reset_color}"
-            echo "   💡 To load on startup: Add ${fg[cyan]}source ~/.todo-reminder-config.zsh${reset_color} to your .zshrc"
             ;;
     esac
     
     echo
     echo "${fg[bold]}${fg[green]}🎉 Wizard Complete!${reset_color}"
     echo "${fg[blue]}═══════════════════${reset_color}"
-    echo "📋 Use ${fg[cyan]}todo \"task\"${reset_color} to add your first task"
-    echo "⚙️  Use ${fg[cyan]}todo_config export${reset_color} to back up your settings"
-    echo "❓ Use ${fg[cyan]}todo_help${reset_color} for general plugin help"
-    echo
 }
 
 # Main configuration command dispatcher
@@ -2189,4 +2424,3 @@ alias todo_hide="todo_toggle_all hide"
 alias todo_show="todo_toggle_all show"
 alias todo_toggle=todo_toggle_all
 alias todo_setup=todo_config_wizard
-

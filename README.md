@@ -193,9 +193,11 @@ export TODO_TASK_COLORS="196,46,33,21,129,201"  # Task bullet colors (default: "
 export TODO_BORDER_COLOR=244                 # Box border foreground color (default: 240)
 export TODO_BORDER_BG_COLOR=233              # Box border background color (default: 235)
 export TODO_CONTENT_BG_COLOR=234             # Box content background color (default: 235)
-export TODO_TEXT_COLOR=245                   # Task text color (default: 240)
+export TODO_TEXT_COLOR=245                   # Task text color (legacy, default: 240)
+export TODO_TASK_TEXT_COLOR=245              # Task text color (default: 240)
 export TODO_TITLE_COLOR=255                  # Box title color (default: 250)
 export TODO_AFFIRMATION_COLOR=33             # Affirmation text color (default: 109)
+export TODO_BULLET_COLOR=39                  # Bullet character color (default: 39)
 
 # Legacy compatibility
 export TODO_BACKGROUND_COLOR=235             # Sets both border and content bg if new vars not set
@@ -283,8 +285,10 @@ export TODO_TASK_COLORS="196,46,33,21,129,201"  # Bright and vibrant task colors
 export TODO_BORDER_COLOR=244                     # Lighter border foreground
 export TODO_BORDER_BG_COLOR=233                  # Dark border background
 export TODO_CONTENT_BG_COLOR=234                 # Slightly lighter content background
-export TODO_TITLE_COLOR=255                      # Bright white title
+export TODO_TASK_TEXT_COLOR=255                  # Bright white task text
+export TODO_TITLE_COLOR=226                      # Golden title
 export TODO_AFFIRMATION_COLOR=33                 # Blue affirmations
+export TODO_BULLET_COLOR=196                     # Red bullet points
 # Make it uniquely yours
 ```
 
