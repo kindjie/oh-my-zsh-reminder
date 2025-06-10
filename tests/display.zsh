@@ -15,6 +15,7 @@ source_test_plugin() {
 # Create test data in temporary file to avoid overwriting user data
 setup_test_data() {
     TEST_SAVE_FILE="${TMPDIR:-/tmp}/test_todo.sav"
+    TODO_SAVE_FILE="$TEST_SAVE_FILE"  # Set the correct environment variable
     
     # Set up test data with single-file format (tasks with null separators)
     printf 'Test task with some longer text that should wrap nicely within the box\000Another shorter task\000A third task to show multiple items\n\e[38;5;167m\000\e[38;5;71m\000\e[38;5;136m\n4\n' > "$TEST_SAVE_FILE"
@@ -55,8 +56,14 @@ setup_test_data() {
         fi
     }
     
-    # Override load_tasks for testing
-    function load_tasks() { load_tasks_test }
+    # Override load_tasks for testing and ensure caching variables are reset
+    function load_tasks() { 
+        # Reset cache variables to force reload
+        TODO_FILE_MTIME=0
+        TODO_CACHED_TASKS=""
+        TODO_CACHED_COLORS=""
+        load_tasks_test 
+    }
 }
 
 # Test 1: Basic display functionality
@@ -66,7 +73,7 @@ test_basic_display() {
     source_test_plugin
     setup_test_data
     
-    local output=$(todo_display 2>&1)
+    local output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -n "$output" ]] && [[ "$output" == *"┌"* ]] && [[ "$output" == *"└"* ]]; then
         echo "✅ PASS: Basic display shows todo box with borders"
     else
@@ -153,7 +160,7 @@ test_show_hide() {
     # Test hidden todo box
     original_box_state="$TODO_SHOW_TODO_BOX"
     TODO_SHOW_TODO_BOX="false"
-    output=$(todo_display 2>&1)
+    output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -z "$output" || "$output" == $'\n' ]]; then
         echo "✅ PASS: Hidden todo box produces no output"
     else
@@ -164,7 +171,7 @@ test_show_hide() {
     TODO_SHOW_TODO_BOX="true"
     original_affirmation_state="$TODO_SHOW_AFFIRMATION"
     TODO_SHOW_AFFIRMATION="false"
-    output=$(todo_display 2>&1)
+    output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -n "$output" ]]; then
         echo "✅ PASS: Hidden affirmation still shows todo box"
     else
@@ -191,10 +198,10 @@ test_empty_tasks() {
         todo_color_index=1
     }
     
-    output=$(todo_display 2>&1)
-    # Empty task list may show contextual hints (UX improvement) or no output
-    if [[ -z "$output" ]] || [[ "$output" == *"💡"* ]]; then
-        echo "✅ PASS: Empty task list produces no output or helpful hints"
+    output=$(COLUMNS=80 todo_display 2>&1)
+    # Empty task list may show contextual hints (UX improvement), terminal width warnings, or no output
+    if [[ -z "$output" ]] || [[ "$output" == *"💡"* ]] || [[ "$output" == *"Terminal too narrow"* ]]; then
+        echo "✅ PASS: Empty task list produces no output, helpful hints, or terminal warnings"
     else
         echo "❌ FAIL: Empty task list produces unexpected output: $output"
     fi

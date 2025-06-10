@@ -219,7 +219,9 @@ function test_claude_md_functions() {
     local missing_functions=()
     
     for func_name in "${documented_functions[@]}"; do
-        if ! grep -q "^function $func_name\|^$func_name()" reminder.plugin.zsh; then
+        # Check main plugin file and wizard module for functions
+        if ! grep -q "^function $func_name\|^$func_name()" reminder.plugin.zsh && \
+           ! grep -q "^function $func_name\|^$func_name()" lib/wizard.zsh 2>/dev/null; then
             missing_functions+=("$func_name")
         fi
     done
@@ -242,9 +244,14 @@ function test_claude_md_architecture() {
     
     local failed_claims=()
     
-    # Test: "Single File Plugin"
+    # Test: "Single File Plugin" - now modular but primarily single file
     if [[ ! -f "reminder.plugin.zsh" ]]; then
-        failed_claims+=("Single file plugin claim - file missing")
+        failed_claims+=("Main plugin file missing")
+    fi
+    
+    # Test: Modular structure for optional components
+    if [[ ! -d "lib" ]] || [[ ! -f "lib/wizard.zsh" ]]; then
+        failed_claims+=("Modular structure claim - lib directory or wizard module missing")
     fi
     
     # Test: "Persistent Storage: Tasks and colors stored in single file ~/.todo.save"
@@ -263,9 +270,9 @@ function test_claude_md_architecture() {
         failed_claims+=("Color management claim - color cycling not found")
     fi
     
-    # Test: "Emoji Support: Full Unicode character width detection"
-    if ! grep -q "get_char_display_width\|get_string_display_width" reminder.plugin.zsh; then
-        failed_claims+=("Emoji support claim - width detection functions missing")
+    # Test: "Emoji Support: Unicode character width detection with zsh native features"
+    if ! grep -q '${(m)#' reminder.plugin.zsh; then
+        failed_claims+=("Emoji support claim - zsh native width detection missing")
     fi
     
     if [[ ${#failed_claims[@]} -eq 0 ]]; then
@@ -442,7 +449,19 @@ function test_config_variables_documented() {
     local undocumented_vars=()
     
     # Internal variables that don't need documentation
-    local internal_vars=("TODO_COLORS" "TODO_TASKS" "TODO_TASKS_COLORS" "TODO_FIRST_RUN_FILE")
+    local internal_vars=(
+        "TODO_COLORS"                # Parsed array from TODO_TASK_COLORS
+        "TODO_TASKS"                 # Runtime task storage
+        "TODO_TASKS_COLORS"          # Runtime color storage
+        "TODO_FIRST_RUN_FILE"        # Internal state tracking
+        "TODO_CACHED_TASKS"          # Performance optimization - cache
+        "TODO_CACHED_COLORS"         # Performance optimization - cache
+        "TODO_CACHED_COLOR_INDEX"    # Performance optimization - cache
+        "TODO_FILE_MTIME"            # Performance optimization - file tracking
+        "TODO_PLUGIN_DIR"            # Internal path resolution
+        "_TODO_LOADED_MODULES"       # Lazy loading tracking (underscore prefix)
+        "TODO_LOADED_MODULES"        # Possible grep match of _TODO_LOADED_MODULES
+    )
     
     # Check README and CLAUDE.md for variable documentation
     local doc_content=""

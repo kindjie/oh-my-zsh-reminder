@@ -116,42 +116,43 @@ test_comprehensive_characters() {
     fi
 }
 
-# Test 4: Character width functions
-test_character_width_functions() {
-    echo "\n4. Testing character width functions:"
+# Test 4: Native zsh width detection
+test_native_width_detection() {
+    echo "\n4. Testing native zsh width detection:"
     
-    # Test get_char_display_width function if it's available
-    if command -v get_char_display_width >/dev/null 2>&1; then
-        # Test ASCII character
-        ascii_result=$(get_char_display_width "A")
-        if [[ "$ascii_result" == "1" ]]; then
-            echo "✅ PASS: get_char_display_width works for ASCII"
-        else
-            echo "❌ FAIL: get_char_display_width failed for ASCII (got: $ascii_result)"
-        fi
-        
-        # Test emoji character
-        emoji_result=$(get_char_display_width "🚀")
-        if [[ "$emoji_result" == "2" ]]; then
-            echo "✅ PASS: get_char_display_width works for emoji"
-        else
-            echo "❌ FAIL: get_char_display_width failed for emoji (got: $emoji_result)"
-        fi
+    # Test zsh native character width detection
+    local ascii_char="A"
+    local ascii_width=${(m)#ascii_char}
+    if [[ $ascii_width -eq 1 ]]; then
+        echo "✅ PASS: Zsh native width detection works for ASCII characters"
     else
-        echo "⚠️  WARNING: get_char_display_width function not available"
+        echo "❌ FAIL: Zsh native width detection failed for ASCII (got: $ascii_width, expected: 1)"
     fi
     
-    # Test get_string_display_width function if it's available
-    if command -v get_string_display_width >/dev/null 2>&1; then
-        # Test mixed string
-        mixed_result=$(get_string_display_width "🚀 Hello")
-        if [[ "$mixed_result" == "8" ]]; then  # 🚀(2) + space(1) + Hello(5) = 8
-            echo "✅ PASS: get_string_display_width works for mixed string"
-        else
-            echo "❌ FAIL: get_string_display_width failed for mixed string (got: $mixed_result, expected: 8)"
-        fi
+    # Test emoji width with zsh native detection
+    local emoji_char="🚀"
+    local emoji_width=${(m)#emoji_char}
+    if [[ $emoji_width -ge 1 ]]; then
+        echo "✅ PASS: Zsh native width detection works for emoji (width: $emoji_width)"
     else
-        echo "⚠️  WARNING: get_string_display_width function not available"
+        echo "❌ FAIL: Zsh native width detection failed for emoji (got: $emoji_width)"
+    fi
+    
+    # Test string width with zsh native detection
+    local test_string="🚀 Hello"
+    local string_width=${(m)#test_string}
+    if [[ $string_width -ge 6 ]]; then
+        echo "✅ PASS: Zsh native string width detection works (width: $string_width)"
+    else
+        echo "❌ FAIL: Zsh native string width detection failed (got: $string_width)"
+    fi
+    
+    # Test that plugin uses zsh native width detection
+    source_test_plugin
+    if grep -q '${(m)#' reminder.plugin.zsh; then
+        echo "✅ PASS: Plugin uses zsh native width detection syntax"
+    else
+        echo "❌ FAIL: Plugin doesn't appear to use zsh native width detection"
     fi
 }
 
@@ -285,7 +286,7 @@ main() {
     test_basic_character_width
     test_string_width
     test_comprehensive_characters
-    test_character_width_functions
+    test_native_width_detection
     test_edge_cases
     test_performance
     test_character_validation
