@@ -34,6 +34,7 @@ TEST_FILES=(
     "color.zsh"
     "interface.zsh"
     "character.zsh"
+    "wizard_noninteractive.zsh"
 )
 
 PERFORMANCE_TEST_FILE="performance.zsh"
@@ -74,8 +75,14 @@ run_test_file() {
     local original_pwd="$PWD"
     cd "$TESTS_DIR/.."
     
-    output=$("$test_path" 2>&1)
-    exit_code=$?
+    # Add timeout to prevent hanging tests
+    if command -v timeout >/dev/null 2>&1; then
+        output=$(timeout 30 "$test_path" 2>&1)
+        exit_code=$?
+    else
+        output=$("$test_path" 2>&1)
+        exit_code=$?
+    fi
     
     cd "$original_pwd"
     

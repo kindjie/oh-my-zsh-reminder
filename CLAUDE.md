@@ -49,6 +49,13 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - Tests include both positive and negative validation cases
 - Edge cases and boundary conditions are thoroughly tested
 
+**Test Data Setup**:
+- Tests requiring task data should create temporary save files with proper task format
+- Use `printf` with null separators (`\000`) to create test data: `printf 'Task 1\000Task 2\000Task 3\n\e[38;5;167m\000\e[38;5;71m\000\e[38;5;136m\n4\n' > "$temp_save"`
+- Set `TODO_SAVE_FILE="$temp_save"` environment variable to point to test data
+- Let `load_tasks` function read from the test file naturally (don't manually override task arrays)
+- This approach ensures tests use the same data flow as real user scenarios
+
 **Test Categories**:
 - `display.zsh`: Display functionality, layout, text wrapping, emoji handling
 - `configuration.zsh`: Padding, dimensions, show/hide states, box styling  

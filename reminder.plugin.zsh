@@ -940,84 +940,84 @@ function todo_toggle_all() {
 }
 
 # Display color reference for choosing color values
+# Helper function to display a row of color squares 
+function show_color_square_row() {
+    local start_n="$1"
+    local count="$2" 
+    local row_len="${3:-12}"
+    
+    # Show each color as: normal text number + colored rectangle
+    for ((i=0; i<count; i++)); do
+        local color=$((start_n + i))
+        if [[ $color -gt 255 ]]; then break; fi
+        # Normal text number followed by colored rectangle
+        printf "%03d\e[48;5;${color}m    \e[0m " "$color"
+    done
+    echo
+}
+
 function todo_colors() {
-    local max_colors="${1:-72}"  # Default to first 72 colors for reasonable display
+    local max_colors="${1:-256}"  # Show all colors by default
     local row_len=12
     
-    echo "🎨 Color Reference (256-color codes for terminal themes)"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🎨 Color Reference (256-color terminal palette)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo
     echo "Usage: export TODO_TASK_COLORS=\"num1,num2,num3\" # comma-separated"
     echo "       export TODO_BORDER_COLOR=num              # single number"
     echo
     
-    local n=0
-    
-    # Base 16 colors (0-15)
-    echo "Basic Colors (0-15):"
-    for ((row=0; row<2; row++)); do
-        for ((col=0; col<8; col++)); do
-            local color=$((row * 8 + col))
-            printf "\e[48;5;${color}m\e[38;5;231m%03d\e[0m " "$color"
-        done
-        echo
-        for ((col=0; col<8; col++)); do
-            local color=$((row * 8 + col))
-            printf "\e[48;5;${color}m\e[38;5;232m%03d\e[0m " "$color"
-        done
-        echo
-    done
+    # Basic Colors (0-15) - 8 per row like your script
+    echo "System Colors (0-15):"
+    show_color_square_row 0 8
+    show_color_square_row 8 8  
     echo
     
-    # Extended colors (16+)
+    # Extended colors (16-231) in organized blocks
     if [[ $max_colors -gt 16 ]]; then
-        echo "Extended Colors (16+):"
-        for ((n=16; n<max_colors; n+=row_len)); do
-            # First row with white text
-            for ((m=0; m<row_len && n+m<max_colors; m++)); do
-                local color=$((n + m))
-                printf "\e[48;5;${color}m\e[38;5;231m%03d\e[0m " "$color"
-            done
-            echo
-            # Second row with black text
-            for ((m=0; m<row_len && n+m<max_colors; m++)); do
-                local color=$((n + m))
-                printf "\e[48;5;${color}m\e[38;5;232m%03d\e[0m " "$color"
-            done
-            echo
-            echo
+        echo "Extended Colors (16-231):"
+        local n=16
+        local end_range=$((max_colors < 232 ? max_colors : 232))
+        
+        # Show in rows of 12 for clean layout
+        for ((n=16; n<end_range; n+=row_len)); do
+            local remaining=$((end_range - n))
+            local count=$((remaining < row_len ? remaining : row_len))
+            show_color_square_row $n $count
+            
+            # Add spacing every few rows for readability
+            if [[ $((($n - 16) / row_len % 6)) -eq 5 ]]; then
+                echo
+            fi
         done
+        echo
     fi
     
-    echo "💡 Tips:"
-    echo "  • Lower numbers (0-15) are basic terminal colors"
-    echo "  • Higher numbers (16-255) are extended colors"
-    echo "  • Test your colors: echo -e '\\e[38;5;NUMmText\\e[0m'"
-    echo
+    # Grayscale Colors (232-255)
+    if [[ $max_colors -gt 232 ]]; then
+        echo "Grayscale Ramp (232-255):"
+        show_color_square_row 232 12
+        show_color_square_row 244 12
+        echo
+    fi
+    
     echo "🎨 Current Plugin Colors:"
     
-    # Show task colors with actual bullet character
-    echo -n "    Task colors: "
+    # Show task colors with normal text + colored rectangles
+    echo -n "    Tasks: "
     IFS=',' read -A current_task_colors <<< "$TODO_TASK_COLORS"
     for i in "${current_task_colors[@]}"; do
-        printf "\\e[38;5;${i}m${TODO_BULLET_CHAR}\\e[0m($i) "
+        printf "%03d\e[48;5;%dm    \e[0m " "$i" "$i"
     done
     echo
     
-    # Show border colors with example
-    printf "    Border: \\e[38;5;${TODO_BORDER_COLOR}m\\e[48;5;${TODO_BORDER_BG_COLOR}m┌──┐\\e[0m fg:$TODO_BORDER_COLOR bg:$TODO_BORDER_BG_COLOR\\n"
-    
-    # Show content background
-    printf "    Content: \\e[48;5;${TODO_CONTENT_BG_COLOR}m   \\e[0m bg:$TODO_CONTENT_BG_COLOR\\n"
-    
-    # Show text color
-    printf "    Text: \\e[38;5;${TODO_TEXT_COLOR}mSample task text\\e[0m ($TODO_TEXT_COLOR)\\n"
-    
-    # Show title color  
-    printf "    Title: \\e[38;5;${TODO_TITLE_COLOR}m${TODO_TITLE}\\e[0m ($TODO_TITLE_COLOR)\\n"
-    
-    # Show affirmation color with heart
-    printf "    Affirmation: \\e[38;5;${TODO_AFFIRMATION_COLOR}m${TODO_HEART_CHAR} Sample affirmation\\e[0m ($TODO_AFFIRMATION_COLOR)\\n"
+    # Show other current colors with same format, nicely aligned
+    printf "    Border:     %03d\e[48;5;%dm    \e[0m\n" "$TODO_BORDER_COLOR" "$TODO_BORDER_COLOR"
+    printf "    Border BG:  %03d\e[48;5;%dm    \e[0m\n" "$TODO_BORDER_BG_COLOR" "$TODO_BORDER_BG_COLOR"
+    printf "    Content BG: %03d\e[48;5;%dm    \e[0m\n" "$TODO_CONTENT_BG_COLOR" "$TODO_CONTENT_BG_COLOR"
+    printf "    Text:       %03d\e[48;5;%dm    \e[0m\n" "$TODO_TEXT_COLOR" "$TODO_TEXT_COLOR"
+    printf "    Title:      %03d\e[48;5;%dm    \e[0m\n" "$TODO_TITLE_COLOR" "$TODO_TITLE_COLOR"
+    printf "    Heart:      %03d\e[48;5;%dm    \e[0m\n" "$TODO_AFFIRMATION_COLOR" "$TODO_AFFIRMATION_COLOR"
 }
 
 # Show beginner-friendly help for core functionality
@@ -1559,9 +1559,6 @@ function show_wizard_preview() {
     
     echo "${fg[bold]}${fg[blue]}═══ $preview_title ═══${reset_color}"
     echo
-    echo "${fg[green]}user@computer${reset_color}:${fg[cyan]}~/projects${reset_color}$ todo \"Buy groceries\""
-    echo "✅ Task added: \"Buy groceries\""
-    echo
     
     # Add some sample tasks temporarily for preview
     local had_tasks=false
@@ -1599,16 +1596,16 @@ function read_single_char() {
     local char
     
     while true; do
-        printf "$prompt"
+        printf "$prompt" >&2
         
         # Try different methods for single character input
         if command -v read >/dev/null 2>&1; then
             # First try zsh's read -k
             if read -k1 char 2>/dev/null; then
-                echo  # New line after character input
+                echo >&2  # New line after character input
             # Fallback to bash read -n
             elif read -n1 char 2>/dev/null; then
-                echo  # New line after character input
+                echo >&2  # New line after character input
             # Final fallback to regular read
             else
                 read -r char
@@ -1618,7 +1615,7 @@ function read_single_char() {
         fi
         
         # Handle empty input (Enter pressed immediately)
-        if [[ -z "$char" && -n "$default_char" ]]; then
+        if [[ ( -z "$char" || "$char" == $'\n' ) && -n "$default_char" ]]; then
             char="$default_char"
         fi
         
@@ -1631,7 +1628,7 @@ function read_single_char() {
             echo "$char"
             return 0
         else
-            echo "   ${fg[red]}Invalid choice. Please select one of: $valid_chars${reset_color}"
+            echo "   ${fg[red]}Invalid choice. Please select one of: $valid_chars${reset_color}" >&2
         fi
     done
 }
@@ -1642,10 +1639,8 @@ function show_step_header() {
     local step_title="$2"
     local step_desc="$3"
     
-    echo "${fg[magenta]}═══════════════════════════════════════════════════════════════════════════${reset_color}"
-    echo "${fg[magenta]}║${reset_color} ${fg[bold]}${fg[yellow]}Step $step_num: $step_title${reset_color}                                                    ${fg[magenta]}║${reset_color}"
-    echo "${fg[magenta]}║${reset_color} $step_desc                                                          ${fg[magenta]}║${reset_color}"
-    echo "${fg[magenta]}═══════════════════════════════════════════════════════════════════════════${reset_color}"
+    echo "${fg[cyan]}═══ Step $step_num: $step_title ═══${reset_color}"
+    echo "${fg[gray]}$step_desc${reset_color}"
     echo
 }
 
@@ -1656,8 +1651,20 @@ function show_color_option() {
     local color_code="$3"
     
     if [[ -n "$color_code" ]]; then
-        local color_sample=$'\e[48;5;'${color_code}$'m\e[38;5;255m'
-        printf "   ${fg[cyan]}%s)${reset_color} %-20s ${color_sample}   %3s   ${reset_color}\n" "$option_key" "$option_desc" "$color_code"
+        # Handle comma-separated color lists by showing each color
+        local color_samples=""
+        local colors=(${(@s:,:)color_code})  # Split on comma
+        
+        for color in "${colors[@]}"; do
+            # Remove any whitespace
+            color="${color// /}"
+            if [[ "$color" =~ ^[0-9]+$ ]]; then
+                # Show normal text number with colored rectangle
+                color_samples+="$(printf "%03d" $color)$(printf "\e[48;5;%dm    \e[0m " $color)"
+            fi
+        done
+        
+        printf "   ${fg[cyan]}%s)${reset_color} %-20s %s\n" "$option_key" "$option_desc" "$color_samples"
     else
         printf "   ${fg[cyan]}%s)${reset_color} %s\n" "$option_key" "$option_desc"
     fi
@@ -1739,28 +1746,41 @@ function todo_config_wizard() {
     local affirmation_indicator="${fg[green]}♥ You're doing great!${reset_color}"
     [[ "$current_affirmation" == "false" ]] && affirmation_indicator="${fg[gray]}(hidden)${reset_color}"
     
+    # Convert true/false to y/n for valid choice
+    local affirmation_default="y"
+    [[ "$current_affirmation" == "false" ]] && affirmation_default="n"
+    
     echo "   Show motivational affirmations? Current: $affirmation_indicator"
     echo "   ${fg[cyan]}y)${reset_color} Yes, show affirmations"
     echo "   ${fg[cyan]}n)${reset_color} No, hide affirmations"
     echo
     
-    local affirmation_choice=$(read_single_char "   ${fg[yellow]}Your choice [${current_affirmation:0:1}]: ${reset_color}" "ynYN" "${current_affirmation:0:1}")
+    local affirmation_choice=$(read_single_char "   ${fg[yellow]}Your choice [$affirmation_default]: ${reset_color}" "ynYN" "$affirmation_default")
     case "${affirmation_choice}" in
         n|N) TODO_SHOW_AFFIRMATION="false" ;;
         *) TODO_SHOW_AFFIRMATION="true" ;;
     esac
+    
+    # Update preview to show affirmation change
+    clear
+    show_wizard_preview "Display Components (Updated)"
+    show_step_header "2" "Display Components" "Choose which elements to show in your terminal"
     
     # Todo box toggle  
     local current_box="${TODO_SHOW_TODO_BOX:-true}"
     local box_indicator="${fg[blue]}┌─ REMEMBER ─┐${reset_color}"
     [[ "$current_box" == "false" ]] && box_indicator="${fg[gray]}(hidden)${reset_color}"
     
+    # Convert true/false to y/n for valid choice
+    local box_default="y"
+    [[ "$current_box" == "false" ]] && box_default="n"
+    
     echo "   Show todo box? Current: $box_indicator"
     echo "   ${fg[cyan]}y)${reset_color} Yes, show todo box"
     echo "   ${fg[cyan]}n)${reset_color} No, hide todo box"
     echo
     
-    local box_choice=$(read_single_char "   ${fg[yellow]}Your choice [${current_box:0:1}]: ${reset_color}" "ynYN" "${current_box:0:1}")
+    local box_choice=$(read_single_char "   ${fg[yellow]}Your choice [$box_default]: ${reset_color}" "ynYN" "$box_default")
     case "${box_choice}" in
         n|N) TODO_SHOW_TODO_BOX="false" ;;
         *) TODO_SHOW_TODO_BOX="true" ;;
@@ -1802,9 +1822,10 @@ function todo_config_wizard() {
                 ;;
         esac
         
-        # Add spacing between sections
-        echo "   ────────────────────────────────────────"
-        echo
+        # Update preview to show title change
+        clear
+        show_wizard_preview "Box Appearance (Updated)"
+        show_step_header "3" "Box Appearance" "Customize how your todo box looks"
         
         # Box width
         local current_width_pct=$(echo "$TODO_BOX_WIDTH_FRACTION * 100" | bc 2>/dev/null || echo "50")
@@ -1903,27 +1924,90 @@ function todo_config_wizard() {
     if [[ "$color_choice" =~ ^[yY]$ ]]; then
         # Task colors
         echo "   Task bullet color themes:"
-        show_color_option "1" "Warm (red/orange)" "196,202,208"
-        show_color_option "2" "Cool (blue/cyan)" "33,39,45"
-        show_color_option "3" "Nature (green)" "46,82,118"
+        show_color_option "1" "Warm (red/orange)" "196,208,220,226,227,228"
+        show_color_option "2" "Cool (blue/cyan)" "33,39,45,51,87,123"
+        show_color_option "3" "Nature (green)" "22,28,34,40,70,106"
         show_color_option "4" "Current colors" "$TODO_TASK_COLORS"
         echo "   ${fg[cyan]}c)${reset_color} Custom colors"
         echo
         
         local task_color_choice=$(read_single_char "   ${fg[yellow]}Your choice [4]: ${reset_color}" "1234cC" "4")
         case "$task_color_choice" in
-            1) TODO_TASK_COLORS="196,202,208,214,220,226" ;;
-            2) TODO_TASK_COLORS="33,39,45,51,57,63" ;;
-            3) TODO_TASK_COLORS="46,82,118,154,190,226" ;;
+            1) TODO_TASK_COLORS="196,208,220,226,227,228" ;;
+            2) TODO_TASK_COLORS="33,39,45,51,87,123" ;;
+            3) TODO_TASK_COLORS="22,28,34,40,70,106" ;;
             4) ;; # Keep current
             c|C)
+                echo
+                echo "   ${fg[yellow]}📋 Designer Color Palette - Choose from 96 carefully selected colors:${reset_color}"
+                echo "   ${fg[gray]}Format: [number][color square] - Enter comma-separated numbers${reset_color}"
+                echo
+                
+                # System Colors (0-15)
+                echo "   System Colors (0-15):"
+                printf "   "
+                for i in {0..7}; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                printf "   "
+                for i in {8..15}; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                echo
+                
+                # Essential Reds
+                echo "   Essential Reds:"
+                printf "   "
+                for i in 196 197 203 204 210 211 88 124 160 161 167 168; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                echo
+                
+                # Essential Greens  
+                echo "   Essential Greens:"
+                printf "   "
+                for i in 28 34 40 46 76 82 22 29 35 41 47 83; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                echo
+                
+                # Essential Blues
+                echo "   Essential Blues:"
+                printf "   "
+                for i in 33 39 45 51 69 75 81 87 25 31 37 67; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                echo
+                
+                # Essential Yellows & Oranges
+                echo "   Yellows & Oranges:"
+                printf "   "
+                for i in 220 221 226 227 228 178 214 215 208 209 172 173; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                echo
+                
+                # Purples & Magentas
+                echo "   Purples & Magentas:"
+                printf "   "
+                for i in 125 126 127 129 135 141 147 165 171 177 183 189; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                echo
+                
+                # Cyans & Teals
+                echo "   Cyans & Teals:"
+                printf "   "
+                for i in 23 30 36 42 48 49 50 51 73 79 80 86; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                echo
+                
+                # Grayscale (232-255)
+                echo "   Grayscale (232-255):"
+                printf "   "
+                for i in {232..243}; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                printf "   "
+                for i in {244..255}; do printf "%03d\e[48;5;${i}m    \e[0m " "$i"; done; echo
+                echo
+                
+                echo "   💡 For the full 256-color palette, use: ${fg[cyan]}todo_colors${reset_color}"
+                echo
                 printf "   ${fg[yellow]}Enter colors (comma-separated, e.g. 196,46,33): ${reset_color}"
                 read -r task_colors_input
-                if [[ -n "$task_colors_input" && "$task_colors_input" =~ ^[0-9,]+$ ]]; then
+                if [[ -n "$task_colors_input" && "$task_colors_input" =~ ^[0-9,\ ]+$ ]]; then
+                    # Clean up spaces and validate each color
+                    task_colors_input="${task_colors_input// /}"
                     TODO_TASK_COLORS="$task_colors_input"
+                    echo "   ✅ Colors updated!"
                 else
                     echo "   ⚠️  Invalid format. Keeping current colors."
                 fi
+                echo
                 ;;
         esac
         
@@ -2039,6 +2123,8 @@ function todo_config_wizard() {
             ;;
         *)
             echo "   ✅ Configuration applied and will persist across sessions"
+            echo "   💡 To save permanently: ${fg[cyan]}todo_config export ~/.todo-reminder-config.zsh${reset_color}"
+            echo "   💡 To load on startup: Add ${fg[cyan]}source ~/.todo-reminder-config.zsh${reset_color} to your .zshrc"
             ;;
     esac
     

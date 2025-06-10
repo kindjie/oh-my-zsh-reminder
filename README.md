@@ -180,6 +180,7 @@ export TODO_BOX_VERTICAL="│"                 # Vertical line (default: "│")
 # Show/hide configuration
 export TODO_SHOW_AFFIRMATION="false"         # Show affirmations: "true", "false" (default: "true")
 export TODO_SHOW_TODO_BOX="true"             # Show todo box: "true", "false" (default: "true")
+export TODO_SHOW_HINTS="false"               # Show contextual hints: "true", "false" (default: "true")
 
 # Padding/margin (in characters)
 export TODO_PADDING_TOP=1                    # Top padding/margin (default: 0)

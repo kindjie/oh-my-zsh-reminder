@@ -299,14 +299,14 @@ test_colors_command() {
     fi
     
     # Test that todo_colors shows current configuration
-    if [[ "$colors_output" == *"Current Plugin Colors"* ]] && [[ "$colors_output" == *"Task colors:"* ]]; then
+    if [[ "$colors_output" == *"Current Plugin Colors"* ]] && [[ "$colors_output" == *"Tasks: "* ]]; then
         echo "✅ PASS: todo_colors shows current configuration"
     else
         echo "❌ FAIL: todo_colors doesn't show current configuration"
     fi
     
     # Test color display format
-    if [[ "$colors_output" == *"Basic Colors (0-15):"* ]]; then
+    if [[ "$colors_output" == *"System Colors (0-15):"* ]]; then
         echo "✅ PASS: todo_colors shows basic colors section"
     else
         echo "❌ FAIL: todo_colors missing basic colors section"
@@ -319,11 +319,11 @@ test_colors_command() {
         echo "❌ FAIL: todo_colors missing usage instructions"
     fi
     
-    # Test tips section
-    if [[ "$colors_output" == *"Tips:"* ]] && [[ "$colors_output" == *"Test your colors:"* ]]; then
-        echo "✅ PASS: todo_colors includes helpful tips"
+    # Test current colors display (replaced tips section)
+    if [[ "$colors_output" == *"Current Plugin Colors:"* ]] && [[ "$colors_output" == *"Border:"* ]]; then
+        echo "✅ PASS: todo_colors shows current plugin configuration"
     else
-        echo "❌ FAIL: todo_colors missing helpful tips"
+        echo "❌ FAIL: todo_colors missing current configuration display"
     fi
     
     # Test parameter handling (limited colors)
