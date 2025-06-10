@@ -459,17 +459,202 @@ function todo_task_done() {
     fi
 }
 
+# ============================================================================
+# Tab Completion System
+# ============================================================================
+
+# Completion for task removal commands (todo_task_done, todo_remove)
 function _todo_task_done() {
     load_tasks
     if [[ ${#todo_tasks} -gt 0 ]]; then
-      compadd $(echo ${TODO_TASKS} | tr '\000' '\n')
+        compadd $(echo ${TODO_TASKS} | tr '\000' '\n')
+    fi
+}
+
+# Universal completion function for all todo commands and command discovery
+function _todo_universal() {
+    local context state line
+    
+    # Handle command-specific argument completion
+    case ${words[1]} in
+        todo_config)
+            _todo_config_completion
+            ;;
+        todo_help)
+            _todo_help_completion
+            ;;
+        todo_toggle_*|todo_affirm|todo_box|todo_toggle)
+            _todo_toggle_completion
+            ;;
+        todo_colors)
+            _todo_colors_completion
+            ;;
+        todo|todo_add_task)
+            # For the main todo command, provide helpful message
+            if [[ CURRENT -eq 2 ]]; then
+                _message 'task description (e.g. "Buy groceries")'
+            fi
+            ;;
+        *)
+            # For other commands, no additional completion needed
+            ;;
+    esac
+}
+
+# Command discovery completion for todo_ prefix
+function _todo_commands() {
+    local -a todo_commands
+    
+    # Build list of available todo commands with descriptions
+    todo_commands=(
+        # Core commands (Layer 1 - essential for beginners)
+        'todo:Add a new task'
+        'todo_remove:Remove completed task (with tab completion)'
+        'todo_hide:Hide todo display'
+        'todo_show:Show todo display'
+        'todo_setup:Interactive customization wizard'
+        'todo_help:Show essential commands'
+        
+        # Intermediate commands (Layer 2 - natural discovery)
+        'todo_toggle:Toggle all display elements'
+        'todo_colors:Show color reference'
+        'todo_affirm:Toggle affirmations'
+        'todo_box:Toggle todo box'
+        
+        # Advanced commands (Layer 3 - power users)
+        'todo_config:Advanced configuration management'
+        'todo_toggle_affirmation:Control affirmation display'
+        'todo_toggle_box:Control todo box display'
+        'todo_toggle_all:Control all display elements'
+        
+        # Less common/legacy commands
+        'task_done:Remove completed task (legacy alias)'
+        'todo_task_done:Remove completed task (internal function)'
+    )
+    
+    _describe 'todo commands' todo_commands
+}
+
+# Completion for todo_config subcommands
+function _todo_config_completion() {
+    local -a config_commands
+    config_commands=(
+        'export:Export configuration to file'
+        'import:Import configuration from file'
+        'set:Set individual configuration value'
+        'reset:Reset configuration to defaults'
+        'preset:Apply built-in preset'
+        'save-preset:Save current settings as preset'
+        'help:Show configuration help'
+    )
+    
+    if [[ CURRENT -eq 2 ]]; then
+        _describe 'config commands' config_commands
+    elif [[ CURRENT -eq 3 ]]; then
+        case ${words[2]} in
+            preset)
+                local -a presets
+                presets=('minimal' 'colorful' 'work' 'dark')
+                _describe 'presets' presets
+                ;;
+            set)
+                local -a settings
+                settings=(
+                    'title:Set box title'
+                    'heart-char:Set affirmation heart character'
+                    'heart-position:Set heart position (left|right|both|none)'
+                    'bullet-char:Set task bullet character'
+                    'colors:Set task colors (comma-separated)'
+                    'border-color:Set border color'
+                    'text-color:Set text color'
+                    'padding-left:Set left padding'
+                    'box-width:Set box width fraction'
+                )
+                _describe 'settings' settings
+                ;;
+            export|import)
+                _files
+                ;;
+        esac
+    elif [[ CURRENT -eq 4 && ${words[2]} == "export" ]]; then
+        # Handle --colors-only flag for export
+        compadd --colors-only
+    fi
+}
+
+# Completion for todo_help subcommands
+function _todo_help_completion() {
+    if [[ CURRENT -eq 2 ]]; then
+        local -a help_options
+        help_options=(
+            '--more:Show comprehensive help'
+            '--full:Show comprehensive help'
+            '-m:Show comprehensive help (short)'
+            '-f:Show comprehensive help (short)'
+        )
+        _describe 'help options' help_options
+    fi
+}
+
+# Completion for toggle commands
+function _todo_toggle_completion() {
+    if [[ CURRENT -eq 2 ]]; then
+        local -a toggle_options
+        toggle_options=('show' 'hide' 'toggle')
+        _describe 'toggle options' toggle_options
+    fi
+}
+
+# Completion for todo_colors command
+function _todo_colors_completion() {
+    if [[ CURRENT -eq 2 ]]; then
+        _message 'max colors (default: 256)'
     fi
 }
 
 # Enable tab completion if compdef is available
 if command -v compdef >/dev/null 2>&1; then
+    # Task removal completion (specific to these commands)
     compdef _todo_task_done todo_task_done
     compdef _todo_task_done todo_remove
+    compdef _todo_task_done task_done
+    
+    # Command-specific argument completion for individual commands
+    compdef _todo_universal todo
+    compdef _todo_universal todo_add_task
+    compdef _todo_universal todo_help
+    compdef _todo_universal todo_colors
+    compdef _todo_universal todo_config
+    compdef _todo_universal todo_setup
+    compdef _todo_universal todo_config_wizard
+    compdef _todo_universal todo_hide
+    compdef _todo_universal todo_show
+    compdef _todo_universal todo_toggle
+    compdef _todo_universal todo_toggle_all
+    compdef _todo_universal todo_toggle_affirmation
+    compdef _todo_universal todo_toggle_box
+    compdef _todo_universal todo_affirm
+    compdef _todo_universal todo_box
+fi
+
+# Enhanced command completion integration
+# This will make tab completion work better for command discovery
+if command -v compinit >/dev/null 2>&1 && [[ ${+functions[compinit]} -eq 1 || ${+functions[_main_complete]} -eq 1 ]]; then
+    # Hook into the default completion system to provide todo command suggestions
+    # when users type "todo_" and press tab
+    function _todo_command_completer() {
+        if [[ "$PREFIX" =~ ^todo_ ]]; then
+            _todo_commands
+            return 0
+        fi
+        return 1
+    }
+    
+    # Add to the completion system as a completer
+    if [[ -n "${compstate:-}" ]] || autoload -U compinit && compinit -D; then
+        # This integrates with zsh's completion system
+        zstyle ':completion:*' completer _todo_command_completer _complete _ignored
+    fi
 fi
 alias task_done=todo_task_done
 
