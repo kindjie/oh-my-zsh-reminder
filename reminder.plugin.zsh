@@ -144,8 +144,8 @@ TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
 
 
 # Check for first run and show welcome message
-TODO_FIRST_RUN_FILE="${TODO_FIRST_RUN_FILE:-$HOME/.todo_first_run}"
-if [[ ! -f "$TODO_FIRST_RUN_FILE" ]]; then
+typeset -g _TODO_INTERNAL_FIRST_RUN_FILE="${_TODO_INTERNAL_FIRST_RUN_FILE:-$HOME/.todo_first_run}"
+if [[ ! -f "$_TODO_INTERNAL_FIRST_RUN_FILE" ]]; then
     # Show welcome message on first run
     function show_welcome_message() {
         local bold=$'\e[1m'
@@ -165,7 +165,7 @@ if [[ ! -f "$TODO_FIRST_RUN_FILE" ]]; then
         echo
         
         # Mark first run as complete and remove this hook
-        touch "$TODO_FIRST_RUN_FILE"
+        touch "$_TODO_INTERNAL_FIRST_RUN_FILE"
         add-zsh-hook -d precmd show_welcome_message
         unfunction show_welcome_message
     }
@@ -187,10 +187,11 @@ typeset -T -x -g TODO_TASKS_COLORS todo_tasks_colors $'\x00'
 typeset -i -x -g todo_color_index
 
 # File change detection and caching for performance and multi-terminal coordination
-typeset -g TODO_FILE_MTIME=0
-typeset -g TODO_CACHED_TASKS=""
-typeset -g TODO_CACHED_COLORS=""
-typeset -i -g TODO_CACHED_COLOR_INDEX=1
+# Use underscore prefix to indicate internal variables
+typeset -g _TODO_INTERNAL_FILE_MTIME=0
+typeset -g _TODO_INTERNAL_CACHED_TASKS=""
+typeset -g _TODO_INTERNAL_CACHED_COLORS=""
+typeset -i -g _TODO_INTERNAL_CACHED_COLOR_INDEX=1
 
 # Load tasks and colors from single save file with caching for performance
 # File format: tasks on line 1, colors on line 2, color_index on line 3
@@ -218,8 +219,8 @@ function load_tasks() {
     fi
     
     # Only reload if file changed or we have no cached data (ensure numeric comparison)
-    if [[ "${current_mtime:-0}" -ne "${TODO_FILE_MTIME:-0}" ]] || [[ -z "$TODO_CACHED_TASKS" && -z "$TODO_CACHED_COLORS" ]]; then
-        TODO_FILE_MTIME=$current_mtime
+    if [[ "${current_mtime:-0}" -ne "${_TODO_INTERNAL_FILE_MTIME:-0}" ]] || [[ -z "$_TODO_INTERNAL_CACHED_TASKS" && -z "$_TODO_INTERNAL_CACHED_COLORS" ]]; then
+        _TODO_INTERNAL_FILE_MTIME=$current_mtime
         
         if [[ -e "$TODO_SAVE_FILE" ]]; then
             if ! local file_content="$(cat "$TODO_SAVE_FILE" 2>/dev/null)"; then
@@ -228,9 +229,9 @@ function load_tasks() {
                 todo_tasks_colors=()
                 todo_color_index=1
                 # Clear cache on error
-                TODO_CACHED_TASKS=""
-                TODO_CACHED_COLORS=""
-                TODO_CACHED_COLOR_INDEX=1
+                _TODO_INTERNAL_CACHED_TASKS=""
+                _TODO_INTERNAL_CACHED_COLORS=""
+                _TODO_INTERNAL_CACHED_COLOR_INDEX=1
                 return 1
             fi
 
@@ -245,9 +246,9 @@ function load_tasks() {
                 todo_tasks=()
                 todo_tasks_colors=()
                 todo_color_index=1
-                TODO_CACHED_TASKS=""
-                TODO_CACHED_COLORS=""
-                TODO_CACHED_COLOR_INDEX=1
+                _TODO_INTERNAL_CACHED_TASKS=""
+                _TODO_INTERNAL_CACHED_COLORS=""
+                _TODO_INTERNAL_CACHED_COLOR_INDEX=1
                 return 1
             fi
 
@@ -260,9 +261,9 @@ function load_tasks() {
                 todo_tasks=()
                 todo_tasks_colors=()
                 todo_color_index=1
-                TODO_CACHED_TASKS=""
-                TODO_CACHED_COLORS=""
-                TODO_CACHED_COLOR_INDEX=1
+                _TODO_INTERNAL_CACHED_TASKS=""
+                _TODO_INTERNAL_CACHED_COLORS=""
+                _TODO_INTERNAL_CACHED_COLOR_INDEX=1
                 return
             fi
 
@@ -286,23 +287,23 @@ function load_tasks() {
             fi
             
             # Update cache
-            TODO_CACHED_TASKS="$TODO_TASKS"
-            TODO_CACHED_COLORS="$TODO_TASKS_COLORS"
-            TODO_CACHED_COLOR_INDEX="$todo_color_index"
+            _TODO_INTERNAL_CACHED_TASKS="$TODO_TASKS"
+            _TODO_INTERNAL_CACHED_COLORS="$TODO_TASKS_COLORS"
+            _TODO_INTERNAL_CACHED_COLOR_INDEX="$todo_color_index"
         else
             # No file exists
             todo_tasks=()
             todo_tasks_colors=()
             todo_color_index=1
-            TODO_CACHED_TASKS=""
-            TODO_CACHED_COLORS=""
-            TODO_CACHED_COLOR_INDEX=1
+            _TODO_INTERNAL_CACHED_TASKS=""
+            _TODO_INTERNAL_CACHED_COLORS=""
+            _TODO_INTERNAL_CACHED_COLOR_INDEX=1
         fi
     else
         # Use cached data - no file I/O needed!
-        TODO_TASKS="$TODO_CACHED_TASKS"
-        TODO_TASKS_COLORS="$TODO_CACHED_COLORS"
-        todo_color_index="$TODO_CACHED_COLOR_INDEX"
+        TODO_TASKS="$_TODO_INTERNAL_CACHED_TASKS"
+        TODO_TASKS_COLORS="$_TODO_INTERNAL_CACHED_COLORS"
+        todo_color_index="$_TODO_INTERNAL_CACHED_COLOR_INDEX"
     fi
 }
 
@@ -837,19 +838,19 @@ function todo_save() {
     } > "$temp_file" 2>/dev/null && mv "$temp_file" "$TODO_SAVE_FILE" 2>/dev/null; then
         # Update cache timestamp after successful save
         if stat -f %m "$TODO_SAVE_FILE" >/dev/null 2>&1; then
-            TODO_FILE_MTIME=$(stat -f %m "$TODO_SAVE_FILE" 2>/dev/null)
+            _TODO_INTERNAL_FILE_MTIME=$(stat -f %m "$TODO_SAVE_FILE" 2>/dev/null)
         elif stat -c %Y "$TODO_SAVE_FILE" >/dev/null 2>&1; then
-            TODO_FILE_MTIME=$(stat -c %Y "$TODO_SAVE_FILE" 2>/dev/null)
+            _TODO_INTERNAL_FILE_MTIME=$(stat -c %Y "$TODO_SAVE_FILE" 2>/dev/null)
         else
-            TODO_FILE_MTIME=$(wc -c < "$TODO_SAVE_FILE" 2>/dev/null || echo 0)
+            _TODO_INTERNAL_FILE_MTIME=$(wc -c < "$TODO_SAVE_FILE" 2>/dev/null || echo 0)
         fi
         # Clean and ensure numeric
-        TODO_FILE_MTIME="${TODO_FILE_MTIME//[^0-9]/}"
-        TODO_FILE_MTIME="${TODO_FILE_MTIME:-0}"
+        _TODO_INTERNAL_FILE_MTIME="${_TODO_INTERNAL_FILE_MTIME//[^0-9]/}"
+        _TODO_INTERNAL_FILE_MTIME="${_TODO_INTERNAL_FILE_MTIME:-0}"
         # Update cache with current data
-        TODO_CACHED_TASKS="$TODO_TASKS"
-        TODO_CACHED_COLORS="$TODO_TASKS_COLORS"
-        TODO_CACHED_COLOR_INDEX="$todo_color_index"
+        _TODO_INTERNAL_CACHED_TASKS="$TODO_TASKS"
+        _TODO_INTERNAL_CACHED_COLORS="$TODO_TASKS_COLORS"
+        _TODO_INTERNAL_CACHED_COLOR_INDEX="$todo_color_index"
         return 0
     else
         # Clean up temp file on failure
@@ -1585,19 +1586,19 @@ function todo_config_save_preset() {
 # ============================================================================
 
 # Get plugin directory for loading modules
-TODO_PLUGIN_DIR="${TODO_PLUGIN_DIR:-$(dirname "${(%):-%x}")}"
+typeset -g _TODO_INTERNAL_PLUGIN_DIR="${_TODO_INTERNAL_PLUGIN_DIR:-$(dirname "${(%):-%x}")}"
 
 # Track loaded modules to avoid duplicate loading
-typeset -g -a _TODO_LOADED_MODULES
-_TODO_LOADED_MODULES=()
+typeset -g -a _TODO_INTERNAL_LOADED_MODULES
+_TODO_INTERNAL_LOADED_MODULES=()
 
 # Lazy loading function for optional modules
 function autoload_todo_module() {
     local module="$1"
-    local module_file="$TODO_PLUGIN_DIR/lib/${module}.zsh"
+    local module_file="$_TODO_INTERNAL_PLUGIN_DIR/lib/${module}.zsh"
     
     # Check if module is already loaded
-    if [[ ${_TODO_LOADED_MODULES[(ie)$module]} -le ${#_TODO_LOADED_MODULES} ]]; then
+    if [[ ${_TODO_INTERNAL_LOADED_MODULES[(ie)$module]} -le ${#_TODO_INTERNAL_LOADED_MODULES} ]]; then
         return 0  # Already loaded
     fi
     
@@ -1609,7 +1610,7 @@ function autoload_todo_module() {
     
     # Load the module
     if source "$module_file" 2>/dev/null; then
-        _TODO_LOADED_MODULES+=("$module")
+        _TODO_INTERNAL_LOADED_MODULES+=("$module")
         return 0
     else
         echo "Error: Failed to load module '$module'" >&2

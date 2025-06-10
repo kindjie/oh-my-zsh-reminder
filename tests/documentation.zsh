@@ -450,17 +450,32 @@ function test_config_variables_documented() {
     
     # Internal variables that don't need documentation
     local internal_vars=(
-        "TODO_COLORS"                # Parsed array from TODO_TASK_COLORS
-        "TODO_TASKS"                 # Runtime task storage
-        "TODO_TASKS_COLORS"          # Runtime color storage
-        "TODO_FIRST_RUN_FILE"        # Internal state tracking
-        "TODO_CACHED_TASKS"          # Performance optimization - cache
-        "TODO_CACHED_COLORS"         # Performance optimization - cache
-        "TODO_CACHED_COLOR_INDEX"    # Performance optimization - cache
-        "TODO_FILE_MTIME"            # Performance optimization - file tracking
-        "TODO_PLUGIN_DIR"            # Internal path resolution
-        "_TODO_LOADED_MODULES"       # Lazy loading tracking (underscore prefix)
-        "TODO_LOADED_MODULES"        # Possible grep match of _TODO_LOADED_MODULES
+        "TODO_COLORS"                          # Parsed array from TODO_TASK_COLORS
+        "TODO_TASKS"                           # Runtime task storage
+        "TODO_TASKS_COLORS"                    # Runtime color storage
+        "_TODO_INTERNAL_FIRST_RUN_FILE"        # Internal state tracking
+        "_TODO_INTERNAL_CACHED_TASKS"          # Performance optimization - cache
+        "_TODO_INTERNAL_CACHED_COLORS"         # Performance optimization - cache
+        "_TODO_INTERNAL_CACHED_COLOR_INDEX"    # Performance optimization - cache
+        "_TODO_INTERNAL_FILE_MTIME"            # Performance optimization - file tracking
+        "_TODO_INTERNAL_PLUGIN_DIR"            # Internal path resolution
+        "_TODO_INTERNAL_LOADED_MODULES"        # Lazy loading tracking
+        "TODO_INTERNAL_FIRST_RUN_FILE"         # Without underscore prefix (grep match)
+        "TODO_INTERNAL_CACHED_TASKS"           # Without underscore prefix (grep match)
+        "TODO_INTERNAL_CACHED_COLORS"          # Without underscore prefix (grep match)
+        "TODO_INTERNAL_CACHED_COLOR_INDEX"     # Without underscore prefix (grep match)
+        "TODO_INTERNAL_FILE_MTIME"             # Without underscore prefix (grep match)
+        "TODO_INTERNAL_PLUGIN_DIR"             # Without underscore prefix (grep match)
+        "TODO_INTERNAL_LOADED_MODULES"         # Without underscore prefix (grep match)
+        # Legacy variables for backward compatibility with old variable names
+        "TODO_FIRST_RUN_FILE"                  # Legacy name
+        "TODO_CACHED_TASKS"                    # Legacy name
+        "TODO_CACHED_COLORS"                   # Legacy name
+        "TODO_CACHED_COLOR_INDEX"              # Legacy name
+        "TODO_FILE_MTIME"                      # Legacy name
+        "TODO_PLUGIN_DIR"                      # Legacy name
+        "_TODO_LOADED_MODULES"                 # Legacy name
+        "TODO_LOADED_MODULES"                  # Legacy name
     )
     
     # Check README and CLAUDE.md for variable documentation

@@ -43,7 +43,7 @@ function test_first_run_welcome() {
     local temp_first_run="$TMPDIR/test_first_run_$$"
     
     # Test by sourcing plugin with non-existent first-run file
-    local output=$(COLUMNS=80 TODO_FIRST_RUN_FILE="$temp_first_run" zsh -c '
+    local output=$(COLUMNS=80 _TODO_INTERNAL_FIRST_RUN_FILE="$temp_first_run" zsh -c '
         autoload -U colors; colors; 
         source reminder.plugin.zsh;
         # Function should be defined when first-run file doesnt exist
@@ -82,14 +82,14 @@ function test_welcome_message_once() {
     local temp_first_run="$TMPDIR/test_first_run_once_$$"
     
     # First run - should show welcome
-    local output1=$(COLUMNS=80 TODO_FIRST_RUN_FILE="$temp_first_run" zsh -c '
+    local output1=$(COLUMNS=80 _TODO_INTERNAL_FIRST_RUN_FILE="$temp_first_run" zsh -c '
         autoload -U colors; colors; 
         source reminder.plugin.zsh;
         if [[ ! -f "'$temp_first_run'" ]]; then show_welcome_message 2>/dev/null; fi
     ')
     
     # Second run - should not show welcome (file exists)
-    local output2=$(COLUMNS=80 TODO_FIRST_RUN_FILE="$temp_first_run" zsh -c '
+    local output2=$(COLUMNS=80 _TODO_INTERNAL_FIRST_RUN_FILE="$temp_first_run" zsh -c '
         autoload -U colors; colors; 
         source reminder.plugin.zsh;
         if [[ ! -f "'$temp_first_run'" ]]; then show_welcome_message 2>/dev/null; fi
