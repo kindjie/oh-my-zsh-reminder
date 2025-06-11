@@ -33,6 +33,7 @@ TEST_FILES=(
     "config_management.zsh"
     "color.zsh"
     "interface.zsh"
+    "subcommand_interface.zsh"
     "character.zsh"
     "wizard_noninteractive.zsh"
 )
@@ -40,6 +41,7 @@ TEST_FILES=(
 PERFORMANCE_TEST_FILE="performance.zsh"
 UX_TEST_FILE="ux.zsh"
 DOCUMENTATION_TEST_FILE="documentation.zsh"
+USER_WORKFLOWS_FILE="user_workflows.zsh"
 
 # Global test tracking
 TOTAL_TESTS=0
@@ -254,6 +256,59 @@ run_ux_tests() {
     fi
     if [[ "$verbose" == true ]]; then
         echo
+    fi
+    
+    return $exit_code
+}
+
+# Function to run user workflow tests
+run_user_workflows() {
+    local verbose="$1"
+    local workflows_path="$TESTS_DIR/$USER_WORKFLOWS_FILE"
+    
+    if [[ ! -f "$workflows_path" ]]; then
+        echo "${RED}❌ User workflows test file not found: $USER_WORKFLOWS_FILE${RESET}"
+        return 1
+    fi
+    
+    if [[ "$verbose" == true ]]; then
+        echo "${MAGENTA}🚀 Running user workflow tests...${RESET}"
+        echo "This validates complete end-to-end user scenarios."
+        echo
+    fi
+    
+    # Run workflow tests
+    local output
+    local exit_code
+    
+    output=$("$workflows_path" 2>&1)
+    exit_code=$?
+    
+    # Count workflow test results
+    local workflows_passed=$(echo "$output" | grep -c "Passed:.*[1-9]")
+    local workflows_failed=$(echo "$output" | grep -c "Failed:.*[1-9]")
+    
+    # Display relevant output
+    if [[ "$verbose" == true ]]; then
+        echo "$output"
+    elif [[ $workflows_failed -gt 0 ]]; then
+        echo "${MAGENTA}▶ User workflow tests${RESET}"
+        echo "$output" | grep -E "(❌|Failed:)" | tail -10
+        echo
+    fi
+    
+    # Update global counters (5 workflows tested)
+    TOTAL_TESTS=$((TOTAL_TESTS + 5))
+    if [[ $workflows_failed -eq 0 && $workflows_passed -gt 0 ]]; then
+        PASSED_TESTS=$((PASSED_TESTS + 5))
+    else
+        PASSED_TESTS=$((PASSED_TESTS + (5 - workflows_failed)))
+        FAILED_TESTS=$((FAILED_TESTS + workflows_failed))
+    fi
+    
+    # Set exit code
+    if [[ $exit_code -ne 0 ]]; then
+        echo "${RED}❌ User workflow tests: execution failed${RESET}"
     fi
     
     return $exit_code
@@ -586,6 +641,12 @@ main() {
     if [[ "$skip_ux" == false && ${#specific_tests[@]} -eq 0 ]]; then
         echo
         run_ux_tests
+    fi
+    
+    # Run user workflow tests (part of functional tests)
+    if [[ ${#specific_tests[@]} -eq 0 || " ${specific_tests[@]} " =~ " user_workflows " ]]; then
+        echo
+        run_user_workflows "$verbose"
     fi
     
     # Run documentation tests unless skipped
