@@ -676,6 +676,7 @@ function _todo_completion() {
             ;;
         2) # First argument after 'todo' (todo <TAB>)
             local -a commands=(
+                '...:Type task description to add new task'
                 'done:Complete a task'
                 'hide:Hide todo display'
                 'show:Show todo display'
