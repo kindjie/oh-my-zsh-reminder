@@ -202,19 +202,19 @@ function _todo_config_wizard_real() {
             show_wizard_preview "Preset Selection"
             show_step_header "1b" "Preset Selection" "Choose a preset theme to start with"
             
-            # Display all available presets using centralized list
-            show_color_option "1" "minimal      - Clean, simple" "250"
-            show_color_option "2" "colorful     - Bright, vibrant" "196"
-            show_color_option "3" "work         - Professional blue" "33"
-            show_color_option "4" "dark         - Dark theme" "235"
-            show_color_option "5" "monokai      - Code editor theme" "141"
-            show_color_option "6" "solarized    - Balanced contrast" "136"
-            show_color_option "7" "nord         - Arctic blue palette" "150"
-            show_color_option "8" "gruvbox      - Retro warm colors" "214"
-            show_color_option "9" "base16-auto  - Auto-detect theme" "109"
+            # Display all available semantic presets
+            show_color_option "1" "subtle       - Minimal, muted colors" "250"
+            show_color_option "2" "balanced     - Moderate, professional" "167"
+            show_color_option "3" "vibrant      - Bright, colorful" "196"
+            show_color_option "4" "loud         - Maximum contrast" "9"
             echo
             
-            local preset_choice=$(read_single_char "   ${fg[yellow]}Select preset [1]: ${reset_color}" "123456789" "1")
+            if command -v tinty >/dev/null 2>&1; then
+                echo "   💡 Tip: Use 'tinty apply [theme]' for 200+ additional themes"
+                echo
+            fi
+            
+            local preset_choice=$(read_single_char "   ${fg[yellow]}Select preset [1]: ${reset_color}" "1234" "1")
             
             # Map selection to preset name using centralized list
             local preset_index=$((preset_choice))

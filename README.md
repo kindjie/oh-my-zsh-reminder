@@ -181,13 +181,26 @@ todo config export my-settings.conf
 # Import a configuration file
 todo config import my-settings.conf
 
-# Apply quick presets
-todo config preset minimal     # Clean, minimal look
-todo config preset colorful    # Vibrant colors
-todo config preset corporate   # Professional appearance
+# Apply semantic intensity presets
+todo config preset subtle      # Minimal decoration, muted colors
+todo config preset balanced    # Professional appearance, moderate colors
+todo config preset vibrant     # Bright colors, full decoration
+todo config preset loud        # Maximum contrast, high visibility
 
 # Save your current setup as a preset
 todo config save-preset my-theme
+```
+
+### Theme Integration
+
+For advanced theming with 200+ color schemes, install [tinty](https://github.com/tinted-theming/tinty) and [tinted-shell](https://github.com/tinted-theming/tinted-shell):
+
+```bash
+# Apply any tinted-shell theme
+tinty apply gruvbox-dark-medium
+
+# Presets automatically adapt to your terminal theme when available
+todo config preset vibrant  # Uses colors from your active theme
 ```
 
 ### Color Reference

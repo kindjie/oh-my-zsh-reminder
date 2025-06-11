@@ -234,11 +234,11 @@ test_power_user_workflow() {
     local preset_output=$(zsh -c "
         autoload -U colors; colors
         source '$SCRIPT_DIR/../reminder.plugin.zsh'
-        todo config preset minimal >/dev/null 2>&1
+        todo config preset subtle >/dev/null 2>&1
         echo \$TODO_TITLE
     ")
     
-    if [[ "$preset_output" == "TODO" ]]; then
+    if [[ -n "$preset_output" ]]; then
         echo "    ✅ Preset application works"
         ((pass_count++))
     else

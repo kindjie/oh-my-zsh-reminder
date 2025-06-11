@@ -3,7 +3,7 @@ TODO_SAVE_FILE="${TODO_SAVE_FILE:-$HOME/.todo.save}"
 TODO_AFFIRMATION_FILE="${TODO_AFFIRMATION_FILE:-${TMPDIR:-/tmp}/todo_affirmation}"
 
 # Available configuration presets (single source of truth)
-_TODO_AVAILABLE_PRESETS=("minimal" "colorful" "work" "dark" "monokai" "solarized-dark" "nord" "gruvbox-dark" "base16-auto")
+_TODO_AVAILABLE_PRESETS=("subtle" "balanced" "vibrant" "loud")
 _TODO_PRESET_LIST="${(j:, :)_TODO_AVAILABLE_PRESETS}"
 
 # Box width configuration (fraction of terminal width, with min/max limits)
@@ -746,7 +746,7 @@ function _todo_completion() {
                     _files
                     ;;
                 "config preset")
-                    local -a presets=('minimal' 'colorful' 'work' 'dark' 'monokai' 'solarized-dark' 'nord' 'gruvbox-dark' 'base16-auto')
+                    local -a presets=('subtle' 'balanced' 'vibrant' 'loud')
                     _describe 'presets' presets
                     ;;
                 "config set")
@@ -764,7 +764,7 @@ function _todo_completion() {
                     _describe 'settings' settings
                     ;;
                 "config preview")
-                    local -a presets=('all' 'minimal' 'colorful' 'work' 'dark' 'monokai' 'solarized-dark' 'nord' 'gruvbox-dark' 'base16-auto')
+                    local -a presets=('all' 'subtle' 'balanced' 'vibrant' 'loud')
                     _describe 'presets' presets
                     ;;
             esac
@@ -1508,6 +1508,14 @@ function todo_help_full() {
     echo "  ${cyan}todo config set${reset} <setting> <value>         ${gray}Change setting${reset}"
     echo "  ${cyan}todo config reset${reset} [--colors-only]         ${gray}Reset to defaults${reset}"
     echo "  ${cyan}todo config preset${reset} <name>                 ${gray}Apply preset (${_TODO_PRESET_LIST})${reset}"
+    echo "    ${gray}Preset Intensities:${reset}"
+    echo "      ${white}subtle${reset}   - Minimal decoration, muted colors"
+    echo "      ${white}balanced${reset} - Professional appearance, moderate colors"
+    echo "      ${white}vibrant${reset}  - Bright colors, full decoration"
+    echo "      ${white}loud${reset}     - Maximum contrast, high visibility"
+    if command -v tinty >/dev/null 2>&1; then
+        echo "    ${gray}💡 Tip: Use 'tinty apply [theme]' for 200+ additional themes${reset}"
+    fi
     echo "  ${cyan}todo config save-preset${reset} <name>            ${gray}Save current as preset${reset}"
     echo "  ${cyan}todo config preview${reset} [preset]              ${gray}Preview color swatches${reset}"
     echo "  ${cyan}todo setup${reset}                               ${gray}Interactive configuration wizard${reset}"
@@ -1873,239 +1881,105 @@ function todo_config_reset() {
 }
 
 # Load preset from file
-function _todo_load_preset_file() {
-    local preset_name="$1"
-    local plugin_dir="${_TODO_INTERNAL_PLUGIN_DIR:-${0:A:h}}"
-    local preset_file="$plugin_dir/presets/extended/$preset_name.conf"
+# Apply semantic preset configurations (simplified)
+function _todo_apply_semantic_preset() {
+    local preset="$1"
     
-    if [[ ! -f "$preset_file" ]]; then
-        return 1
-    fi
-    
-    # Source the preset file
-    if source "$preset_file" 2>/dev/null; then
-        echo "Applied $preset_name preset"
-        return 0
-    else
-        echo "Error: Failed to load preset file '$preset_file'" >&2
-        return 1
-    fi
+    case "$preset" in
+        "subtle")
+            TODO_TITLE="TODO"
+            TODO_HEART_CHAR="•"
+            TODO_HEART_POSITION="none"
+            TODO_BULLET_CHAR="•"
+            TODO_TASK_COLORS="250,248,246,244"
+            TODO_BORDER_COLOR="238"
+            TODO_TASK_TEXT_COLOR="245"
+            TODO_TITLE_COLOR="255"
+            TODO_AFFIRMATION_COLOR="250"
+            TODO_SHOW_AFFIRMATION="false"
+            TODO_PADDING_LEFT="0"
+            TODO_PADDING_RIGHT="2"
+            ;;
+        "balanced")
+            TODO_TITLE="TASKS"
+            TODO_HEART_CHAR="♥"
+            TODO_HEART_POSITION="left"
+            TODO_BULLET_CHAR="▪"
+            TODO_TASK_COLORS="167,214,110,109"
+            TODO_BORDER_COLOR="240"
+            TODO_TASK_TEXT_COLOR="252"
+            TODO_TITLE_COLOR="214"
+            TODO_AFFIRMATION_COLOR="109"
+            TODO_SHOW_AFFIRMATION="true"
+            TODO_PADDING_LEFT="1"
+            TODO_PADDING_RIGHT="2"
+            ;;
+        "vibrant")
+            TODO_TITLE="✨ TASKS ✨"
+            TODO_HEART_CHAR="💖"
+            TODO_HEART_POSITION="both"
+            TODO_BULLET_CHAR="🔸"
+            TODO_TASK_COLORS="196,208,226,46,51,201"
+            TODO_BORDER_COLOR="201"
+            TODO_TASK_TEXT_COLOR="255"
+            TODO_TITLE_COLOR="226"
+            TODO_AFFIRMATION_COLOR="213"
+            TODO_SHOW_AFFIRMATION="true"
+            TODO_PADDING_LEFT="1"
+            TODO_PADDING_RIGHT="1"
+            ;;
+        "loud")
+            TODO_TITLE="🚨 URGENT 🚨"
+            TODO_HEART_CHAR="🔥"
+            TODO_HEART_POSITION="both"
+            TODO_BULLET_CHAR="⚡"
+            TODO_TASK_COLORS="196,208,226,46,51,201,167,214"
+            TODO_BORDER_COLOR="196"
+            TODO_TASK_TEXT_COLOR="15"
+            TODO_TITLE_COLOR="11"
+            TODO_AFFIRMATION_COLOR="9"
+            TODO_SHOW_AFFIRMATION="true"
+            TODO_PADDING_LEFT="2"
+            TODO_PADDING_RIGHT="1"
+            ;;
+    esac
 }
 
-# Apply built-in presets
+# Apply semantic intensity presets
 function todo_config_preset() {
     local preset="$1"
     
     if [[ -z "$preset" ]]; then
         echo "Usage: todo_config_preset <preset>" >&2
-        echo "Available presets: minimal, colorful, work, dark, monokai, solarized-dark, nord, gruvbox-dark, base16-auto" >&2
+        echo "Available presets: ${_TODO_PRESET_LIST}" >&2
+        if command -v tinty >/dev/null 2>&1; then
+            echo "💡 Install tinty + tinted-shell for 200+ additional themes" >&2
+        fi
         return 1
     fi
     
-    case "$preset" in
-        "minimal")
-            TODO_TITLE="TODO"
-            TODO_HEART_CHAR="•"
-            TODO_HEART_POSITION="none"
-            TODO_BULLET_CHAR="•"
-            TODO_TASK_COLORS="250,248,246,244,242,240"
-            TODO_BORDER_COLOR="238"
-            TODO_TEXT_COLOR="245"
-            TODO_TASK_TEXT_COLOR="245"
-            TODO_TITLE_COLOR="255"
-            TODO_AFFIRMATION_COLOR="250"
-            TODO_BULLET_COLOR="250"
-            TODO_SHOW_AFFIRMATION="false"
-            TODO_PADDING_LEFT="0"
-            TODO_PADDING_RIGHT="2"
-            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            echo "Applied minimal preset"
-            ;;
-        "colorful")
-            TODO_TITLE="✨ TASKS ✨"
-            TODO_HEART_CHAR="💖"
-            TODO_HEART_POSITION="both"
-            TODO_BULLET_CHAR="🔸"
-            TODO_TASK_COLORS="196,202,208,214,220,226"
-            TODO_BORDER_COLOR="201"
-            TODO_TEXT_COLOR="255"
-            TODO_TASK_TEXT_COLOR="255"
-            TODO_TITLE_COLOR="226"
-            TODO_AFFIRMATION_COLOR="213"
-            TODO_BULLET_COLOR="226"
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_PADDING_LEFT="1"
-            TODO_PADDING_RIGHT="1"
-            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            echo "Applied colorful preset"
-            ;;
-        "work")
-            TODO_TITLE="WORK TASKS"
-            TODO_HEART_CHAR="💼"
-            TODO_HEART_POSITION="left"
-            TODO_BULLET_CHAR="▶"
-            TODO_TASK_COLORS="21,33,39,45,51,57"
-            TODO_BORDER_COLOR="33"
-            TODO_TEXT_COLOR="250"
-            TODO_TASK_TEXT_COLOR="250"
-            TODO_TITLE_COLOR="39"
-            TODO_AFFIRMATION_COLOR="75"
-            TODO_BULLET_COLOR="39"
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_PADDING_LEFT="2"
-            TODO_PADDING_RIGHT="2"
-            TODO_BOX_WIDTH_FRACTION="0.4"
-            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            echo "Applied work preset"
-            ;;
-        "dark")
-            TODO_TITLE="REMEMBER"
-            TODO_HEART_CHAR="♥"
-            TODO_HEART_POSITION="left"
-            TODO_BULLET_CHAR="▪"
-            TODO_TASK_COLORS="124,88,52,94,130,166"
-            TODO_BORDER_COLOR="235"
-            TODO_BORDER_BG_COLOR="232"
-            TODO_CONTENT_BG_COLOR="233"
-            TODO_TEXT_COLOR="244"
-            TODO_TASK_TEXT_COLOR="244"
-            TODO_TITLE_COLOR="255"
-            TODO_AFFIRMATION_COLOR="103"
-            TODO_BULLET_COLOR="166"
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_PADDING_LEFT="0"
-            TODO_PADDING_RIGHT="4"
-            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            echo "Applied dark preset"
-            ;;
-        "base16-auto")
-            # Auto-detect and apply base16 theme from tinted-shell if available
-            _todo_apply_base16_auto
-            ;;
-        "monokai")
-            if _todo_load_preset_file "monokai"; then
-                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            else
-                return 1
-            fi
-            ;;
-        "solarized-dark")
-            if _todo_load_preset_file "solarized-dark"; then
-                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            else
-                return 1
-            fi
-            ;;
-        "nord")
-            if _todo_load_preset_file "nord"; then
-                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            else
-                return 1
-            fi
-            ;;
-        "gruvbox-dark")
-            if _todo_load_preset_file "gruvbox-dark"; then
-                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            else
-                return 1
-            fi
-            ;;
-        *)
-            echo "Error: Unknown preset '$preset'" >&2
-            echo "Available presets: minimal, colorful, work, dark, base16-auto, monokai, solarized-dark, nord, gruvbox-dark" >&2
-            return 1
-            ;;
-    esac
+    # Validate preset name
+    if [[ ! "${_TODO_AVAILABLE_PRESETS[@]}" =~ "$preset" ]]; then
+        echo "Error: Unknown preset '$preset'" >&2
+        echo "Available presets: ${_TODO_PRESET_LIST}" >&2
+        return 1
+    fi
+    
+    # Apply semantic preset
+    _todo_apply_semantic_preset "$preset"
+    
+    # Update color arrays
+    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+    
+    echo "Applied $preset preset"
+    if command -v tinty >/dev/null 2>&1; then
+        echo "💡 Tip: Use 'tinty apply [theme]' for theme integration"
+    fi
     
     # Save configuration changes for persistence
     todo_save
 }
 
-# Auto-apply base16 theme from tinted-shell environment variables
-function _todo_apply_base16_auto() {
-    # Check if tinted-shell base16 variables are available
-    if [[ -n "$BASE16_COLOR_00_HEX" ]] && [[ "$TINTED_SHELL_ENABLE_BASE16_VARS" == "1" ]]; then
-        echo "Detected tinted-shell base16 theme, applying..."
-        
-        # Convert hex colors to 256-color approximations
-        local base00=$(printf "%d" "0x${BASE16_COLOR_00_HEX}")
-        local base01=$(printf "%d" "0x${BASE16_COLOR_01_HEX}")
-        local base03=$(printf "%d" "0x${BASE16_COLOR_03_HEX}")
-        local base05=$(printf "%d" "0x${BASE16_COLOR_05_HEX}")
-        local base08=$(printf "%d" "0x${BASE16_COLOR_08_HEX}")
-        local base09=$(printf "%d" "0x${BASE16_COLOR_09_HEX}")
-        local base0A=$(printf "%d" "0x${BASE16_COLOR_0A_HEX}")
-        local base0B=$(printf "%d" "0x${BASE16_COLOR_0B_HEX}")
-        local base0C=$(printf "%d" "0x${BASE16_COLOR_0C_HEX}")
-        local base0D=$(printf "%d" "0x${BASE16_COLOR_0D_HEX}")
-        local base0E=$(printf "%d" "0x${BASE16_COLOR_0E_HEX}")
-        
-        # Map base16 semantics to todo plugin colors
-        TODO_TITLE="BASE16"
-        TODO_HEART_CHAR="♥"
-        TODO_HEART_POSITION="left"
-        TODO_BULLET_CHAR="▪"
-        TODO_TASK_COLORS="$(_hex_to_256 $BASE16_COLOR_08_HEX),$(_hex_to_256 $BASE16_COLOR_09_HEX),$(_hex_to_256 $BASE16_COLOR_0A_HEX),$(_hex_to_256 $BASE16_COLOR_0D_HEX),$(_hex_to_256 $BASE16_COLOR_0B_HEX),$(_hex_to_256 $BASE16_COLOR_0E_HEX)"
-        TODO_BORDER_COLOR="$(_hex_to_256 $BASE16_COLOR_03_HEX)"        # Comments/invisibles
-        TODO_BORDER_BG_COLOR="$(_hex_to_256 $BASE16_COLOR_01_HEX)"     # Lighter background
-        TODO_CONTENT_BG_COLOR="$(_hex_to_256 $BASE16_COLOR_00_HEX)"    # Default background
-        TODO_TEXT_COLOR="$(_hex_to_256 $BASE16_COLOR_05_HEX)"          # Default foreground
-        TODO_TASK_TEXT_COLOR="$(_hex_to_256 $BASE16_COLOR_05_HEX)"
-        TODO_TITLE_COLOR="$(_hex_to_256 $BASE16_COLOR_0A_HEX)"         # Yellow (classes)
-        TODO_AFFIRMATION_COLOR="$(_hex_to_256 $BASE16_COLOR_0C_HEX)"   # Cyan (support)
-        TODO_BULLET_COLOR="$(_hex_to_256 $BASE16_COLOR_08_HEX)"        # Red (variables)
-        TODO_SHOW_AFFIRMATION="true"
-        TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-        echo "Applied base16 theme: ${BASE16_THEME:-unknown}"
-        
-    elif [[ -n "$BASE24_COLOR_00_HEX" ]] && [[ "$TINTED_SHELL_ENABLE_BASE24_VARS" == "1" ]]; then
-        echo "Detected tinted-shell base24 theme, applying..."
-        # Use base24 with additional bright colors
-        TODO_TASK_COLORS="$(_hex_to_256 $BASE24_COLOR_08_HEX),$(_hex_to_256 $BASE24_COLOR_09_HEX),$(_hex_to_256 $BASE24_COLOR_0A_HEX),$(_hex_to_256 $BASE24_COLOR_0D_HEX),$(_hex_to_256 $BASE24_COLOR_12_HEX),$(_hex_to_256 $BASE24_COLOR_15_HEX)"
-        # ... same mappings as base16 but with access to bright colors
-        _todo_apply_base16_auto  # Reuse base16 logic for now
-        echo "Applied base24 theme with enhanced bright colors"
-        
-    else
-        echo "No tinted-shell theme detected. Enable with:"
-        echo "  export TINTED_SHELL_ENABLE_BASE16_VARS=1"
-        echo "  # or"
-        echo "  export TINTED_SHELL_ENABLE_BASE24_VARS=1"
-        echo "Then source a tinted-shell theme script."
-        return 1
-    fi
-}
-
-# Convert hex color to closest 256-color terminal code
-function _hex_to_256() {
-    local hex="$1"
-    # Remove # if present
-    hex="${hex#\#}"
-    
-    # Convert to RGB
-    local r=$(printf "%d" "0x${hex:0:2}")
-    local g=$(printf "%d" "0x${hex:2:2}")  
-    local b=$(printf "%d" "0x${hex:4:2}")
-    
-    # Simple approximation to 256-color space
-    # This is a basic implementation - could be enhanced with better color distance calculation
-    if [[ $r -eq $g ]] && [[ $g -eq $b ]]; then
-        # Grayscale
-        if [[ $r -lt 8 ]]; then
-            echo "16"
-        elif [[ $r -gt 248 ]]; then
-            echo "231"
-        else
-            echo $((232 + (r - 8) / 10))
-        fi
-    else
-        # Color cube (simplified)
-        local r6=$((r * 5 / 255))
-        local g6=$((g * 5 / 255))
-        local b6=$((b * 5 / 255))
-        echo $((16 + 36 * r6 + 6 * g6 + b6))
-    fi
-}
 
 # Preview color swatches for available presets
 function todo_config_preview() {
@@ -2116,23 +1990,17 @@ function todo_config_preview() {
     echo
     
     if [[ "$preset" == "all" ]]; then
-        local presets=("minimal" "colorful" "work" "dark" "monokai" "solarized-dark" "nord" "gruvbox-dark")
-        for p in "${presets[@]}"; do
+        for p in "${_TODO_AVAILABLE_PRESETS[@]}"; do
             _todo_show_preset_swatch "$p"
             echo
         done
         
-        # Show tinted-shell status
-        echo "🔗 Tinted-Shell Integration:"
-        if [[ "$TINTED_SHELL_ENABLE_BASE16_VARS" == "1" ]] && [[ -n "$BASE16_COLOR_00_HEX" ]]; then
-            echo "  ✅ base16 theme detected: ${BASE16_THEME:-unknown}"
-            echo "  Run: todo config preset base16-auto"
-        elif [[ "$TINTED_SHELL_ENABLE_BASE24_VARS" == "1" ]] && [[ -n "$BASE24_COLOR_00_HEX" ]]; then
-            echo "  ✅ base24 theme detected"  
-            echo "  Run: todo config preset base16-auto"
+        # Show tinty integration tip
+        if command -v tinty >/dev/null 2>&1; then
+            echo "💡 Tinty Integration:"
+            echo "  ✅ tinty detected - use 'tinty apply [theme]' for 200+ themes"
         else
-            echo "  ⚠️  No tinted-shell theme detected"
-            echo "  Enable: export TINTED_SHELL_ENABLE_BASE16_VARS=1"
+            echo "💡 Tip: Install tinty + tinted-shell for 200+ additional themes"
         fi
     else
         _todo_show_preset_swatch "$preset"
