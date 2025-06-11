@@ -52,15 +52,15 @@ function test_readme_basic_usage() {
         failed_examples+=("todo \"Buy groceries\"")
     fi
     
-    # Test: task_done "Buy"
+    # Test: todo done "Buy"
     local output2=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        eval "task_done \"Buy\""
+        eval "todo done \"Buy\""
     ')
     
     if [[ "$output2" != *"✅ Task completed"* ]]; then
-        failed_examples+=("task_done \"Buy\"")
+        failed_examples+=("todo done \"Buy\"")
     fi
     
     # Test: todo_help
@@ -342,7 +342,7 @@ function test_help_command_coverage() {
     local full_help_output=$(zsh -c 'source reminder.plugin.zsh; todo_help --more')
     
     # Commands that should be in basic help
-    local basic_commands=("todo" "todo_remove" "todo_hide" "todo_show" "todo_setup")
+    local basic_commands=("todo" "todo done" "todo hide" "todo show" "todo setup")
     local missing_basic=()
     
     for cmd in "${basic_commands[@]}"; do
@@ -404,15 +404,15 @@ function test_help_examples_work() {
         failed_examples+=("todo \"Buy groceries\"")
     fi
     
-    # Test example: todo_remove "Buy"
+    # Test example: todo done "Buy"
     local example2_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        eval "todo_remove \"Buy\""
+        eval "todo done \"Buy\""
     ')
     
     if [[ "$example2_output" != *"✅ Task completed"* ]]; then
-        failed_examples+=("todo_remove \"Buy\"")
+        failed_examples+=("todo done \"Buy\"")
     fi
     
     if [[ ${#failed_examples[@]} -eq 0 ]]; then
