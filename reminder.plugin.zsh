@@ -239,10 +239,10 @@ function load_tasks() {
                 return 1
             fi
 
-            # Validate file format (should have exactly 3 lines)
+            # Validate file format (should have 3 lines for old format or 4 lines for new format with config)
             local line_count=$(echo "$file_content" | wc -l)
-            if [[ $line_count -ne 3 ]]; then
-                echo "Warning: Invalid todo file format (expected 3 lines, got $line_count), creating backup and resetting" >&2
+            if [[ $line_count -ne 3 && $line_count -ne 4 ]]; then
+                echo "Warning: Invalid todo file format (expected 3 or 4 lines, got $line_count), creating backup and resetting" >&2
                 if cp "$TODO_SAVE_FILE" "$TODO_SAVE_FILE.backup.$(date +%s)" 2>/dev/null; then
                     echo "Backup created: $TODO_SAVE_FILE.backup.$(date +%s)" >&2
                 fi
@@ -288,6 +288,12 @@ function load_tasks() {
             # If color count doesn't match task count, regenerate colors
             if [[ $color_count -ne $task_count ]] || [[ -z "$TODO_TASKS_COLORS" ]]; then
                 regenerate_colors_for_existing_tasks
+            fi
+            
+            # Load configuration if present (4-line format)
+            if [[ $line_count -eq 4 ]]; then
+                local config_line="${lines[4]:-}"
+                _todo_load_config_from_line "$config_line"
             fi
             
             # Update cache
@@ -1142,14 +1148,98 @@ function show_progressive_hints() {
 }
 
 # Save tasks, colors, and color index to single file (3 lines) with atomic operation
+# Load configuration from serialized format
+function _todo_load_config_from_line() {
+    local config_line="$1"
+    
+    if [[ -z "$config_line" ]]; then
+        return 0  # No config to load, keep defaults
+    fi
+    
+    # Split by null separator and process each key=value pair
+    # Split the config line on null bytes
+    local -a config_parts
+    config_parts=("${(@ps:\000:)config_line}")
+    
+    for pair in "${config_parts[@]}"; do
+        if [[ "$pair" == *"="* ]]; then
+            local key="${pair%%=*}"
+            local value="${pair#*=}"
+            
+            # Only load known configuration variables for security
+            case "$key" in
+                TODO_TITLE|TODO_HEART_CHAR|TODO_HEART_POSITION|TODO_BULLET_CHAR|\
+                TODO_BOX_WIDTH_FRACTION|TODO_BOX_MIN_WIDTH|TODO_BOX_MAX_WIDTH|\
+                TODO_SHOW_AFFIRMATION|TODO_SHOW_TODO_BOX|TODO_SHOW_HINTS|\
+                TODO_PADDING_TOP|TODO_PADDING_RIGHT|TODO_PADDING_BOTTOM|TODO_PADDING_LEFT|\
+                TODO_TASK_COLORS|TODO_BORDER_COLOR|TODO_BORDER_BG_COLOR|TODO_CONTENT_BG_COLOR|\
+                TODO_TASK_TEXT_COLOR|TODO_TITLE_COLOR|TODO_AFFIRMATION_COLOR|TODO_BULLET_COLOR)
+                    # Use typeset to set the variable dynamically
+                    typeset -g "$key"="$value"
+                    ;;
+            esac
+        fi
+    done
+    
+    # Rebuild colors array from TODO_TASK_COLORS if it was loaded
+    if [[ -n "$TODO_TASK_COLORS" ]]; then
+        TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+    fi
+}
+
+# Serialize current configuration for persistence
+function _todo_serialize_config() {
+    local config_parts=()
+    
+    # Core configuration variables to persist
+    local config_vars=(
+        "TODO_TITLE"
+        "TODO_HEART_CHAR" 
+        "TODO_HEART_POSITION"
+        "TODO_BULLET_CHAR"
+        "TODO_BOX_WIDTH_FRACTION"
+        "TODO_BOX_MIN_WIDTH"
+        "TODO_BOX_MAX_WIDTH"
+        "TODO_SHOW_AFFIRMATION"
+        "TODO_SHOW_TODO_BOX"
+        "TODO_SHOW_HINTS"
+        "TODO_PADDING_TOP"
+        "TODO_PADDING_RIGHT"
+        "TODO_PADDING_BOTTOM"
+        "TODO_PADDING_LEFT"
+        "TODO_TASK_COLORS"
+        "TODO_BORDER_COLOR"
+        "TODO_BORDER_BG_COLOR"
+        "TODO_CONTENT_BG_COLOR"
+        "TODO_TASK_TEXT_COLOR"
+        "TODO_TITLE_COLOR"
+        "TODO_AFFIRMATION_COLOR"
+        "TODO_BULLET_COLOR"
+    )
+    
+    # Serialize each variable as key=value
+    for var in "${config_vars[@]}"; do
+        local value="${(P)var}"  # Get value of variable named in $var
+        if [[ -n "$value" ]]; then
+            config_parts+=("$var=$value")
+        fi
+    done
+    
+    # Join with null separators
+    local IFS=$'\000'
+    echo "${config_parts[*]}"
+}
+
 function todo_save() {
     local temp_file="${TODO_SAVE_FILE}.tmp.$$"
     
     # Atomic write: write to temp file first, then move to final location
+    local config_line="$(_todo_serialize_config)"
     if {
         echo "$TODO_TASKS"
         echo "$TODO_TASKS_COLORS"
         echo "$todo_color_index"
+        echo "$config_line"
     } > "$temp_file" 2>/dev/null && mv "$temp_file" "$TODO_SAVE_FILE" 2>/dev/null; then
         # Update cache timestamp after successful save
         if stat -f %m "$TODO_SAVE_FILE" >/dev/null 2>&1; then
@@ -1726,6 +1816,9 @@ function todo_config_set() {
             return 1
             ;;
     esac
+    
+    # Persist configuration changes
+    todo_save
 }
 
 # Reset configuration to defaults
@@ -1776,6 +1869,26 @@ function todo_config_reset() {
         TODO_BOX_VERTICAL="│"
         TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
         echo "Configuration reset to defaults"
+    fi
+}
+
+# Load preset from file
+function _todo_load_preset_file() {
+    local preset_name="$1"
+    local plugin_dir="${_TODO_INTERNAL_PLUGIN_DIR:-${0:A:h}}"
+    local preset_file="$plugin_dir/presets/extended/$preset_name.conf"
+    
+    if [[ ! -f "$preset_file" ]]; then
+        return 1
+    fi
+    
+    # Source the preset file
+    if source "$preset_file" 2>/dev/null; then
+        echo "Applied $preset_name preset"
+        return 0
+    else
+        echo "Error: Failed to load preset file '$preset_file'" >&2
+        return 1
     fi
 }
 
@@ -1870,80 +1983,32 @@ function todo_config_preset() {
             _todo_apply_base16_auto
             ;;
         "monokai")
-            # Based on base16-monokai color scheme
-            TODO_TITLE="CODE"
-            TODO_HEART_CHAR="♥"
-            TODO_HEART_POSITION="left"
-            TODO_BULLET_CHAR="▪"
-            TODO_TASK_COLORS="249,115,166,230,141,208"  # base08,09,0A,0D,0B,0E variations
-            TODO_BORDER_COLOR="59"        # base03 (comments)
-            TODO_BORDER_BG_COLOR="235"    # base01 (lighter bg)
-            TODO_CONTENT_BG_COLOR="234"   # base00 (default bg) 
-            TODO_TEXT_COLOR="248"         # base05 (default fg)
-            TODO_TASK_TEXT_COLOR="248"    # base05
-            TODO_TITLE_COLOR="141"        # base0B (green)
-            TODO_AFFIRMATION_COLOR="208"  # base09 (orange)
-            TODO_BULLET_COLOR="249"       # base08 (red)
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            echo "Applied Monokai-inspired preset"
+            if _todo_load_preset_file "monokai"; then
+                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+            else
+                return 1
+            fi
             ;;
         "solarized-dark")
-            # Based on base16-solarized-dark
-            TODO_TITLE="FOCUS"
-            TODO_HEART_CHAR="☀"
-            TODO_HEART_POSITION="left"
-            TODO_BULLET_CHAR="•"
-            TODO_TASK_COLORS="203,166,136,68,160,125"  # solarized accent colors
-            TODO_BORDER_COLOR="240"       # base03
-            TODO_BORDER_BG_COLOR="234"    # base01
-            TODO_CONTENT_BG_COLOR="233"   # base00
-            TODO_TEXT_COLOR="244"         # base05
-            TODO_TASK_TEXT_COLOR="244"
-            TODO_TITLE_COLOR="136"        # base0A (yellow)
-            TODO_AFFIRMATION_COLOR="37"   # base0C (cyan)
-            TODO_BULLET_COLOR="166"       # base09 (orange)
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            echo "Applied Solarized Dark preset"
+            if _todo_load_preset_file "solarized-dark"; then
+                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+            else
+                return 1
+            fi
             ;;
         "nord")
-            # Based on Nord color palette
-            TODO_TITLE="ARCTIC"
-            TODO_HEART_CHAR="❄"
-            TODO_HEART_POSITION="left" 
-            TODO_BULLET_CHAR="▸"
-            TODO_TASK_COLORS="131,209,150,116,97,139"  # nord reds,oranges,yellows,blues,purples
-            TODO_BORDER_COLOR="59"        # nord3 (comment)
-            TODO_BORDER_BG_COLOR="236"    # nord1 (darker bg)
-            TODO_CONTENT_BG_COLOR="235"   # nord0 (bg)
-            TODO_TEXT_COLOR="188"         # nord4 (light fg)
-            TODO_TASK_TEXT_COLOR="188"
-            TODO_TITLE_COLOR="150"        # nord14 (green)
-            TODO_AFFIRMATION_COLOR="116"  # nord8 (light blue)
-            TODO_BULLET_COLOR="131"       # nord11 (red)
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            echo "Applied Nord-inspired preset"
+            if _todo_load_preset_file "nord"; then
+                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+            else
+                return 1
+            fi
             ;;
         "gruvbox-dark")
-            # Based on gruvbox-dark color scheme
-            TODO_TITLE="RETRO"
-            TODO_HEART_CHAR="♥"
-            TODO_HEART_POSITION="left"
-            TODO_BULLET_CHAR="●"
-            TODO_TASK_COLORS="167,208,214,109,175,142"  # gruvbox accent colors
-            TODO_BORDER_COLOR="243"       # gruvbox gray
-            TODO_BORDER_BG_COLOR="237"    # gruvbox dark1
-            TODO_CONTENT_BG_COLOR="235"   # gruvbox dark0
-            TODO_TEXT_COLOR="223"         # gruvbox light1
-            TODO_TASK_TEXT_COLOR="223"
-            TODO_TITLE_COLOR="214"        # gruvbox yellow
-            TODO_AFFIRMATION_COLOR="109"  # gruvbox blue
-            TODO_BULLET_COLOR="167"       # gruvbox red
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-            echo "Applied Gruvbox Dark preset"
+            if _todo_load_preset_file "gruvbox-dark"; then
+                TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+            else
+                return 1
+            fi
             ;;
         *)
             echo "Error: Unknown preset '$preset'" >&2
@@ -1951,6 +2016,9 @@ function todo_config_preset() {
             return 1
             ;;
     esac
+    
+    # Save configuration changes for persistence
+    todo_save
 }
 
 # Auto-apply base16 theme from tinted-shell environment variables

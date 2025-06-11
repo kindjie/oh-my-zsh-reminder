@@ -226,14 +226,121 @@ test_config_reset_colors_only() {
     fi
 }
 
+# Utility function for comprehensive preset validation
+validate_preset_values() {
+    local preset_name="$1"
+    local errors=()
+    
+    # Validate all color values are in 0-255 range
+    if [[ -n "$TODO_BORDER_COLOR" ]] && ! [[ "$TODO_BORDER_COLOR" =~ ^[0-9]+$ && "$TODO_BORDER_COLOR" -ge 0 && "$TODO_BORDER_COLOR" -le 255 ]]; then
+        errors+=("TODO_BORDER_COLOR=$TODO_BORDER_COLOR is not valid (0-255)")
+    fi
+    
+    if [[ -n "$TODO_BORDER_BG_COLOR" ]] && ! [[ "$TODO_BORDER_BG_COLOR" =~ ^[0-9]+$ && "$TODO_BORDER_BG_COLOR" -ge 0 && "$TODO_BORDER_BG_COLOR" -le 255 ]]; then
+        errors+=("TODO_BORDER_BG_COLOR=$TODO_BORDER_BG_COLOR is not valid (0-255)")
+    fi
+    
+    if [[ -n "$TODO_CONTENT_BG_COLOR" ]] && ! [[ "$TODO_CONTENT_BG_COLOR" =~ ^[0-9]+$ && "$TODO_CONTENT_BG_COLOR" -ge 0 && "$TODO_CONTENT_BG_COLOR" -le 255 ]]; then
+        errors+=("TODO_CONTENT_BG_COLOR=$TODO_CONTENT_BG_COLOR is not valid (0-255)")
+    fi
+    
+    if [[ -n "$TODO_TASK_TEXT_COLOR" ]] && ! [[ "$TODO_TASK_TEXT_COLOR" =~ ^[0-9]+$ && "$TODO_TASK_TEXT_COLOR" -ge 0 && "$TODO_TASK_TEXT_COLOR" -le 255 ]]; then
+        errors+=("TODO_TASK_TEXT_COLOR=$TODO_TASK_TEXT_COLOR is not valid (0-255)")
+    fi
+    
+    if [[ -n "$TODO_TITLE_COLOR" ]] && ! [[ "$TODO_TITLE_COLOR" =~ ^[0-9]+$ && "$TODO_TITLE_COLOR" -ge 0 && "$TODO_TITLE_COLOR" -le 255 ]]; then
+        errors+=("TODO_TITLE_COLOR=$TODO_TITLE_COLOR is not valid (0-255)")
+    fi
+    
+    if [[ -n "$TODO_AFFIRMATION_COLOR" ]] && ! [[ "$TODO_AFFIRMATION_COLOR" =~ ^[0-9]+$ && "$TODO_AFFIRMATION_COLOR" -ge 0 && "$TODO_AFFIRMATION_COLOR" -le 255 ]]; then
+        errors+=("TODO_AFFIRMATION_COLOR=$TODO_AFFIRMATION_COLOR is not valid (0-255)")
+    fi
+    
+    # Validate task colors array format
+    if [[ -n "$TODO_TASK_COLORS" ]]; then
+        IFS=',' read -A color_values <<< "$TODO_TASK_COLORS"
+        for color in "${color_values[@]}"; do
+            if ! [[ "$color" =~ ^[0-9]+$ && "$color" -ge 0 && "$color" -le 255 ]]; then
+                errors+=("Task color $color in TODO_TASK_COLORS is not valid (0-255)")
+            fi
+        done
+    fi
+    
+    # Validate boolean values
+    if [[ -n "$TODO_SHOW_AFFIRMATION" ]] && ! [[ "$TODO_SHOW_AFFIRMATION" =~ ^(true|false)$ ]]; then
+        errors+=("TODO_SHOW_AFFIRMATION=$TODO_SHOW_AFFIRMATION is not valid (true/false)")
+    fi
+    
+    if [[ -n "$TODO_SHOW_TODO_BOX" ]] && ! [[ "$TODO_SHOW_TODO_BOX" =~ ^(true|false)$ ]]; then
+        errors+=("TODO_SHOW_TODO_BOX=$TODO_SHOW_TODO_BOX is not valid (true/false)")
+    fi
+    
+    # Validate heart position
+    if [[ -n "$TODO_HEART_POSITION" ]] && ! [[ "$TODO_HEART_POSITION" =~ ^(left|right|both|none)$ ]]; then
+        errors+=("TODO_HEART_POSITION=$TODO_HEART_POSITION is not valid (left/right/both/none)")
+    fi
+    
+    # Validate numeric ranges
+    if [[ -n "$TODO_BOX_WIDTH_FRACTION" ]]; then
+        # Check if it's a valid decimal between 0 and 1
+        if ! [[ "$TODO_BOX_WIDTH_FRACTION" =~ ^0?\.[0-9]+$ || "$TODO_BOX_WIDTH_FRACTION" == "1" ]]; then
+            errors+=("TODO_BOX_WIDTH_FRACTION=$TODO_BOX_WIDTH_FRACTION is not valid (0.0-1.0)")
+        fi
+    fi
+    
+    # Check required variables are set
+    if [[ -z "$TODO_TITLE" ]]; then
+        errors+=("TODO_TITLE is not set")
+    fi
+    
+    if [[ -z "$TODO_HEART_CHAR" ]]; then
+        errors+=("TODO_HEART_CHAR is not set")
+    fi
+    
+    if [[ -z "$TODO_BULLET_CHAR" ]]; then
+        errors+=("TODO_BULLET_CHAR is not set")
+    fi
+    
+    # Report errors
+    if [[ ${#errors[@]} -gt 0 ]]; then
+        echo "Validation errors for preset '$preset_name':"
+        for error in "${errors[@]}"; do
+            echo "  - $error"
+        done
+        return 1
+    fi
+    
+    return 0
+}
+
 # Test 10: Apply minimal preset
 test_preset_minimal() {
     todo config preset minimal >/dev/null 2>&1
     
-    if [[ "$TODO_TITLE" == "TODO" && "$TODO_HEART_POSITION" == "none" && "$TODO_SHOW_AFFIRMATION" == "false" ]]; then
+    # Comprehensive validation
+    if ! validate_preset_values "minimal"; then
+        return 1
+    fi
+    
+    # Specific minimal preset checks
+    if [[ "$TODO_TITLE" == "TODO" && 
+          "$TODO_HEART_POSITION" == "none" && 
+          "$TODO_SHOW_AFFIRMATION" == "false" &&
+          "$TODO_HEART_CHAR" == "•" &&
+          "$TODO_BULLET_CHAR" == "•" &&
+          "$TODO_TASK_COLORS" == "250,248,246,244,242,240" &&
+          "$TODO_BORDER_COLOR" == "238" &&
+          "$TODO_TASK_TEXT_COLOR" == "245" &&
+          "$TODO_TITLE_COLOR" == "255" &&
+          "$TODO_AFFIRMATION_COLOR" == "250" &&
+          "$TODO_PADDING_RIGHT" == "2" ]]; then
         return 0
     else
         echo "Minimal preset not applied correctly"
+        echo "TODO_TITLE='$TODO_TITLE' (expected 'TODO')"
+        echo "TODO_HEART_POSITION='$TODO_HEART_POSITION' (expected 'none')"
+        echo "TODO_SHOW_AFFIRMATION='$TODO_SHOW_AFFIRMATION' (expected 'false')"
+        echo "TODO_TASK_COLORS='$TODO_TASK_COLORS' (expected '245,244,243,242,241,240')"
         return 1
     fi
 }
@@ -242,10 +349,30 @@ test_preset_minimal() {
 test_preset_colorful() {
     todo config preset colorful >/dev/null 2>&1
     
-    if [[ "$TODO_TITLE" == "✨ TASKS ✨" && "$TODO_HEART_CHAR" == "💖" && "$TODO_HEART_POSITION" == "both" ]]; then
+    # Comprehensive validation
+    if ! validate_preset_values "colorful"; then
+        return 1
+    fi
+    
+    # Specific colorful preset checks
+    if [[ "$TODO_TITLE" == "✨ TASKS ✨" && 
+          "$TODO_HEART_CHAR" == "💖" && 
+          "$TODO_HEART_POSITION" == "both" &&
+          "$TODO_BULLET_CHAR" == "🔸" &&
+          "$TODO_TASK_COLORS" == "196,202,208,214,220,226" &&
+          "$TODO_BORDER_COLOR" == "201" &&
+          "$TODO_TASK_TEXT_COLOR" == "255" &&
+          "$TODO_TITLE_COLOR" == "226" &&
+          "$TODO_AFFIRMATION_COLOR" == "213" &&
+          "$TODO_BOX_WIDTH_FRACTION" == "0.5" &&
+          "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
         return 0
     else
         echo "Colorful preset not applied correctly"
+        echo "TODO_TITLE='$TODO_TITLE' (expected '✨ TASKS ✨')"
+        echo "TODO_HEART_CHAR='$TODO_HEART_CHAR' (expected '💖')"
+        echo "TODO_HEART_POSITION='$TODO_HEART_POSITION' (expected 'both')"
+        echo "TODO_TASK_COLORS='$TODO_TASK_COLORS' (expected '196,202,208,214,220,226')"
         return 1
     fi
 }
@@ -254,10 +381,29 @@ test_preset_colorful() {
 test_preset_work() {
     todo config preset work >/dev/null 2>&1
     
-    if [[ "$TODO_TITLE" == "WORK TASKS" && "$TODO_HEART_CHAR" == "💼" && "$TODO_BOX_WIDTH_FRACTION" == "0.4" ]]; then
+    # Comprehensive validation
+    if ! validate_preset_values "work"; then
+        return 1
+    fi
+    
+    # Specific work preset checks
+    if [[ "$TODO_TITLE" == "WORK TASKS" && 
+          "$TODO_HEART_CHAR" == "💼" && 
+          "$TODO_BOX_WIDTH_FRACTION" == "0.4" &&
+          "$TODO_BULLET_CHAR" == "▶" &&
+          "$TODO_TASK_COLORS" == "21,33,39,45,51,57" &&
+          "$TODO_BORDER_COLOR" == "33" &&
+          "$TODO_TASK_TEXT_COLOR" == "250" &&
+          "$TODO_TITLE_COLOR" == "39" &&
+          "$TODO_AFFIRMATION_COLOR" == "75" &&
+          "$TODO_HEART_POSITION" == "left" &&
+          "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
         return 0
     else
         echo "Work preset not applied correctly"
+        echo "TODO_TITLE='$TODO_TITLE' (expected 'WORK TASKS')"
+        echo "TODO_HEART_CHAR='$TODO_HEART_CHAR' (expected '💼')"
+        echo "TODO_BOX_WIDTH_FRACTION='$TODO_BOX_WIDTH_FRACTION' (expected '0.4')"
         return 1
     fi
 }
@@ -266,10 +412,29 @@ test_preset_work() {
 test_preset_dark() {
     todo config preset dark >/dev/null 2>&1
     
-    if [[ "$TODO_BORDER_BG_COLOR" == "232" && "$TODO_CONTENT_BG_COLOR" == "233" ]]; then
+    # Comprehensive validation
+    if ! validate_preset_values "dark"; then
+        return 1
+    fi
+    
+    # Specific dark preset checks
+    if [[ "$TODO_TITLE" == "REMEMBER" &&
+          "$TODO_HEART_CHAR" == "♥" &&
+          "$TODO_BULLET_CHAR" == "▪" &&
+          "$TODO_TASK_COLORS" == "124,88,52,94,130,166" &&
+          "$TODO_BORDER_COLOR" == "235" &&
+          "$TODO_BORDER_BG_COLOR" == "232" && 
+          "$TODO_CONTENT_BG_COLOR" == "233" &&
+          "$TODO_TASK_TEXT_COLOR" == "244" &&
+          "$TODO_TITLE_COLOR" == "255" &&
+          "$TODO_AFFIRMATION_COLOR" == "103" &&
+          "$TODO_HEART_POSITION" == "left" &&
+          "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
         return 0
     else
         echo "Dark preset not applied correctly"
+        echo "TODO_BORDER_BG_COLOR='$TODO_BORDER_BG_COLOR' (expected '232')"
+        echo "TODO_CONTENT_BG_COLOR='$TODO_CONTENT_BG_COLOR' (expected '233')"
         return 1
     fi
 }
@@ -286,7 +451,142 @@ test_preset_invalid() {
     fi
 }
 
-# Test 15: Save current preset
+# Test 15: Apply monokai preset
+test_preset_monokai() {
+    todo config preset monokai >/dev/null 2>&1
+    
+    # Comprehensive validation
+    if ! validate_preset_values "monokai"; then
+        return 1
+    fi
+    
+    # Specific monokai preset checks
+    if [[ "$TODO_TITLE" == "CODE" &&
+          "$TODO_HEART_CHAR" == "♥" &&
+          "$TODO_BULLET_CHAR" == "▪" &&
+          "$TODO_TASK_COLORS" == "249,115,166,230,141,208" &&
+          "$TODO_BORDER_COLOR" == "59" &&
+          "$TODO_BORDER_BG_COLOR" == "235" &&
+          "$TODO_CONTENT_BG_COLOR" == "234" &&
+          "$TODO_TASK_TEXT_COLOR" == "248" &&
+          "$TODO_TITLE_COLOR" == "141" &&
+          "$TODO_AFFIRMATION_COLOR" == "208" &&
+          "$TODO_HEART_POSITION" == "left" &&
+          "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
+        return 0
+    else
+        echo "Monokai preset not applied correctly"
+        return 1
+    fi
+}
+
+# Test 16: Apply solarized-dark preset
+test_preset_solarized_dark() {
+    todo config preset solarized-dark >/dev/null 2>&1
+    
+    # Comprehensive validation
+    if ! validate_preset_values "solarized-dark"; then
+        return 1
+    fi
+    
+    # Specific solarized-dark preset checks
+    if [[ "$TODO_TITLE" == "FOCUS" &&
+          "$TODO_HEART_CHAR" == "☀" &&
+          "$TODO_BULLET_CHAR" == "•" &&
+          "$TODO_TASK_COLORS" == "203,166,136,68,160,125" &&
+          "$TODO_BORDER_COLOR" == "240" &&
+          "$TODO_BORDER_BG_COLOR" == "234" &&
+          "$TODO_CONTENT_BG_COLOR" == "233" &&
+          "$TODO_TASK_TEXT_COLOR" == "244" &&
+          "$TODO_TITLE_COLOR" == "136" &&
+          "$TODO_AFFIRMATION_COLOR" == "37" &&
+          "$TODO_HEART_POSITION" == "left" &&
+          "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
+        return 0
+    else
+        echo "Solarized-dark preset not applied correctly"
+        return 1
+    fi
+}
+
+# Test 17: Apply nord preset
+test_preset_nord() {
+    todo config preset nord >/dev/null 2>&1
+    
+    # Comprehensive validation
+    if ! validate_preset_values "nord"; then
+        return 1
+    fi
+    
+    # Specific nord preset checks
+    if [[ "$TODO_TITLE" == "ARCTIC" &&
+          "$TODO_HEART_CHAR" == "❄" &&
+          "$TODO_BULLET_CHAR" == "▸" &&
+          "$TODO_TASK_COLORS" == "131,209,150,116,97,139" &&
+          "$TODO_BORDER_COLOR" == "59" &&
+          "$TODO_BORDER_BG_COLOR" == "236" &&
+          "$TODO_CONTENT_BG_COLOR" == "235" &&
+          "$TODO_TASK_TEXT_COLOR" == "188" &&
+          "$TODO_TITLE_COLOR" == "150" &&
+          "$TODO_AFFIRMATION_COLOR" == "116" &&
+          "$TODO_HEART_POSITION" == "left" &&
+          "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
+        return 0
+    else
+        echo "Nord preset not applied correctly"
+        return 1
+    fi
+}
+
+# Test 18: Apply gruvbox-dark preset
+test_preset_gruvbox_dark() {
+    todo config preset gruvbox-dark >/dev/null 2>&1
+    
+    # Comprehensive validation
+    if ! validate_preset_values "gruvbox-dark"; then
+        return 1
+    fi
+    
+    # Specific gruvbox-dark preset checks
+    if [[ "$TODO_TITLE" == "RETRO" &&
+          "$TODO_HEART_CHAR" == "♥" &&
+          "$TODO_BULLET_CHAR" == "●" &&
+          "$TODO_TASK_COLORS" == "167,208,214,109,175,142" &&
+          "$TODO_BORDER_COLOR" == "243" &&
+          "$TODO_BORDER_BG_COLOR" == "237" &&
+          "$TODO_CONTENT_BG_COLOR" == "235" &&
+          "$TODO_TASK_TEXT_COLOR" == "223" &&
+          "$TODO_TITLE_COLOR" == "214" &&
+          "$TODO_AFFIRMATION_COLOR" == "109" &&
+          "$TODO_HEART_POSITION" == "left" &&
+          "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
+        return 0
+    else
+        echo "Gruvbox-dark preset not applied correctly"
+        return 1
+    fi
+}
+
+# Test 19: Apply base16-auto preset (simplified test - it's dynamic)
+test_preset_base16_auto() {
+    # This preset is dynamic based on BASE16_THEME, so we'll just test it applies without error
+    todo config preset base16-auto >/dev/null 2>&1
+    
+    # Comprehensive validation
+    if ! validate_preset_values "base16-auto"; then
+        return 1
+    fi
+    
+    # Just verify required variables are set (dynamic values depend on BASE16_THEME)
+    if [[ -n "$TODO_TITLE" && -n "$TODO_TASK_COLORS" && -n "$TODO_BORDER_COLOR" ]]; then
+        return 0
+    else
+        echo "Base16-auto preset failed to set required variables"
+        return 1
+    fi
+}
+
+# Test 20: Save current preset
 test_save_preset() {
     # Set some distinctive values
     TODO_TITLE="CUSTOM TEST"
@@ -307,7 +607,50 @@ test_save_preset() {
     fi
 }
 
-# Test 16: Main command dispatcher
+# Test 21: Preset list consistency
+test_preset_list_consistency() {
+    # Get the available presets from the constant
+    local preset_list="$_TODO_PRESET_LIST"
+    # Remove spaces after commas for proper splitting
+    preset_list="${preset_list//,/,}"
+    preset_list="${preset_list//  / }"
+    
+    local -a available_presets
+    available_presets=(${(s:,:)preset_list})
+    
+    # Test each preset in the list exists
+    local missing_presets=()
+    for preset in "${available_presets[@]}"; do
+        # Trim any whitespace
+        preset="${preset## }"
+        preset="${preset%% }"
+        
+        # Skip empty entries
+        if [[ -z "$preset" ]]; then
+            continue
+        fi
+        
+        # Skip base16-auto as it's dynamic
+        if [[ "$preset" == "base16-auto" ]]; then
+            continue
+        fi
+        
+        # Try to apply the preset
+        local output=$(todo config preset "$preset" 2>&1)
+        if [[ "$output" =~ "Unknown preset" ]]; then
+            missing_presets+=("$preset")
+        fi
+    done
+    
+    if [[ ${#missing_presets[@]} -eq 0 ]]; then
+        return 0
+    else
+        echo "Presets in _TODO_PRESET_LIST but not implemented: ${missing_presets[@]}"
+        return 1
+    fi
+}
+
+# Test 22: Main command dispatcher
 test_config_dispatcher() {
     # Test help/usage message
     local output=$(todo_config invalid_command 2>&1)
@@ -320,7 +663,7 @@ test_config_dispatcher() {
     fi
 }
 
-# Test 17: Error handling for missing files
+# Test 23: Error handling for missing files
 test_import_missing_file() {
     local output=$(todo config import "/nonexistent/file.conf" 2>&1)
     
@@ -332,7 +675,7 @@ test_import_missing_file() {
     fi
 }
 
-# Test 18: Export/import round trip
+# Test 24: Export/import round trip
 test_export_import_roundtrip() {
     local config_file="$TEST_TMPDIR/roundtrip.conf"
     
@@ -361,7 +704,7 @@ test_export_import_roundtrip() {
     fi
 }
 
-# Test 19: Setup command exists
+# Test 25: Setup command exists
 test_wizard_function_exists() {
     # Test that setup command is accessible through subcommand interface
     local output=$(timeout 2 zsh -c "autoload -U colors; colors; source '$SCRIPT_DIR/../reminder.plugin.zsh'; echo -e '\n\n\n\n\n\n\n\n\n\n' | todo setup" 2>&1 || true)
@@ -374,7 +717,7 @@ test_wizard_function_exists() {
     fi
 }
 
-# Test 20: Setup command dispatcher
+# Test 26: Setup command dispatcher
 test_wizard_dispatcher() {
     # Test that setup command is recognized by checking if it doesn't give unknown command error
     local output=$(timeout 2 zsh -c "autoload -U colors; colors; source '$SCRIPT_DIR/../reminder.plugin.zsh'; echo -e '\n\n\n\n\n\n\n\n\n\n' | todo setup" 2>&1 || true)
@@ -411,7 +754,13 @@ run_test "Apply colorful preset" test_preset_colorful
 run_test "Apply work preset" test_preset_work
 run_test "Apply dark preset" test_preset_dark
 run_test "Invalid preset handling" test_preset_invalid
+run_test "Apply monokai preset" test_preset_monokai
+run_test "Apply solarized-dark preset" test_preset_solarized_dark
+run_test "Apply nord preset" test_preset_nord
+run_test "Apply gruvbox-dark preset" test_preset_gruvbox_dark
+run_test "Apply base16-auto preset" test_preset_base16_auto
 run_test "Save current preset" test_save_preset
+run_test "Preset list consistency" test_preset_list_consistency
 run_test "Main command dispatcher" test_config_dispatcher
 run_test "Error handling for missing files" test_import_missing_file
 run_test "Export/import round trip" test_export_import_roundtrip
