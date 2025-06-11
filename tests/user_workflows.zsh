@@ -269,7 +269,7 @@ test_migration_workflow() {
     ")
     
     if [[ "$help_output" == *"todo done"* ]] && \
-       [[ "$help_output" == *"todo hide"* ]]; then
+       [[ "$help_output" == *"More Commands:"* ]]; then
         echo "    ✅ New commands discoverable"
     else
         echo "    ❌ New commands not clear"

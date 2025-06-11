@@ -341,8 +341,8 @@ function test_help_command_coverage() {
     local help_output=$(zsh -c 'source reminder.plugin.zsh; todo help')
     local full_help_output=$(zsh -c 'source reminder.plugin.zsh; todo help --full')
     
-    # Commands that should be in basic help
-    local basic_commands=("todo" "todo done" "todo hide" "todo show" "todo setup")
+    # Commands that should be in basic help (updated for simplified interface)
+    local basic_commands=("todo" "todo done" "todo setup" "todo help")
     local missing_basic=()
     
     for cmd in "${basic_commands[@]}"; do
@@ -352,7 +352,7 @@ function test_help_command_coverage() {
     done
     
     # Commands that should be in full help (updated for subcommand interface)
-    local advanced_commands=("todo config" "export" "import" "preset")
+    local advanced_commands=("todo config" "export" "import" "preset" "todo hide" "todo show" "todo toggle")
     local missing_advanced=()
     
     for cmd in "${advanced_commands[@]}"; do
@@ -361,10 +361,6 @@ function test_help_command_coverage() {
         fi
     done
     
-    # Special check: setup should be mentioned in basic help
-    if [[ "$help_output" != *"setup"* ]]; then
-        missing_basic+=("setup (in basic help)")
-    fi
     
     if [[ ${#missing_basic[@]} -eq 0 && ${#missing_advanced[@]} -eq 0 ]]; then
         echo "✅ PASS: $test_name"

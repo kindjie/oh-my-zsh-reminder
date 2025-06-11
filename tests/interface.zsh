@@ -192,32 +192,32 @@ test_help_command() {
     echo "\n2. Testing help command:"
     
     # Test that help command exists and works
-    if command -v todo_help >/dev/null 2>&1; then
-        echo "✅ PASS: todo_help command exists"
+    if command -v todo >/dev/null 2>&1; then
+        echo "✅ PASS: todo command exists"
     else
-        echo "❌ FAIL: todo_help command not found"
+        echo "❌ FAIL: todo command not found"
     fi
     
     # Test that help command produces concise output by default
-    help_output=$(todo_help 2>/dev/null)
-    if [[ -n "$help_output" ]] && [[ "$help_output" == *"Essential Commands"* ]]; then
-        echo "✅ PASS: todo_help produces concise core help output"
+    help_output=$(todo help 2>/dev/null)
+    if [[ -n "$help_output" ]] && [[ "$help_output" == *"Core Commands:"* ]]; then
+        echo "✅ PASS: todo help produces concise core help output"
     else
-        echo "❌ FAIL: todo_help doesn't produce expected concise output"
+        echo "❌ FAIL: todo help doesn't produce expected concise output"
     fi
     
-    # Test that concise help includes essential commands
-    if [[ "$help_output" == *"Essential Commands"* ]] && [[ "$help_output" == *"todo"* ]] && [[ "$help_output" == *"todo done"* ]]; then
-        echo "✅ PASS: Concise help includes essential commands"
+    # Test that concise help includes exactly 4 core commands and excludes others
+    if [[ "$help_output" == *"todo <task>"* ]] && [[ "$help_output" == *"todo done"* ]] && [[ "$help_output" == *"todo setup"* ]] && [[ "$help_output" == *"todo help"* ]] && [[ "$help_output" != *"todo hide"* ]] && [[ "$help_output" != *"todo show"* ]]; then
+        echo "✅ PASS: Concise help includes exactly 4 core commands (excludes hide/show)"
     else
-        echo "❌ FAIL: Concise help missing essential commands"
+        echo "❌ FAIL: Concise help doesn't show exactly 4 core commands"
     fi
     
-    # Test that concise help includes pointer to full help
-    if [[ "$help_output" == *"todo_help --full"* ]]; then
-        echo "✅ PASS: Concise help includes pointer to full help"
+    # Test that concise help includes hint about more commands
+    if [[ "$help_output" == *"More Commands:"* ]] && [[ "$help_output" == *"todo help --full"* ]]; then
+        echo "✅ PASS: Concise help includes hint about more commands"
     else
-        echo "❌ FAIL: Concise help missing pointer to full help"
+        echo "❌ FAIL: Concise help missing hint about more commands"
     fi
     
     # Test that full help function exists
@@ -228,19 +228,19 @@ test_help_command() {
     fi
     
     # Test that --full flag works
-    full_help_output=$(todo_help --full 2>/dev/null)
+    full_help_output=$(todo help --full 2>/dev/null)
     if [[ -n "$full_help_output" ]] && [[ "$full_help_output" == *"Complete Reference"* ]]; then
-        echo "✅ PASS: todo_help --full produces comprehensive help"
+        echo "✅ PASS: todo help --full produces comprehensive help"
     else
-        echo "❌ FAIL: todo_help --full doesn't produce expected output"
+        echo "❌ FAIL: todo help --full doesn't produce expected output"
     fi
     
     # Test that -f shorthand works
-    short_flag_output=$(todo_help -f 2>/dev/null)
+    short_flag_output=$(todo help -f 2>/dev/null)
     if [[ -n "$short_flag_output" ]] && [[ "$short_flag_output" == *"Complete Reference"* ]]; then
-        echo "✅ PASS: todo_help -f shorthand works"
+        echo "✅ PASS: todo help -f shorthand works"
     else
-        echo "❌ FAIL: todo_help -f shorthand doesn't work"
+        echo "❌ FAIL: todo help -f shorthand doesn't work"
     fi
     
     # Test that full help includes comprehensive sections
@@ -447,29 +447,29 @@ test_help_alignment() {
     
     source_test_plugin
     
-    # Test concise help - we know Essential Commands is now properly aligned
+    # Test concise help - we know Commands section is now properly aligned
     local help_output
-    help_output=$(todo_help 2>/dev/null)
+    help_output=$(todo help 2>/dev/null)
     
-    # Manual check - Essential Commands should have 6 command lines (excluding examples)
-    local essential_lines
-    essential_lines=$(echo "$help_output" | \
+    # Manual check - Core Commands section should have exactly 4 command lines
+    local command_lines
+    command_lines=$(echo "$help_output" | \
         sed 's/\x1b\[[0-9;]*m//g' | \
-        sed -n '3,/^$/p' | \
+        sed -n '/Core Commands:/,/^$/p' | \
         grep -E "^  todo" | \
         grep -v "#" | \
         wc -l)
     
-    if [[ $essential_lines -eq 6 ]]; then
-        echo "✅ PASS: Essential Commands section has correct number of lines"
-        echo "✅ PASS: Essential Commands section properly aligned (manually verified)"
+    if [[ $command_lines -eq 4 ]]; then
+        echo "✅ PASS: Core Commands section has exactly 4 commands"
+        echo "✅ PASS: Core Commands section properly aligned (manually verified)"
     else
-        echo "❌ FAIL: Essential Commands section has unexpected number of lines ($essential_lines)"
+        echo "❌ FAIL: Core Commands section has $command_lines commands, expected exactly 4"
     fi
     
     # Test that help sections exist and have content
     local full_help_output
-    full_help_output=$(todo_help --full 2>/dev/null)
+    full_help_output=$(todo help --full 2>/dev/null)
     
     # Check that major sections exist
     if echo "$full_help_output" | grep -q "Task Management:"; then

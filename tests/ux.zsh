@@ -157,13 +157,13 @@ function test_alias_clarity() {
     # Test that subcommand names are intuitive and clear
     local help_output=$(zsh -c 'source reminder.plugin.zsh; todo help')
     
-    # Check for clear command naming in help
+    # Check for clear command naming in basic help (core commands only)
     if [[ "$help_output" == *"todo done"* ]] && \
-       [[ "$help_output" == *"todo hide"* ]] && \
-       [[ "$help_output" == *"todo show"* ]] && \
-       [[ "$help_output" == *"Complete a task"* ]]; then
+       [[ "$help_output" == *"todo setup"* ]] && \
+       [[ "$help_output" == *"Complete a task"* ]] && \
+       [[ "$help_output" == *"Interactive configuration"* ]]; then
         echo "✅ PASS: $test_name (subcommand interface)"
-        echo "  Commands: done (complete), hide/show (control), toggle (switch)"
+        echo "  Commands: done (complete), setup (configure), help (assist)"
         ((passed_count++))
     else
         echo "❌ FAIL: $test_name"
@@ -370,7 +370,7 @@ function test_simple_help_essentials() {
     ((test_count++))
     
     local help_output=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo help')
-    local essential_commands=("todo" "todo done" "todo hide" "todo show" "todo setup")
+    local essential_commands=("todo" "todo done" "todo setup" "todo help")
     local missing_commands=()
     
     for cmd in "${essential_commands[@]}"; do
@@ -381,11 +381,11 @@ function test_simple_help_essentials() {
     
     if [[ ${#missing_commands[@]} -eq 0 ]]; then
         echo "✅ PASS: $test_name"
-        echo "  All Layer 1 commands present in simple help"
+        echo "  All core commands present in simple help"
         ((passed_count++))
     else
         echo "❌ FAIL: $test_name"
-        echo "  Missing essential commands: ${missing_commands[*]}"
+        echo "  Missing core commands: ${missing_commands[*]}"
         ((failed_count++))
     fi
 }
@@ -559,7 +559,7 @@ function test_layer_2_discovery() {
     ((test_count++))
     
     local help_output=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo help')
-    local layer_2_hints=("todo setup" "todo help --colors" "todo hide" "todo show")
+    local layer_2_hints=("todo setup" "todo help --colors" "todo help --full")
     local missing_hints=()
     
     for hint in "${layer_2_hints[@]}"; do
@@ -570,11 +570,11 @@ function test_layer_2_discovery() {
     
     if [[ ${#missing_hints[@]} -eq 0 ]]; then
         echo "✅ PASS: $test_name"
-        echo "  Layer 2 features visible in basic help for discovery"
+        echo "  Layer 2 features discoverable via help pointers"
         ((passed_count++))
     else
         echo "❌ FAIL: $test_name"
-        echo "  Missing Layer 2 discovery hints: ${missing_hints[*]}"
+        echo "  Missing Layer 2 discovery pointers: ${missing_hints[*]}"
         ((failed_count++))
     fi
 }

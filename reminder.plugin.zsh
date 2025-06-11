@@ -609,23 +609,18 @@ function _todo_show_basic_help() {
     echo "${bold}${blue}📝 Todo - Simple Task Management${reset}"
     echo "${gray}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
     echo
-    echo "${green}Commands:${reset}"
+    echo "${green}Core Commands:${reset}"
     echo "  ${cyan}todo <task>${reset}        Add a new task"
     echo "  ${cyan}todo done <task>${reset}   Complete a task"
-    echo "  ${cyan}todo hide${reset}          Hide todo display"
-    echo "  ${cyan}todo show${reset}          Show todo display"
-    echo "  ${cyan}todo toggle${reset}        Toggle display components"
     echo "  ${cyan}todo setup${reset}         Interactive configuration"
-    echo "  ${cyan}todo config${reset}        Advanced configuration"
     echo "  ${cyan}todo help${reset}          Show this help"
     echo
     echo "${green}Examples:${reset}"
     echo "  ${gray}todo \"Buy groceries\"${reset}"
     echo "  ${gray}todo done \"Buy\"${reset}"
-    echo "  ${gray}todo toggle affirmation${reset}"
     echo
-    echo "${green}More Help:${reset}"
-    echo "  ${cyan}todo help --full${reset}     Complete documentation"
+    echo "${green}More Commands:${reset}"
+    echo "  ${cyan}todo help --full${reset}     All commands and options"
     echo "  ${cyan}todo help --colors${reset}   Color reference"
     echo "  ${cyan}todo help --config${reset}   Configuration help"
     echo
