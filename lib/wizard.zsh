@@ -202,20 +202,23 @@ function _todo_config_wizard_real() {
             show_wizard_preview "Preset Selection"
             show_step_header "1b" "Preset Selection" "Choose a preset theme to start with"
             
-            show_color_option "1" "minimal  - Clean, simple" "250"
-            show_color_option "2" "colorful - Bright, vibrant" "196"
-            show_color_option "3" "work     - Professional blue" "33"
-            show_color_option "4" "dark     - Dark theme" "235"
+            # Display all available presets using centralized list
+            show_color_option "1" "minimal      - Clean, simple" "250"
+            show_color_option "2" "colorful     - Bright, vibrant" "196"
+            show_color_option "3" "work         - Professional blue" "33"
+            show_color_option "4" "dark         - Dark theme" "235"
+            show_color_option "5" "monokai      - Code editor theme" "141"
+            show_color_option "6" "solarized    - Balanced contrast" "136"
+            show_color_option "7" "nord         - Arctic blue palette" "150"
+            show_color_option "8" "gruvbox      - Retro warm colors" "214"
+            show_color_option "9" "base16-auto  - Auto-detect theme" "109"
             echo
             
-            local preset_choice=$(read_single_char "   ${fg[yellow]}Select preset [1]: ${reset_color}" "1234" "1")
+            local preset_choice=$(read_single_char "   ${fg[yellow]}Select preset [1]: ${reset_color}" "123456789" "1")
             
-            case "$preset_choice" in
-                1) preset_name="minimal" ;;
-                2) preset_name="colorful" ;;
-                3) preset_name="work" ;;
-                4) preset_name="dark" ;;
-            esac
+            # Map selection to preset name using centralized list
+            local preset_index=$((preset_choice))
+            preset_name="${_TODO_AVAILABLE_PRESETS[$preset_index]}"
             
             echo "   ${fg[green]}Applying preset '$preset_name'...${reset_color}"
             todo_config preset "$preset_name" >/dev/null 2>&1
