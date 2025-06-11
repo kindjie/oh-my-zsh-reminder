@@ -207,14 +207,14 @@ test_help_command() {
     fi
     
     # Test that concise help includes essential commands
-    if [[ "$help_output" == *"Essential Commands"* ]] && [[ "$help_output" == *"todo"* ]] && [[ "$help_output" == *"todo_remove"* ]]; then
+    if [[ "$help_output" == *"Essential Commands"* ]] && [[ "$help_output" == *"todo"* ]] && [[ "$help_output" == *"todo done"* ]]; then
         echo "✅ PASS: Concise help includes essential commands"
     else
         echo "❌ FAIL: Concise help missing essential commands"
     fi
     
     # Test that concise help includes pointer to full help
-    if [[ "$help_output" == *"todo_help --more"* ]]; then
+    if [[ "$help_output" == *"todo_help --full"* ]]; then
         echo "✅ PASS: Concise help includes pointer to full help"
     else
         echo "❌ FAIL: Concise help missing pointer to full help"

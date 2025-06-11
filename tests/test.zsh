@@ -41,6 +41,7 @@ TEST_FILES=(
 PERFORMANCE_TEST_FILE="performance.zsh"
 UX_TEST_FILE="ux.zsh"
 DOCUMENTATION_TEST_FILE="documentation.zsh"
+HELP_EXAMPLES_TEST_FILE="help_examples.zsh"
 USER_WORKFLOWS_FILE="user_workflows.zsh"
 
 # Global test tracking
@@ -413,6 +414,78 @@ run_documentation_tests() {
     return $exit_code
 }
 
+# Function to run help examples tests
+run_help_examples_tests() {
+    local help_path="$TESTS_DIR/$HELP_EXAMPLES_TEST_FILE"
+    
+    if [[ ! -f "$help_path" ]]; then
+        echo "${RED}❌ Help examples test file not found: $HELP_EXAMPLES_TEST_FILE${RESET}"
+        return 1
+    fi
+    
+    if [[ "$verbose" == true ]]; then
+        echo "${MAGENTA}📖 Running help examples tests...${RESET}"
+        echo "This validates that all help examples actually work and produce expected outputs."
+        echo
+    fi
+    
+    # Run help examples tests with timeout
+    local output
+    local exit_code
+    
+    if timeout 30 "$help_path" > /tmp/help_output 2>&1; then
+        output=$(cat /tmp/help_output)
+        exit_code=0
+    else
+        output=$(cat /tmp/help_output 2>/dev/null || echo "Help examples tests timed out or failed")
+        exit_code=1
+    fi
+    
+    # Clean up temp file
+    rm -f /tmp/help_output
+    
+    # Count help examples test results
+    local help_passed=$(echo "$output" | grep -c "✅ PASS")
+    local help_failed=$(echo "$output" | grep -c "❌ FAIL")
+    local help_warnings=$(echo "$output" | grep -c "⚠️")
+    
+    # Display relevant output in verbose mode, or failures only
+    if [[ "$verbose" == true ]]; then
+        echo "$output"
+    elif [[ $help_failed -gt 0 || $help_warnings -gt 0 ]]; then
+        echo "${RED}❌ ${help_failed} failed${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -3
+        if [[ $help_failed -gt 3 ]]; then
+            echo "   ... and $((help_failed - 3)) more failures"
+        fi
+    else
+        echo "${GREEN}✅ ${help_passed} passed${RESET}"
+    fi
+    
+    # Update global counters
+    TOTAL_TESTS=$((TOTAL_TESTS + help_passed + help_failed))
+    PASSED_TESTS=$((PASSED_TESTS + help_passed))
+    FAILED_TESTS=$((FAILED_TESTS + help_failed))
+    WARNING_TESTS=$((WARNING_TESTS + help_warnings))
+    
+    # Report help examples results
+    if [[ "$verbose" == true ]]; then
+        echo "────────────────────────────────────────────────────"
+    fi
+    if [[ $help_failed -eq 0 ]]; then
+        if [[ "$verbose" == true ]]; then
+            echo "${GREEN}✅ Help examples tests: $help_passed passed, $help_warnings warnings${RESET}"
+        fi
+    else
+        echo "${RED}❌ Help examples tests: $help_passed passed, $help_failed failed, $help_warnings warnings${RESET}"
+    fi
+    if [[ "$verbose" == true ]]; then
+        echo
+    fi
+    
+    return $exit_code
+}
+
 # Function to display summary
 display_summary() {
     echo "🎯 Test Suite Summary"
@@ -703,6 +776,16 @@ main() {
             echo
         fi
         run_documentation_tests
+    fi
+    
+    # Run help examples tests (always run with documentation tests)
+    if [[ "$skip_documentation" == false && ${#specific_tests[@]} -eq 0 ]]; then
+        if [[ "$verbose" == false ]]; then
+            echo -n "${CYAN}▶${RESET} help_examples.zsh ... "
+        else
+            echo
+        fi
+        run_help_examples_tests
     fi
     
     # Run meta-analysis if requested

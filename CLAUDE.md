@@ -89,6 +89,87 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - Performance tests separated with `--perf` flag due to longer execution time
 - All tests designed to run in CI/automated environments
 
+## Development Workflow - Documentation Consistency
+
+### The Pragmatic Combo (High ROI Prevention Strategy)
+
+To prevent help text and documentation inconsistencies, follow this **3-step workflow** whenever making interface changes:
+
+#### 1. **Always Do: Comprehensive Search** (5 minutes, prevents 80%+ of issues)
+
+Before completing any command interface changes:
+
+```bash
+# Check for specific old command references
+./dev-tools/check-command-references.sh old_command_name
+
+# Run comprehensive check for common issues  
+./dev-tools/check-command-references.sh
+
+# Example workflow when replacing 'task_done' with 'todo done':
+./dev-tools/check-command-references.sh task_done
+# Fix all found references, then verify:
+./dev-tools/check-command-references.sh task_done  # Should show "No references found"
+```
+
+**Why this works:** Catches interface inconsistencies immediately, uses existing tools, scales to any codebase size.
+
+#### 2. **Do Once: Help Example Validation** (30 minutes setup, permanent protection)
+
+Validate that all help examples actually work:
+
+```bash
+# Test that help examples are executable and produce expected outputs
+./tests/help_examples.zsh
+
+# Add to main test suite for continuous protection
+./tests/test.zsh  # (includes help_examples.zsh automatically)
+```
+
+This test suite:
+- Extracts command examples from help output
+- Validates they execute without errors
+- Checks for expected output patterns (success messages, help sections)
+- Detects obsolete command references in help text
+
+#### 3. **Do Eventually: Single Source of Truth** (centralized configuration)
+
+Presets, command lists, and repeated content now use centralized constants:
+
+```bash
+# Available presets defined once in reminder.plugin.zsh:
+_TODO_AVAILABLE_PRESETS=("minimal" "colorful" "work" "dark" "monokai" "solarized-dark" "nord" "gruvbox-dark" "base16-auto")
+_TODO_PRESET_LIST="${(j:, :)_TODO_AVAILABLE_PRESETS}"
+
+# Used consistently in all help functions:
+echo "Available presets: ${_TODO_PRESET_LIST}"
+```
+
+**Future additions:** Define command lists, color options, and other repeated content centrally.
+
+### Development Checklist
+
+When making interface changes:
+
+- [ ] **Make the change** (modify commands, functions, interfaces)
+- [ ] **Run comprehensive search** (`./dev-tools/check-command-references.sh`)
+- [ ] **Fix all found references** (help text, examples, documentation)  
+- [ ] **Validate help examples** (`./tests/help_examples.zsh`)
+- [ ] **Run test suite** (`./tests/test.zsh --only-functional`)
+- [ ] **Update centralized constants** (if adding new presets/commands)
+
+### Error Prevention Classes
+
+This workflow prevents:
+
+1. **Interface Evolution Inconsistency** - Old command names in help text
+2. **Incomplete Updates** - Missing references during refactoring  
+3. **Data Synchronization Issues** - Different preset lists across functions
+4. **Test-Implementation Drift** - Tests expecting old behavior
+5. **Documentation Inconsistency** - Conflicting information between help commands
+
+**Success Metric:** Zero broken examples in help output, consistent command syntax throughout all user-facing text.
+
 To test plugin modifications:
 
 1. **Basic functionality test**:

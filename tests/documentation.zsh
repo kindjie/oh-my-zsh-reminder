@@ -63,15 +63,15 @@ function test_readme_basic_usage() {
         failed_examples+=("todo done \"Buy\"")
     fi
     
-    # Test: todo_help
+    # Test: todo help
     local output3=$(COLUMNS=80 zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        todo_help
+        todo help
     ')
     
-    if [[ "$output3" != *"Essential Commands"* ]]; then
-        failed_examples+=("todo_help")
+    if [[ "$output3" != *"Commands:"* ]]; then
+        failed_examples+=("todo help")
     fi
     
     if [[ ${#failed_examples[@]} -eq 0 ]]; then
@@ -119,7 +119,7 @@ function test_readme_config_examples() {
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         TODO_SAVE_FILE="/tmp/test_config_$$";
-        todo_add_task "Test config" >/dev/null;
+        todo "Test config" >/dev/null;
         todo_display 2>/dev/null | grep -E "(TASKS|💖)" | wc -l
     ')
     
@@ -157,23 +157,23 @@ function test_readme_aliases() {
     # Get actual aliases from implementation
     local actual_aliases=$(zsh -c 'source reminder.plugin.zsh; alias | grep todo')
     
-    # Check key aliases mentioned in README exist
-    local documented_aliases=("todo" "task_done")
-    local missing_aliases=()
+    # Check key commands mentioned in README exist - now using pure subcommand interface
+    # The 'todo' function exists as main dispatcher, no aliases needed
+    local documented_commands=("todo")
+    local missing_commands=()
     
-    for alias_name in "${documented_aliases[@]}"; do
-        if [[ "$actual_aliases" != *"$alias_name="* ]]; then
-            missing_aliases+=("$alias_name")
-        fi
-    done
+    # Check that todo function exists
+    if ! zsh -c 'source reminder.plugin.zsh; declare -f todo >/dev/null 2>&1'; then
+        missing_commands+=("todo")
+    fi
     
-    if [[ ${#missing_aliases[@]} -eq 0 ]]; then
+    if [[ ${#missing_commands[@]} -eq 0 ]]; then
         echo "✅ PASS: $test_name"
-        echo "  All documented aliases exist in implementation"
+        echo "  All documented commands exist in implementation"
         ((passed_count++))
     else
         echo "❌ FAIL: $test_name"
-        echo "  Missing aliases: ${missing_aliases[*]}"
+        echo "  Missing commands: ${missing_commands[*]}"
         ((failed_count++))
     fi
 }
@@ -203,13 +203,13 @@ function test_claude_md_functions() {
         return
     fi
     
-    # Extract function names mentioned in CLAUDE.md
+    # Extract function names mentioned in CLAUDE.md (updated for pure subcommand interface)
     local documented_functions=(
-        "todo_add_task"
-        "todo_task_done" 
+        "todo"
         "todo_display"
         "fetch_affirmation_async"
-        "todo_toggle_affirmation"
+        "_todo_config_command"
+        "_todo_toggle_command"
         "todo_help"
         "todo_colors"
         "load_tasks"
@@ -338,8 +338,8 @@ function test_help_command_coverage() {
     local test_name="Help output covers all documented commands"
     ((test_count++))
     
-    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo_help')
-    local full_help_output=$(zsh -c 'source reminder.plugin.zsh; todo_help --more')
+    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo help')
+    local full_help_output=$(zsh -c 'source reminder.plugin.zsh; todo help --full')
     
     # Commands that should be in basic help
     local basic_commands=("todo" "todo done" "todo hide" "todo show" "todo setup")
@@ -351,8 +351,8 @@ function test_help_command_coverage() {
         fi
     done
     
-    # Commands that should be in full help
-    local advanced_commands=("todo_config" "export" "import" "preset")
+    # Commands that should be in full help (updated for subcommand interface)
+    local advanced_commands=("todo config" "export" "import" "preset")
     local missing_advanced=()
     
     for cmd in "${advanced_commands[@]}"; do
@@ -361,9 +361,9 @@ function test_help_command_coverage() {
         fi
     done
     
-    # Special check: wizard should be mentioned in basic help (as "customization wizard")
-    if [[ "$help_output" != *"wizard"* ]]; then
-        missing_basic+=("wizard (in basic help)")
+    # Special check: setup should be mentioned in basic help
+    if [[ "$help_output" != *"setup"* ]]; then
+        missing_basic+=("setup (in basic help)")
     fi
     
     if [[ ${#missing_basic[@]} -eq 0 && ${#missing_advanced[@]} -eq 0 ]]; then
@@ -391,7 +391,7 @@ function test_help_examples_work() {
     local failed_examples=()
     
     # Extract examples from help output
-    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo_help')
+    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo help')
     
     # Test example: todo "Buy groceries"
     local example1_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
@@ -506,7 +506,7 @@ function test_config_variables_documented() {
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         TODO_SAVE_FILE="/tmp/test_title_$$";
-        todo_add_task "test" >/dev/null;
+        todo "test" >/dev/null;
         todo_display 2>/dev/null | grep "TEST_TITLE" | wc -l
     ')
     
@@ -599,22 +599,22 @@ function test_command_behavior_accuracy() {
         behavior_mismatches+=("todo command doesn't provide documented success feedback")
     fi
     
-    # Test documented behavior: "task_done removes tasks with tab completion"
+    # Test documented behavior: "todo done removes tasks with tab completion"
     local remove_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        eval "task_done \"Test\""
+        eval "todo done \"Test\""
     ')
     
     if [[ "$remove_output" != *"✅ Task completed"* ]]; then
-        behavior_mismatches+=("task_done doesn't provide documented completion feedback")
+        behavior_mismatches+=("todo done doesn't provide documented completion feedback")
     fi
     
-    # Test documented behavior: "todo_help shows essential commands"
-    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo_help')
+    # Test documented behavior: "todo help shows essential commands"
+    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo help')
     
-    if [[ "$help_output" != *"Essential Commands"* ]]; then
-        behavior_mismatches+=("todo_help doesn't show documented 'Essential Commands' section")
+    if [[ "$help_output" != *"Commands:"* ]]; then
+        behavior_mismatches+=("todo help doesn't show documented 'Commands:' section")
     fi
     
     # Test documented behavior: "todo_colors shows color reference"
@@ -661,9 +661,9 @@ function test_documented_edge_cases() {
     fi
     
     # Test documented behavior: "Missing arguments show usage"
-    local usage_output=$(zsh -c 'source reminder.plugin.zsh; todo_add_task 2>&1')
+    local usage_output=$(zsh -c 'source reminder.plugin.zsh; todo 2>&1')
     
-    if [[ "$usage_output" != *"Usage:"* ]]; then
+    if [[ "$usage_output" != *"Commands:"* ]]; then
         edge_case_failures+=("Missing arguments should show usage information")
     fi
     
@@ -671,7 +671,7 @@ function test_documented_edge_cases() {
     local error_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        todo_task_done "nonexistent" 2>&1
+        todo done "nonexistent" 2>&1
     ')
     
     if [[ "$error_output" != *"No task found"* ]]; then

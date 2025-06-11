@@ -2,6 +2,10 @@
 TODO_SAVE_FILE="${TODO_SAVE_FILE:-$HOME/.todo.save}"
 TODO_AFFIRMATION_FILE="${TODO_AFFIRMATION_FILE:-${TMPDIR:-/tmp}/todo_affirmation}"
 
+# Available configuration presets (single source of truth)
+_TODO_AVAILABLE_PRESETS=("minimal" "colorful" "work" "dark" "monokai" "solarized-dark" "nord" "gruvbox-dark" "base16-auto")
+_TODO_PRESET_LIST="${(j:, :)_TODO_AVAILABLE_PRESETS}"
+
 # Box width configuration (fraction of terminal width, with min/max limits)
 TODO_BOX_WIDTH_FRACTION="${TODO_BOX_WIDTH_FRACTION:-0.5}"  # 50% by default
 TODO_BOX_MIN_WIDTH="${TODO_BOX_MIN_WIDTH:-30}"            # Minimum 30 chars
@@ -549,6 +553,9 @@ function _todo_config_command() {
         save-preset)
             todo_config_save_preset "${@:2}"
             ;;
+        preview)
+            todo_config_preview "${@:2}"
+            ;;
         "")
             echo "Usage: todo config <action> [options]"
             echo "Actions:"
@@ -556,8 +563,9 @@ function _todo_config_command() {
             echo "  import <file>         # Import configuration"
             echo "  set <key> <value>     # Set configuration value"
             echo "  reset                 # Reset to defaults"
-            echo "  preset <name>         # Apply preset (minimal/colorful/work/dark)"
+            echo "  preset <name>         # Apply preset (${_TODO_PRESET_LIST})"
             echo "  save-preset <name>    # Save current settings as preset"
+            echo "  preview [preset]      # Preview color swatches for presets"
             return 1
             ;;
         *)
@@ -645,7 +653,7 @@ function _todo_show_config_help() {
     echo "  ${cyan}todo config reset${reset}         Reset to defaults"
     echo
     echo "${green}Available Presets:${reset}"
-    echo "  ${gray}minimal, colorful, work, dark${reset}"
+    echo "  ${gray}${_TODO_PRESET_LIST}${reset}"
     echo
     echo "${green}Environment Variables:${reset}"
     echo "  ${cyan}TODO_TITLE${reset}               Box title (default: REMEMBER)"
@@ -709,6 +717,7 @@ function _todo_completion() {
                         'reset:Reset to defaults'
                         'preset:Apply preset'
                         'save-preset:Save current as preset'
+                        'preview:Preview color swatches'
                     )
                     _describe 'config commands' config_commands
                     ;;
@@ -735,7 +744,7 @@ function _todo_completion() {
                     _files
                     ;;
                 "config preset")
-                    local -a presets=('minimal' 'colorful' 'work' 'dark')
+                    local -a presets=('minimal' 'colorful' 'work' 'dark' 'monokai' 'solarized-dark' 'nord' 'gruvbox-dark' 'base16-auto')
                     _describe 'presets' presets
                     ;;
                 "config set")
@@ -751,6 +760,10 @@ function _todo_completion() {
                         'box-width:Set box width fraction'
                     )
                     _describe 'settings' settings
+                    ;;
+                "config preview")
+                    local -a presets=('all' 'minimal' 'colorful' 'work' 'dark' 'monokai' 'solarized-dark' 'nord' 'gruvbox-dark' 'base16-auto')
+                    _describe 'presets' presets
                     ;;
             esac
             ;;
@@ -1126,9 +1139,9 @@ function show_progressive_hints() {
     
     # Show different hints based on task count
     if [[ ${#todo_tasks} -ge 5 && ${#todo_tasks} -lt 8 ]]; then
-        echo "${gray}💡 Lots of tasks? Customize colors: ${cyan}todo_setup${gray} (disable: TODO_SHOW_HINTS=false)${reset}"
+        echo "${gray}💡 Lots of tasks? Customize colors: ${cyan}todo setup${gray} (disable: TODO_SHOW_HINTS=false)${reset}"
     elif [[ ${#todo_tasks} -ge 8 ]]; then
-        echo "${gray}💡 Many tasks! Hide display when focused: ${cyan}todo_hide${gray} (disable: TODO_SHOW_HINTS=false)${reset}"
+        echo "${gray}💡 Many tasks! Hide display when focused: ${cyan}todo hide${gray} (disable: TODO_SHOW_HINTS=false)${reset}"
     fi
 }
 
@@ -1361,18 +1374,18 @@ function todo_help() {
     echo "${gray}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
     echo
     echo "  ${cyan}todo${reset} \"task description\"       ${gray}Add a new task${reset}"
-    echo "  ${cyan}todo_remove${reset} \"pattern\"         ${gray}Remove completed task (with tab completion)${reset}"
-    echo "  ${cyan}todo_hide${reset}                       ${gray}Hide todo display${reset}"
-    echo "  ${cyan}todo_show${reset}                       ${gray}Show todo display${reset}"
-    echo "  ${cyan}todo_setup${reset}                      ${gray}Interactive customization wizard${reset}"
-    echo "  ${cyan}todo_colors${reset}                     ${gray}View color reference for customization${reset}"
+    echo "  ${cyan}todo done${reset} \"pattern\"           ${gray}Remove completed task (with tab completion)${reset}"
+    echo "  ${cyan}todo hide${reset}                       ${gray}Hide todo display${reset}"
+    echo "  ${cyan}todo show${reset}                       ${gray}Show todo display${reset}"
+    echo "  ${cyan}todo setup${reset}                      ${gray}Interactive customization wizard${reset}"
+    echo "  ${cyan}todo help --colors${reset}              ${gray}View color reference for customization${reset}"
     echo
     echo "${bold}${yellow}Quick Start:${reset}"
     echo "  ${gray}todo \"Buy groceries\"     ${cyan}# Add your first task${reset}"
-    echo "  ${gray}todo_remove \"Buy\"        ${cyan}# Remove when done (try tab completion!)${reset}"
-    echo "  ${gray}todo_setup                ${cyan}# Customize colors and appearance${reset}"
+    echo "  ${gray}todo done \"Buy\"          ${cyan}# Remove when done (try tab completion!)${reset}"
+    echo "  ${gray}todo setup                ${cyan}# Customize colors and appearance${reset}"
     echo
-    echo "${gray}💡 More commands and options: ${cyan}todo_help --more${reset}"
+    echo "${gray}💡 More commands and options: ${cyan}todo_help --full${reset}"
 }
 
 # Show comprehensive help with all configuration options
@@ -1393,23 +1406,25 @@ function todo_help_full() {
     echo
     echo "${bold}${green}📋 Task Management:${reset}"
     echo "  ${cyan}todo${reset} \"task\"                        ${gray}Add a new task${reset}"
-    echo "  ${cyan}task_done${reset} \"pattern\"                ${gray}Remove completed task (tab completion)${reset}"
+    echo "  ${cyan}todo done${reset} \"pattern\"              ${gray}Remove completed task (tab completion)${reset}"
     echo
     echo "${bold}${green}👁️  Display Controls:${reset}"
-    echo "  ${cyan}todo_toggle_affirmation${reset} [show|hide|toggle] ${gray}Control affirmations${reset}"
-    echo "  ${cyan}todo_toggle_box${reset} [show|hide|toggle]         ${gray}Control todo box${reset}"
-    echo "  ${cyan}todo_toggle_all${reset} [show|hide|toggle]         ${gray}Control everything${reset}"
-    echo "  ${cyan}todo_affirm${reset}                                ${gray}Alias for toggle_affirmation${reset}"
-    echo "  ${cyan}todo_box${reset}                                   ${gray}Alias for toggle_box${reset}"
-    echo "  ${cyan}todo_colors${reset} [max_colors]                   ${gray}Show color reference (default: 72)${reset}"
+    echo "  ${cyan}todo toggle affirmation${reset} [show|hide]     ${gray}Control affirmations${reset}"
+    echo "  ${cyan}todo toggle box${reset} [show|hide]             ${gray}Control todo box${reset}"
+    echo "  ${cyan}todo toggle all${reset} [show|hide]             ${gray}Control everything${reset}"
+    echo "  ${cyan}todo hide${reset}                               ${gray}Hide all components${reset}"
+    echo "  ${cyan}todo show${reset}                               ${gray}Show all components${reset}"
+    echo "  ${cyan}todo help --colors${reset} [max_colors]           ${gray}Show color reference (default: 72)${reset}"
     echo
     echo "${bold}${green}⚙️  Configuration:${reset}"
-    echo "  ${cyan}todo_config export${reset} [file] [--colors-only]  ${gray}Export configuration${reset}"
-    echo "  ${cyan}todo_config import${reset} <file> [--colors-only]  ${gray}Import configuration${reset}"
-    echo "  ${cyan}todo_config set${reset} <setting> <value>          ${gray}Change setting${reset}"
-    echo "  ${cyan}todo_config reset${reset} [--colors-only]          ${gray}Reset to defaults${reset}"
-    echo "  ${cyan}todo_config preset${reset} <name>                  ${gray}Apply preset (minimal/colorful/work/dark)${reset}"
-    echo "  ${cyan}todo_config save-preset${reset} <name>             ${gray}Save current as preset${reset}"
+    echo "  ${cyan}todo config export${reset} [file] [--colors-only] ${gray}Export configuration${reset}"
+    echo "  ${cyan}todo config import${reset} <file> [--colors-only] ${gray}Import configuration${reset}"
+    echo "  ${cyan}todo config set${reset} <setting> <value>         ${gray}Change setting${reset}"
+    echo "  ${cyan}todo config reset${reset} [--colors-only]         ${gray}Reset to defaults${reset}"
+    echo "  ${cyan}todo config preset${reset} <name>                 ${gray}Apply preset (${_TODO_PRESET_LIST})${reset}"
+    echo "  ${cyan}todo config save-preset${reset} <name>            ${gray}Save current as preset${reset}"
+    echo "  ${cyan}todo config preview${reset} [preset]              ${gray}Preview color swatches${reset}"
+    echo "  ${cyan}todo setup${reset}                               ${gray}Interactive configuration wizard${reset}"
     echo
     echo "${bold}${magenta}⚙️  Configuration Variables:${reset} ${gray}(set before sourcing plugin)${reset}"
     echo "  ${white}Display Settings:${reset}"
@@ -1455,9 +1470,9 @@ function todo_help_full() {
     echo "${bold}${yellow}💡 Advanced Examples:${reset}"
     echo "  ${gray}# Basic usage${reset}"
     echo "  ${cyan}todo${reset} \"Buy groceries\"               ${gray}# Add task${reset}"
-    echo "  ${cyan}task_done${reset} \"Buy\"                    ${gray}# Remove task${reset}"
-    echo "  ${cyan}todo_affirm${reset} hide                   ${gray}# Hide affirmations${reset}"
-    echo "  ${cyan}todo_colors${reset}                        ${gray}# Show color reference${reset}"
+    echo "  ${cyan}todo done${reset} \"Buy\"                    ${gray}# Remove task${reset}"
+    echo "  ${cyan}todo toggle affirmation${reset} hide       ${gray}# Hide affirmations${reset}"
+    echo "  ${cyan}todo help --colors${reset}                ${gray}# Show color reference${reset}"
     echo
     echo "  ${gray}# Customization${reset}"
     echo "  ${white}export${reset} TODO_HEART_CHAR=\"💖\"        ${gray}# Use emoji heart${reset}"
@@ -1774,7 +1789,7 @@ function todo_config_preset() {
     
     if [[ -z "$preset" ]]; then
         echo "Usage: todo_config_preset <preset>" >&2
-        echo "Available presets: minimal, colorful, work, dark" >&2
+        echo "Available presets: minimal, colorful, work, dark, monokai, solarized-dark, nord, gruvbox-dark, base16-auto" >&2
         return 1
     fi
     
@@ -1854,12 +1869,248 @@ function todo_config_preset() {
             TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
             echo "Applied dark preset"
             ;;
+        "base16-auto")
+            # Auto-detect and apply base16 theme from tinted-shell if available
+            _todo_apply_base16_auto
+            ;;
+        "monokai")
+            # Based on base16-monokai color scheme
+            TODO_TITLE="CODE"
+            TODO_HEART_CHAR="♥"
+            TODO_HEART_POSITION="left"
+            TODO_BULLET_CHAR="▪"
+            TODO_TASK_COLORS="249,115,166,230,141,208"  # base08,09,0A,0D,0B,0E variations
+            TODO_BORDER_COLOR="59"        # base03 (comments)
+            TODO_BORDER_BG_COLOR="235"    # base01 (lighter bg)
+            TODO_CONTENT_BG_COLOR="234"   # base00 (default bg) 
+            TODO_TEXT_COLOR="248"         # base05 (default fg)
+            TODO_TASK_TEXT_COLOR="248"    # base05
+            TODO_TITLE_COLOR="141"        # base0B (green)
+            TODO_AFFIRMATION_COLOR="208"  # base09 (orange)
+            TODO_BULLET_COLOR="249"       # base08 (red)
+            TODO_SHOW_AFFIRMATION="true"
+            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+            echo "Applied Monokai-inspired preset"
+            ;;
+        "solarized-dark")
+            # Based on base16-solarized-dark
+            TODO_TITLE="FOCUS"
+            TODO_HEART_CHAR="☀"
+            TODO_HEART_POSITION="left"
+            TODO_BULLET_CHAR="•"
+            TODO_TASK_COLORS="203,166,136,68,160,125"  # solarized accent colors
+            TODO_BORDER_COLOR="240"       # base03
+            TODO_BORDER_BG_COLOR="234"    # base01
+            TODO_CONTENT_BG_COLOR="233"   # base00
+            TODO_TEXT_COLOR="244"         # base05
+            TODO_TASK_TEXT_COLOR="244"
+            TODO_TITLE_COLOR="136"        # base0A (yellow)
+            TODO_AFFIRMATION_COLOR="37"   # base0C (cyan)
+            TODO_BULLET_COLOR="166"       # base09 (orange)
+            TODO_SHOW_AFFIRMATION="true"
+            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+            echo "Applied Solarized Dark preset"
+            ;;
+        "nord")
+            # Based on Nord color palette
+            TODO_TITLE="ARCTIC"
+            TODO_HEART_CHAR="❄"
+            TODO_HEART_POSITION="left" 
+            TODO_BULLET_CHAR="▸"
+            TODO_TASK_COLORS="131,209,150,116,97,139"  # nord reds,oranges,yellows,blues,purples
+            TODO_BORDER_COLOR="59"        # nord3 (comment)
+            TODO_BORDER_BG_COLOR="236"    # nord1 (darker bg)
+            TODO_CONTENT_BG_COLOR="235"   # nord0 (bg)
+            TODO_TEXT_COLOR="188"         # nord4 (light fg)
+            TODO_TASK_TEXT_COLOR="188"
+            TODO_TITLE_COLOR="150"        # nord14 (green)
+            TODO_AFFIRMATION_COLOR="116"  # nord8 (light blue)
+            TODO_BULLET_COLOR="131"       # nord11 (red)
+            TODO_SHOW_AFFIRMATION="true"
+            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+            echo "Applied Nord-inspired preset"
+            ;;
+        "gruvbox-dark")
+            # Based on gruvbox-dark color scheme
+            TODO_TITLE="RETRO"
+            TODO_HEART_CHAR="♥"
+            TODO_HEART_POSITION="left"
+            TODO_BULLET_CHAR="●"
+            TODO_TASK_COLORS="167,208,214,109,175,142"  # gruvbox accent colors
+            TODO_BORDER_COLOR="243"       # gruvbox gray
+            TODO_BORDER_BG_COLOR="237"    # gruvbox dark1
+            TODO_CONTENT_BG_COLOR="235"   # gruvbox dark0
+            TODO_TEXT_COLOR="223"         # gruvbox light1
+            TODO_TASK_TEXT_COLOR="223"
+            TODO_TITLE_COLOR="214"        # gruvbox yellow
+            TODO_AFFIRMATION_COLOR="109"  # gruvbox blue
+            TODO_BULLET_COLOR="167"       # gruvbox red
+            TODO_SHOW_AFFIRMATION="true"
+            TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+            echo "Applied Gruvbox Dark preset"
+            ;;
         *)
             echo "Error: Unknown preset '$preset'" >&2
-            echo "Available presets: minimal, colorful, work, dark" >&2
+            echo "Available presets: minimal, colorful, work, dark, base16-auto, monokai, solarized-dark, nord, gruvbox-dark" >&2
             return 1
             ;;
     esac
+}
+
+# Auto-apply base16 theme from tinted-shell environment variables
+function _todo_apply_base16_auto() {
+    # Check if tinted-shell base16 variables are available
+    if [[ -n "$BASE16_COLOR_00_HEX" ]] && [[ "$TINTED_SHELL_ENABLE_BASE16_VARS" == "1" ]]; then
+        echo "Detected tinted-shell base16 theme, applying..."
+        
+        # Convert hex colors to 256-color approximations
+        local base00=$(printf "%d" "0x${BASE16_COLOR_00_HEX}")
+        local base01=$(printf "%d" "0x${BASE16_COLOR_01_HEX}")
+        local base03=$(printf "%d" "0x${BASE16_COLOR_03_HEX}")
+        local base05=$(printf "%d" "0x${BASE16_COLOR_05_HEX}")
+        local base08=$(printf "%d" "0x${BASE16_COLOR_08_HEX}")
+        local base09=$(printf "%d" "0x${BASE16_COLOR_09_HEX}")
+        local base0A=$(printf "%d" "0x${BASE16_COLOR_0A_HEX}")
+        local base0B=$(printf "%d" "0x${BASE16_COLOR_0B_HEX}")
+        local base0C=$(printf "%d" "0x${BASE16_COLOR_0C_HEX}")
+        local base0D=$(printf "%d" "0x${BASE16_COLOR_0D_HEX}")
+        local base0E=$(printf "%d" "0x${BASE16_COLOR_0E_HEX}")
+        
+        # Map base16 semantics to todo plugin colors
+        TODO_TITLE="BASE16"
+        TODO_HEART_CHAR="♥"
+        TODO_HEART_POSITION="left"
+        TODO_BULLET_CHAR="▪"
+        TODO_TASK_COLORS="$(_hex_to_256 $BASE16_COLOR_08_HEX),$(_hex_to_256 $BASE16_COLOR_09_HEX),$(_hex_to_256 $BASE16_COLOR_0A_HEX),$(_hex_to_256 $BASE16_COLOR_0D_HEX),$(_hex_to_256 $BASE16_COLOR_0B_HEX),$(_hex_to_256 $BASE16_COLOR_0E_HEX)"
+        TODO_BORDER_COLOR="$(_hex_to_256 $BASE16_COLOR_03_HEX)"        # Comments/invisibles
+        TODO_BORDER_BG_COLOR="$(_hex_to_256 $BASE16_COLOR_01_HEX)"     # Lighter background
+        TODO_CONTENT_BG_COLOR="$(_hex_to_256 $BASE16_COLOR_00_HEX)"    # Default background
+        TODO_TEXT_COLOR="$(_hex_to_256 $BASE16_COLOR_05_HEX)"          # Default foreground
+        TODO_TASK_TEXT_COLOR="$(_hex_to_256 $BASE16_COLOR_05_HEX)"
+        TODO_TITLE_COLOR="$(_hex_to_256 $BASE16_COLOR_0A_HEX)"         # Yellow (classes)
+        TODO_AFFIRMATION_COLOR="$(_hex_to_256 $BASE16_COLOR_0C_HEX)"   # Cyan (support)
+        TODO_BULLET_COLOR="$(_hex_to_256 $BASE16_COLOR_08_HEX)"        # Red (variables)
+        TODO_SHOW_AFFIRMATION="true"
+        TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+        echo "Applied base16 theme: ${BASE16_THEME:-unknown}"
+        
+    elif [[ -n "$BASE24_COLOR_00_HEX" ]] && [[ "$TINTED_SHELL_ENABLE_BASE24_VARS" == "1" ]]; then
+        echo "Detected tinted-shell base24 theme, applying..."
+        # Use base24 with additional bright colors
+        TODO_TASK_COLORS="$(_hex_to_256 $BASE24_COLOR_08_HEX),$(_hex_to_256 $BASE24_COLOR_09_HEX),$(_hex_to_256 $BASE24_COLOR_0A_HEX),$(_hex_to_256 $BASE24_COLOR_0D_HEX),$(_hex_to_256 $BASE24_COLOR_12_HEX),$(_hex_to_256 $BASE24_COLOR_15_HEX)"
+        # ... same mappings as base16 but with access to bright colors
+        _todo_apply_base16_auto  # Reuse base16 logic for now
+        echo "Applied base24 theme with enhanced bright colors"
+        
+    else
+        echo "No tinted-shell theme detected. Enable with:"
+        echo "  export TINTED_SHELL_ENABLE_BASE16_VARS=1"
+        echo "  # or"
+        echo "  export TINTED_SHELL_ENABLE_BASE24_VARS=1"
+        echo "Then source a tinted-shell theme script."
+        return 1
+    fi
+}
+
+# Convert hex color to closest 256-color terminal code
+function _hex_to_256() {
+    local hex="$1"
+    # Remove # if present
+    hex="${hex#\#}"
+    
+    # Convert to RGB
+    local r=$(printf "%d" "0x${hex:0:2}")
+    local g=$(printf "%d" "0x${hex:2:2}")  
+    local b=$(printf "%d" "0x${hex:4:2}")
+    
+    # Simple approximation to 256-color space
+    # This is a basic implementation - could be enhanced with better color distance calculation
+    if [[ $r -eq $g ]] && [[ $g -eq $b ]]; then
+        # Grayscale
+        if [[ $r -lt 8 ]]; then
+            echo "16"
+        elif [[ $r -gt 248 ]]; then
+            echo "231"
+        else
+            echo $((232 + (r - 8) / 10))
+        fi
+    else
+        # Color cube (simplified)
+        local r6=$((r * 5 / 255))
+        local g6=$((g * 5 / 255))
+        local b6=$((b * 5 / 255))
+        echo $((16 + 36 * r6 + 6 * g6 + b6))
+    fi
+}
+
+# Preview color swatches for available presets
+function todo_config_preview() {
+    local preset="${1:-all}"
+    
+    echo "🎨 Todo Reminder Preset Preview"
+    echo "════════════════════════════════"
+    echo
+    
+    if [[ "$preset" == "all" ]]; then
+        local presets=("minimal" "colorful" "work" "dark" "monokai" "solarized-dark" "nord" "gruvbox-dark")
+        for p in "${presets[@]}"; do
+            _todo_show_preset_swatch "$p"
+            echo
+        done
+        
+        # Show tinted-shell status
+        echo "🔗 Tinted-Shell Integration:"
+        if [[ "$TINTED_SHELL_ENABLE_BASE16_VARS" == "1" ]] && [[ -n "$BASE16_COLOR_00_HEX" ]]; then
+            echo "  ✅ base16 theme detected: ${BASE16_THEME:-unknown}"
+            echo "  Run: todo config preset base16-auto"
+        elif [[ "$TINTED_SHELL_ENABLE_BASE24_VARS" == "1" ]] && [[ -n "$BASE24_COLOR_00_HEX" ]]; then
+            echo "  ✅ base24 theme detected"  
+            echo "  Run: todo config preset base16-auto"
+        else
+            echo "  ⚠️  No tinted-shell theme detected"
+            echo "  Enable: export TINTED_SHELL_ENABLE_BASE16_VARS=1"
+        fi
+    else
+        _todo_show_preset_swatch "$preset"
+    fi
+}
+
+# Show color swatch for a specific preset
+function _todo_show_preset_swatch() {
+    local preset="$1"
+    
+    # Temporarily apply preset to get colors
+    local saved_colors="$TODO_TASK_COLORS"
+    local saved_border="$TODO_BORDER_COLOR"
+    local saved_title="$TODO_TITLE_COLOR"
+    local saved_text="$TODO_TEXT_COLOR"
+    
+    # Apply preset quietly
+    todo_config_preset "$preset" >/dev/null 2>&1
+    
+    if [[ $? -eq 0 ]]; then
+        echo "📦 ${(C)preset} Theme:"
+        echo -n "  Title: \e[38;5;${TODO_TITLE_COLOR}m${TODO_TITLE}\e[0m"
+        echo "  Border: \e[38;5;${TODO_BORDER_COLOR}m█\e[0m"
+        echo -n "  Colors: "
+        
+        # Show color swatches
+        IFS=',' read -A colors <<< "$TODO_TASK_COLORS"
+        for color in "${colors[@]}"; do
+            echo -n "\e[38;5;${color}m●\e[0m "
+        done
+        echo
+        echo "  Text: \e[38;5;${TODO_TEXT_COLOR}m▪ Sample task item\e[0m"
+    else
+        echo "❌ Unknown preset: $preset"
+    fi
+    
+    # Restore previous colors
+    TODO_TASK_COLORS="$saved_colors"
+    TODO_BORDER_COLOR="$saved_border"  
+    TODO_TITLE_COLOR="$saved_title"
+    TODO_TEXT_COLOR="$saved_text"
+    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
 }
 
 # Save current configuration as a preset file

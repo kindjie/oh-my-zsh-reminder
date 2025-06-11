@@ -94,7 +94,8 @@ test_invalid_subcommand() {
     run_test "Invalid subcommand handling"
     
     source_test_plugin
-    local output=$(todo invalid_command 2>&1)
+    local temp_save="$TMPDIR/test_invalid_subcommand_$$"
+    local output=$(TODO_SAVE_FILE="$temp_save" todo invalid_command 2>&1)
     
     # Should add task called "invalid_command" since unrecognized commands become tasks
     if [[ "$output" == *"Task added"* ]] && [[ "$output" == *"invalid_command"* ]]; then
@@ -104,6 +105,9 @@ test_invalid_subcommand() {
         echo "❌ FAIL: Expected task addition for unrecognized command"
         ((fail_count++))
     fi
+    
+    # Cleanup
+    [[ -f "$temp_save" ]] && rm -f "$temp_save"
 }
 
 # ============================================================================
