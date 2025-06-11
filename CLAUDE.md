@@ -2,38 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚧 ACTIVE DEVELOPMENT: Testing Refactor Plan
-
-**Target**: Achieve 100% passing tests with comprehensive coverage of pure subcommand interface.
-
-### **Phase 1: Quick Wins** ⚡
-- Update command syntax in config_management.zsh, wizard tests  
-- Fix remaining UX test failures with simple command updates
-- Update welcome message references and help system calls
-
-### **Phase 2: Interface Testing** 🔧
-- Create subcommand_interface.zsh with focused interface tests
-- Update interface.zsh for new command structure  
-- Add tab completion integration tests
-
-### **Phase 3: Documentation & UX** 📝
-- Rewrite critical UX tests for new interface patterns
-- Update documentation tests for new command examples
-- Create user workflow tests for end-to-end validation
-
-### **Phase 4: Test Runner Enhancement** 🎯
-- Update test runner with better UX (spinner/progress)
-- Ensure compatibility with all test changes
-- Improve debugging capabilities while maintaining defaults
-
-### **Phase 5: Documentation** 📚
-- Update README.md for pure subcommand interface
-- Update CLAUDE.md to reflect new architecture
-- Identify and note needed screengrab updates
-
-**Expected Outcome**: ~150-160 focused tests with 95%+ pass rate, excellent UX, complete documentation.
-
----
 
 ## Project Overview
 
@@ -41,7 +9,8 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 
 ## Architecture
 
-- **Single File Plugin**: All functionality is contained in `reminder.plugin.zsh`
+- **Pure Subcommand Interface**: All functionality accessible through `todo <subcommand>` pattern for consistency
+- **Single File Plugin**: Core functionality in `reminder.plugin.zsh` with modular components in `lib/`
 - **Persistent Storage**: Tasks and colors stored in single file `~/.todo.save`
 - **Hook System**: Uses zsh's `precmd` hook to display tasks before each prompt
 - **Color Management**: Cycles through configurable colors for task differentiation (default: red, green, yellow, blue, magenta, cyan)
@@ -49,19 +18,34 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - **Emoji Support**: Full Unicode character width detection for proper alignment with emojis
 - **Configurable Display**: Customizable bullet/heart characters, padding, show/hide states, and box dimensions
 - **Runtime Controls**: Toggle commands for showing/hiding components without restart
+- **Progressive Disclosure**: Layered help system (basic → full → specialized) for different user skill levels
 
 ## Key Functions
 
-- `todo_add_task` (alias: `todo`): Adds new tasks
-- `todo_task_done` (alias: `task_done`): Removes completed tasks with tab completion
+### Primary Interface
+- `todo` (dispatcher): Main entry point - routes all subcommands
+- `todo_dispatcher`: Core routing function for pure subcommand interface
+- `todo <task>`: Adds new tasks
+- `todo done <pattern>`: Removes completed tasks with tab completion
+- `todo help`: Shows essential commands (Layer 1 UX)
+- `todo help --full`: Shows complete documentation (Layer 2 UX)
+- `todo setup`: Interactive configuration wizard for beginners
+
+### Subcommand Dispatchers
+- `todo_config_dispatcher`: Routes `todo config` commands (export, import, preset, etc.)
+- `todo_toggle_dispatcher`: Routes `todo toggle` commands (box, affirmation, all)
+
+### Core Display & Logic
 - `todo_display`: Shows tasks before each prompt with right-aligned formatting
 - `fetch_affirmation_async`: Fetches and displays motivational affirmations asynchronously
-- `todo_toggle_affirmation/todo_toggle_box/todo_toggle_all`: Runtime visibility controls
-- `todo_help`: Abbreviated help command with quick reference
-- `todo_colors`: Interactive color reference showing 256-color codes for customization
 - `format_affirmation`: Handles configurable heart positioning (left/right/both/none)
 - `wrap_todo_text`: Text wrapping with emoji-aware width calculation
 - `load_tasks`/`todo_save`: Handle persistent storage
+
+### Advanced Features
+- `todo_config_*`: Configuration management (export, import, presets)
+- `todo_colors`: Interactive color reference showing 256-color codes
+- `show_welcome_message`: First-run onboarding experience
 
 ## Development Notes
 
@@ -124,7 +108,7 @@ To test plugin modifications:
 
 4. **Verify task management**:
    - Add tasks: `todo "New task"`
-   - Remove tasks: `task_done "partial match"`
+   - Remove tasks: `todo done "partial match"`
    - Check storage: `cat ~/.todo.save`
 
 5. **Run complete functional test suite**:
@@ -148,14 +132,18 @@ To test plugin modifications:
 
 8. **Run individual test modules**:
    ```bash
-   ./tests/display.zsh        # Display functionality and layout tests
-   ./tests/configuration.zsh  # Padding, characters, and config tests
-   ./tests/color.zsh          # Color configuration and validation tests
-   ./tests/interface.zsh      # Commands, toggles, and help tests
-   ./tests/character.zsh      # Character width and emoji handling tests
-   ./tests/performance.zsh    # Performance and network behavior tests
-   ./tests/ux.zsh             # User experience and onboarding tests
-   ./tests/documentation.zsh  # Documentation accuracy and example validation
+   ./tests/display.zsh              # Display functionality and layout tests
+   ./tests/configuration.zsh        # Padding, characters, and config tests
+   ./tests/config_management.zsh    # Configuration export/import/presets
+   ./tests/color.zsh                # Color configuration and validation tests
+   ./tests/interface.zsh            # Commands, toggles, and help tests
+   ./tests/subcommand_interface.zsh # Pure subcommand interface testing
+   ./tests/character.zsh            # Character width and emoji handling tests
+   ./tests/wizard_noninteractive.zsh # Setup wizard functionality
+   ./tests/performance.zsh          # Performance and network behavior tests
+   ./tests/ux.zsh                   # User experience and onboarding tests
+   ./tests/user_workflows.zsh       # End-to-end user workflow scenarios
+   ./tests/documentation.zsh        # Documentation accuracy and example validation
    ```
 
 9. **Performance testing specifically**:
@@ -181,6 +169,32 @@ To test plugin modifications:
    ./demo_padding.zsh
    ```
    (Shows all padding configurations with visual borders)
+
+## Test Coverage Summary
+
+The test suite provides comprehensive coverage with **164 functional tests** achieving 100% pass rate:
+
+### **Functional Tests (164 total)**
+- **Display Tests (7)**: Basic rendering, layout, text wrapping
+- **Configuration Tests (14)**: Padding, dimensions, character settings  
+- **Config Management Tests (20)**: Export/import, presets, wizard functionality
+- **Color Tests (31)**: Validation, 256-color support, legacy compatibility
+- **Interface Tests (46)**: Commands, help system, error handling  
+- **Subcommand Interface Tests (14)**: Pure subcommand routing and completion
+- **Character Tests (16)**: Unicode/emoji width detection and alignment
+- **Wizard Tests (11)**: Non-interactive setup wizard validation
+- **User Workflows (5)**: End-to-end scenario testing
+
+### **Extended Test Suites**
+- **Performance Tests (16)**: Network behavior, display speed, async operations
+- **UX Tests (18)**: Onboarding, progressive disclosure, usability  
+- **Documentation Tests (12)**: Accuracy validation, example verification
+
+### **Enhanced Test Runner Features**
+- Compact progress indicators: `[1/8] display.zsh ... ✅ 7 passed`
+- Smart failure reporting with context  
+- Verbose debugging mode preserved
+- Fast functional-only mode (~10s) vs comprehensive mode (~60s)
 
 ## Performance Test Coverage
 

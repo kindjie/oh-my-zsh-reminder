@@ -62,7 +62,7 @@ source /path/to/zsh-todo-reminder/reminder.plugin.zsh
 
 ```bash
 # Get help anytime
-$ todo_help
+$ todo help
 
 # Add a task (because your brain is not a hard drive)
 $ todo "Stop procrastinating and finish that thing"
@@ -70,7 +70,7 @@ $ todo "Feed the cat before it stages a revolt"
 $ todo "Reply to mom's texts from 2 weeks ago"
 
 # Remove a completed task (with tab completion because we're fancy)
-$ task_done "Stop proc"  # Tab completion saves your sanity
+$ todo done "Stop proc"  # Tab completion saves your sanity
 
 # Tasks haunt you automatically before each prompt ✨
 ```
@@ -102,8 +102,8 @@ Task added: Fix authentication bug
 ♥ You are stronger than you think                     │ ▪ Fix authentication bug   │
                                                       └────────────────────────────┘
 ~/projects/awesome-app main
-❯ task_done "Fix auth"
-Task removed: Fix authentication bug
+❯ todo done "Fix auth"
+Task completed: Fix authentication bug
 
 ~/projects/awesome-app main
 ❯
@@ -116,8 +116,11 @@ Notice how your todos appear before every prompt, keeping them visible as you wo
 ### Quick Help
 
 ```bash
-# Show all available commands and configuration options
-$ todo_help
+# Show essential commands
+$ todo help
+
+# Show full documentation and advanced features
+$ todo help --full
 ```
 
 The help command provides a quick reference with:
@@ -140,10 +143,10 @@ todo "Figure out why the printer hates me specifically"
 
 ```bash
 # Remove by partial match (because typing is hard)
-task_done "Learn quantum"
+todo done "Learn quantum"
 
 # Example: Victory dance after removing a task!
-task_done "Convince"  # 🎉 Plant parent status: achieved
+todo done "Convince"  # 🎉 Plant parent status: achieved
 ```
 
 ### Display
@@ -152,6 +155,47 @@ task_done "Convince"  # 🎉 Plant parent status: achieved
 - Motivational affirmations appear on the left side
 - Color-coded bullets (▪) for visual organization
 - Automatic text wrapping for long tasks
+
+## 🎛️ Advanced Features
+
+### Setup Wizard
+
+Get started quickly with the interactive setup:
+
+```bash
+todo setup
+```
+
+The wizard walks you through:
+- Title and character customization
+- Color schemes and themes
+- Box dimensions and positioning
+- Component visibility controls
+
+### Configuration Management
+
+```bash
+# Export your current settings
+todo config export my-settings.conf
+
+# Import a configuration file
+todo config import my-settings.conf
+
+# Apply quick presets
+todo config preset minimal     # Clean, minimal look
+todo config preset colorful    # Vibrant colors
+todo config preset corporate   # Professional appearance
+
+# Save your current setup as a preset
+todo config save-preset my-theme
+```
+
+### Color Reference
+
+```bash
+# See all 256 terminal colors with examples
+todo help --colors
+```
 
 ## ⚙️ Configuration
 
@@ -367,36 +411,38 @@ You can show, hide, or toggle components on the fly without restarting your shel
 
 ```bash
 # Affirmation controls
-todo_toggle_affirmation          # Toggle affirmations on/off
-todo_toggle_affirmation show     # Show affirmations
-todo_toggle_affirmation hide     # Hide affirmations
-todo_affirm                      # Alias for toggle
+todo toggle affirmation          # Toggle affirmations on/off
+todo toggle affirmation show     # Show affirmations
+todo toggle affirmation hide     # Hide affirmations
 
-# Todo box controls
-todo_toggle_box                  # Toggle todo box on/off
-todo_toggle_box show             # Show todo box
-todo_toggle_box hide             # Hide todo box
-todo_box                         # Alias for toggle
+# Todo box controls  
+todo toggle box                  # Toggle todo box on/off
+todo toggle box show             # Show todo box
+todo toggle box hide             # Hide todo box
 
 # Control everything at once
-todo_toggle_all                  # Toggle both affirmations and todo box
-todo_toggle_all show             # Show everything
-todo_toggle_all hide             # Hide everything (why though?)
+todo toggle all                  # Toggle both affirmations and todo box
+todo toggle all show             # Show everything
+todo toggle all hide             # Hide everything (why though?)
+
+# Quick shortcuts
+todo hide                        # Hide everything 
+todo show                        # Show everything
 ```
 
 ### Quick Examples
 
 ```bash
 # Having a presentation? Hide the distractions
-$ todo_toggle_all hide
+$ todo hide
 Affirmations and todo box disabled
 
 # Back to productivity mode
-$ todo_affirm show
+$ todo toggle affirmation show
 Affirmations enabled
 
 # Need focus? Just the todos, please
-$ todo_affirm hide && todo_box show
+$ todo toggle affirmation hide && todo toggle box show
 Affirmations disabled
 Todo box enabled
 ```
@@ -509,7 +555,7 @@ The demo script shows:
 
 ```bash
 # First, get help to see all available commands
-$ todo_help
+$ todo help
 ```
 
 ### Plugin not loading
@@ -517,7 +563,7 @@ $ todo_help
 If tasks don't appear in new terminals:
 
 1. Verify the plugin is loaded: `which todo`
-2. Check available commands: `todo_help`
+2. Check available commands: `todo help`
 3. Check that you've sourced the plugin correctly
 4. Try manually sourcing: `source path/to/reminder.plugin.zsh`
 
