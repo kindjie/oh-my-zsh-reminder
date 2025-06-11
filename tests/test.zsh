@@ -53,10 +53,20 @@ WARNING_TESTS=0
 run_test_file() {
     local test_file="$1"
     local test_path="$TESTS_DIR/$test_file"
+    local current_test="${2:-}"
+    local total_tests="${3:-}"
     
+    # Show progress indicator
     if [[ "$verbose" == true ]]; then
         echo "${BLUE}▶ Running $test_file...${RESET}"
         echo "────────────────────────────────────────────────────"
+    else
+        # Show progress with test name
+        if [[ -n "$current_test" && -n "$total_tests" ]]; then
+            echo -n "${CYAN}[$current_test/$total_tests]${RESET} ${test_file} ... "
+        else
+            echo -n "${CYAN}▶${RESET} ${test_file} ... "
+        fi
     fi
     
     if [[ ! -f "$test_path" ]]; then
@@ -89,8 +99,8 @@ run_test_file() {
     cd "$original_pwd"
     
     # Parse test results from output
-    local file_passed=$(echo "$output" | grep -c "✅ PASS:")
-    local file_failed=$(echo "$output" | grep -c "❌ FAIL:")
+    local file_passed=$(echo "$output" | grep -c "✅ PASS")
+    local file_failed=$(echo "$output" | grep -c "❌ FAIL")
     local file_warnings=$(echo "$output" | grep -c "⚠️  WARNING:")
     
     # Update global counters
@@ -99,23 +109,28 @@ run_test_file() {
     FAILED_TESTS=$((FAILED_TESTS + file_failed))
     WARNING_TESTS=$((WARNING_TESTS + file_warnings))
     
-    # Show full output in verbose mode, or only failures by default
+    # Show results based on mode
     if [[ "$verbose" == true ]]; then
         echo "$output"
         echo "────────────────────────────────────────────────────"
-    elif [[ $file_failed -gt 0 || $file_warnings -gt 0 ]]; then
-        echo "${BLUE}▶ $test_file${RESET}"
-        echo "$output" | grep -E "(❌ FAIL:|⚠️  WARNING:)"
-        echo
-    fi
-    
-    # Report file results
-    if [[ $file_failed -eq 0 ]]; then
-        if [[ "$verbose" == true ]]; then
+        # Report detailed results in verbose mode
+        if [[ $file_failed -eq 0 ]]; then
             echo "${GREEN}✅ $test_file: $file_passed passed, $file_warnings warnings${RESET}"
+        else
+            echo "${RED}❌ $test_file: $file_passed passed, $file_failed failed, $file_warnings warnings${RESET}"
         fi
     else
-        echo "${RED}❌ $test_file: $file_passed passed, $file_failed failed, $file_warnings warnings${RESET}"
+        # Non-verbose mode - show compact results
+        if [[ $file_failed -eq 0 ]]; then
+            echo "${GREEN}✅ ${file_passed} passed${RESET}"
+        else
+            echo "${RED}❌ ${file_failed} failed${RESET}"
+            # Show failure details
+            echo "$output" | grep -E "(❌ FAIL:|⚠️  WARNING:)" | head -3
+            if [[ $(echo "$output" | grep -c "❌ FAIL:") -gt 3 ]]; then
+                echo "   ... and $((file_failed - 3)) more failures"
+            fi
+        fi
     fi
     
     if [[ "$verbose" == true ]]; then
@@ -164,9 +179,13 @@ run_performance_tests() {
     if [[ "$verbose" == true ]]; then
         echo "$output" | tail -20
     elif [[ $perf_failed -gt 0 || $perf_warnings -gt 0 ]]; then
-        echo "${MAGENTA}▶ Performance tests${RESET}"
-        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
-        echo
+        echo "${RED}❌ ${perf_failed} failed${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -3
+        if [[ $perf_failed -gt 3 ]]; then
+            echo "   ... and $((perf_failed - 3)) more failures"
+        fi
+    else
+        echo "${GREEN}✅ ${perf_passed} passed${RESET}"
     fi
     
     # Update global counters
@@ -232,9 +251,13 @@ run_ux_tests() {
     if [[ "$verbose" == true ]]; then
         echo "$output"
     elif [[ $ux_failed -gt 0 || $ux_warnings -gt 0 ]]; then
-        echo "${MAGENTA}▶ UX tests${RESET}"
-        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
-        echo
+        echo "${RED}❌ ${ux_failed} failed${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -3
+        if [[ $ux_failed -gt 3 ]]; then
+            echo "   ... and $((ux_failed - 3)) more failures"
+        fi
+    else
+        echo "${GREEN}✅ ${ux_passed} passed${RESET}"
     fi
     
     # Update global counters
@@ -292,9 +315,13 @@ run_user_workflows() {
     if [[ "$verbose" == true ]]; then
         echo "$output"
     elif [[ $workflows_failed -gt 0 ]]; then
-        echo "${MAGENTA}▶ User workflow tests${RESET}"
-        echo "$output" | grep -E "(❌|Failed:)" | tail -10
-        echo
+        echo "${RED}❌ ${workflows_failed} failed${RESET}"
+        echo "$output" | grep -E "(❌|Failed:)" | tail -3
+        if [[ $workflows_failed -gt 3 ]]; then
+            echo "   ... and $((workflows_failed - 3)) more failures"
+        fi
+    else
+        echo "${GREEN}✅ 5 passed${RESET}"
     fi
     
     # Update global counters (5 workflows tested)
@@ -353,9 +380,13 @@ run_documentation_tests() {
     if [[ "$verbose" == true ]]; then
         echo "$output"
     elif [[ $doc_failed -gt 0 || $doc_warnings -gt 0 ]]; then
-        echo "${MAGENTA}▶ Documentation tests${RESET}"
-        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -10
-        echo
+        echo "${RED}❌ ${doc_failed} failed${RESET}"
+        echo "$output" | grep -E "(❌ FAIL|⚠️)" | tail -3
+        if [[ $doc_failed -gt 3 ]]; then
+            echo "   ... and $((doc_failed - 3)) more failures"
+        fi
+    else
+        echo "${GREEN}✅ ${doc_passed} passed${RESET}"
     fi
     
     # Update global counters
@@ -626,32 +657,51 @@ main() {
     
     # Run functional tests unless skipped
     if [[ "$skip_functional" == false && ${#specific_tests[@]} -eq 0 ]]; then
+        local current_test=1
+        local total_functional_tests=${#TEST_FILES[@]}
         for test_file in "${TEST_FILES[@]}"; do
-            run_test_file "$test_file"
+            run_test_file "$test_file" "$current_test" "$total_functional_tests"
+            ((current_test++))
         done
     fi
     
     # Run performance tests unless skipped
     if [[ "$skip_performance" == false && ${#specific_tests[@]} -eq 0 ]]; then
-        echo
+        if [[ "$verbose" == false ]]; then
+            echo -n "${CYAN}▶${RESET} performance.zsh ... "
+        else
+            echo
+        fi
         run_performance_tests
     fi
     
     # Run UX tests unless skipped
     if [[ "$skip_ux" == false && ${#specific_tests[@]} -eq 0 ]]; then
-        echo
+        if [[ "$verbose" == false ]]; then
+            echo -n "${CYAN}▶${RESET} ux.zsh ... "
+        else
+            echo
+        fi
         run_ux_tests
     fi
     
     # Run user workflow tests (part of functional tests)
     if [[ ${#specific_tests[@]} -eq 0 || " ${specific_tests[@]} " =~ " user_workflows " ]]; then
-        echo
+        if [[ "$verbose" == false ]]; then
+            echo -n "${CYAN}▶${RESET} user_workflows.zsh ... "
+        else
+            echo
+        fi
         run_user_workflows "$verbose"
     fi
     
     # Run documentation tests unless skipped
     if [[ "$skip_documentation" == false && ${#specific_tests[@]} -eq 0 ]]; then
-        echo
+        if [[ "$verbose" == false ]]; then
+            echo -n "${CYAN}▶${RESET} documentation.zsh ... "
+        else
+            echo
+        fi
         run_documentation_tests
     fi
     
