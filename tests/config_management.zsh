@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 # Configuration Management Tests
-# Tests for todo_config command and all its subcommands
+# Tests for todo config command and all its subcommands
 
 # Test setup
 SCRIPT_DIR=${0:A:h}
@@ -49,7 +49,7 @@ run_test() {
 
 # Test 1: Export configuration to stdout
 test_export_stdout() {
-    local output=$(todo_config export 2>/dev/null)
+    local output=$(todo config export 2>/dev/null)
     
     # Check if output contains expected configuration variables
     if [[ "$output" =~ TODO_TITLE && "$output" =~ TODO_HEART_CHAR && "$output" =~ TODO_TASK_COLORS ]]; then
@@ -65,7 +65,7 @@ test_export_file() {
     local config_file="$TEST_TMPDIR/test_export.conf"
     
     # Export to file
-    todo_config export "$config_file" >/dev/null 2>&1
+    todo config export "$config_file" >/dev/null 2>&1
     
     # Check if file was created and contains expected content
     if [[ -f "$config_file" ]] && grep -q "TODO_TITLE" "$config_file"; then
@@ -78,7 +78,7 @@ test_export_file() {
 
 # Test 3: Export colors only
 test_export_colors_only() {
-    local output=$(todo_config export --colors-only 2>/dev/null)
+    local output=$(todo config export --colors-only 2>/dev/null)
     
     # Should contain color variables but not display variables like TODO_TITLE (not TODO_TITLE_COLOR)
     if [[ "$output" =~ TODO_TASK_COLORS && "$output" =~ TODO_BORDER_COLOR && ! "$output" =~ TODO_TITLE=\".*\" ]]; then
@@ -102,7 +102,7 @@ TODO_BORDER_COLOR="150"
 EOF
     
     # Import the config
-    todo_config import "$config_file" >/dev/null 2>&1
+    todo config import "$config_file" >/dev/null 2>&1
     
     # Check if variables were set correctly
     if [[ "$TODO_TITLE" == "TEST TITLE" && "$TODO_HEART_CHAR" == "🧪" && "$TODO_BORDER_COLOR" == "150" ]]; then
@@ -125,7 +125,7 @@ TODO_SHOW_TODO_BOX="also_invalid"
 EOF
     
     # Import should succeed but reset invalid values
-    local output=$(todo_config import "$config_file" 2>&1)
+    local output=$(todo config import "$config_file" 2>&1)
     
     # Check that invalid values were reset with warnings
     if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" && "$output" =~ "Warning" ]]; then
@@ -139,21 +139,21 @@ EOF
 # Test 6: Set individual configuration values
 test_config_set() {
     # Test setting title
-    todo_config set title "NEW TITLE" >/dev/null 2>&1
+    todo config set title "NEW TITLE" >/dev/null 2>&1
     if [[ "$TODO_TITLE" != "NEW TITLE" ]]; then
         echo "Failed to set title"
         return 1
     fi
     
     # Test setting heart character
-    todo_config set heart-char "❤️" >/dev/null 2>&1
+    todo config set heart-char "❤️" >/dev/null 2>&1
     if [[ "$TODO_HEART_CHAR" != "❤️" ]]; then
         echo "Failed to set heart character"
         return 1
     fi
     
     # Test setting colors
-    todo_config set colors "200,201,202" >/dev/null 2>&1
+    todo config set colors "200,201,202" >/dev/null 2>&1
     if [[ "$TODO_TASK_COLORS" != "200,201,202" ]]; then
         echo "Failed to set colors"
         return 1
@@ -165,21 +165,21 @@ test_config_set() {
 # Test 7: Set configuration validation
 test_config_set_validation() {
     # Test invalid heart position
-    local output=$(todo_config set heart-position "invalid" 2>&1)
+    local output=$(todo config set heart-position "invalid" 2>&1)
     if [[ ! "$output" =~ "Error" ]]; then
         echo "Should have failed with invalid heart position"
         return 1
     fi
     
     # Test invalid colors format
-    output=$(todo_config set colors "not,numbers" 2>&1)
+    output=$(todo config set colors "not,numbers" 2>&1)
     if [[ ! "$output" =~ "Error" ]]; then
         echo "Should have failed with invalid colors format"
         return 1
     fi
     
     # Test color value out of range
-    output=$(todo_config set border-color "999" 2>&1)
+    output=$(todo config set border-color "999" 2>&1)
     if [[ ! "$output" =~ "Error" ]]; then
         echo "Should have failed with color value out of range"
         return 1
@@ -196,7 +196,7 @@ test_config_reset() {
     TODO_TASK_COLORS="1,2,3"
     
     # Reset configuration
-    todo_config reset >/dev/null 2>&1
+    todo config reset >/dev/null 2>&1
     
     # Check if values were reset to defaults
     if [[ "$TODO_TITLE" == "REMEMBER" && "$TODO_HEART_CHAR" == "♥" && "$TODO_TASK_COLORS" == "167,71,136,110,139,73" ]]; then
@@ -215,7 +215,7 @@ test_config_reset_colors_only() {
     TODO_BORDER_COLOR="100"
     
     # Reset only colors
-    todo_config reset --colors-only >/dev/null 2>&1
+    todo config reset --colors-only >/dev/null 2>&1
     
     # Title should remain changed, colors should be reset
     if [[ "$TODO_TITLE" == "CHANGED" && "$TODO_TASK_COLORS" == "167,71,136,110,139,73" && "$TODO_BORDER_COLOR" == "240" ]]; then
@@ -228,7 +228,7 @@ test_config_reset_colors_only() {
 
 # Test 10: Apply minimal preset
 test_preset_minimal() {
-    todo_config preset minimal >/dev/null 2>&1
+    todo config preset minimal >/dev/null 2>&1
     
     if [[ "$TODO_TITLE" == "TODO" && "$TODO_HEART_POSITION" == "none" && "$TODO_SHOW_AFFIRMATION" == "false" ]]; then
         return 0
@@ -240,7 +240,7 @@ test_preset_minimal() {
 
 # Test 11: Apply colorful preset
 test_preset_colorful() {
-    todo_config preset colorful >/dev/null 2>&1
+    todo config preset colorful >/dev/null 2>&1
     
     if [[ "$TODO_TITLE" == "✨ TASKS ✨" && "$TODO_HEART_CHAR" == "💖" && "$TODO_HEART_POSITION" == "both" ]]; then
         return 0
@@ -252,7 +252,7 @@ test_preset_colorful() {
 
 # Test 12: Apply work preset
 test_preset_work() {
-    todo_config preset work >/dev/null 2>&1
+    todo config preset work >/dev/null 2>&1
     
     if [[ "$TODO_TITLE" == "WORK TASKS" && "$TODO_HEART_CHAR" == "💼" && "$TODO_BOX_WIDTH_FRACTION" == "0.4" ]]; then
         return 0
@@ -264,7 +264,7 @@ test_preset_work() {
 
 # Test 13: Apply dark preset
 test_preset_dark() {
-    todo_config preset dark >/dev/null 2>&1
+    todo config preset dark >/dev/null 2>&1
     
     if [[ "$TODO_BORDER_BG_COLOR" == "232" && "$TODO_CONTENT_BG_COLOR" == "233" ]]; then
         return 0
@@ -276,7 +276,7 @@ test_preset_dark() {
 
 # Test 14: Invalid preset handling
 test_preset_invalid() {
-    local output=$(todo_config preset nonexistent 2>&1)
+    local output=$(todo config preset nonexistent 2>&1)
     
     if [[ "$output" =~ "Error" && "$output" =~ "Unknown preset" ]]; then
         return 0
@@ -293,7 +293,7 @@ test_save_preset() {
     TODO_HEART_CHAR="🔥"
     
     # Save as preset
-    todo_config save-preset test-custom >/dev/null 2>&1
+    todo config save-preset test-custom >/dev/null 2>&1
     
     # Check if preset file was created
     local preset_file="$HOME/.config/todo-reminder-test-custom.conf"
@@ -322,7 +322,7 @@ test_config_dispatcher() {
 
 # Test 17: Error handling for missing files
 test_import_missing_file() {
-    local output=$(todo_config import "/nonexistent/file.conf" 2>&1)
+    local output=$(todo config import "/nonexistent/file.conf" 2>&1)
     
     if [[ "$output" =~ "Error" && "$output" =~ "not found" ]]; then
         return 0
@@ -342,7 +342,7 @@ test_export_import_roundtrip() {
     TODO_PADDING_LEFT="5"
     
     # Export
-    todo_config export "$config_file" >/dev/null 2>&1
+    todo config export "$config_file" >/dev/null 2>&1
     
     # Change values
     TODO_TITLE="CHANGED"
@@ -350,7 +350,7 @@ test_export_import_roundtrip() {
     TODO_PADDING_LEFT="0"
     
     # Import back
-    todo_config import "$config_file" >/dev/null 2>&1
+    todo config import "$config_file" >/dev/null 2>&1
     
     # Check if original values were restored
     if [[ "$TODO_TITLE" == "ROUNDTRIP TEST" && "$TODO_HEART_CHAR" == "🔄" && "$TODO_PADDING_LEFT" == "5" ]]; then
@@ -361,22 +361,25 @@ test_export_import_roundtrip() {
     fi
 }
 
-# Test 19: Wizard function exists
+# Test 19: Setup command exists
 test_wizard_function_exists() {
-    if command -v todo_config_wizard >/dev/null 2>&1; then
+    # Test that setup command is accessible through subcommand interface
+    local output=$(timeout 2 zsh -c "autoload -U colors; colors; source '$SCRIPT_DIR/../reminder.plugin.zsh'; echo -e '\n\n\n\n\n\n\n\n\n\n' | todo setup" 2>&1 || true)
+    
+    if [[ "$output" != *"Unknown"* ]] && [[ "$output" != *"command not found"* ]]; then
         return 0
     else
-        echo "todo_config_wizard function not found"
+        echo "todo setup command not accessible"
         return 1
     fi
 }
 
-# Test 20: Wizard command dispatcher
+# Test 20: Setup command dispatcher
 test_wizard_dispatcher() {
-    # Test that wizard command is recognized by checking if it doesn't give unknown command error
-    local output=$(timeout 2 sh -c 'echo -e "\n\n\n\n\n\n\n\n\n\n" | todo_config wizard' 2>&1 || true)
+    # Test that setup command is recognized by checking if it doesn't give unknown command error
+    local output=$(timeout 2 zsh -c "autoload -U colors; colors; source '$SCRIPT_DIR/../reminder.plugin.zsh'; echo -e '\n\n\n\n\n\n\n\n\n\n' | todo setup" 2>&1 || true)
     
-    # Should contain wizard output, not "unknown command" error
+    # Should contain setup output, not "unknown command" error
     if [[ "$output" =~ "Configuration Wizard" || "$output" =~ "🧙" || "$output" =~ "Starting Point" ]]; then
         return 0
     else

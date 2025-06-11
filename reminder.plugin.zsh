@@ -158,8 +158,8 @@ if [[ ! -f "$_TODO_INTERNAL_FIRST_RUN_FILE" ]]; then
         echo
         echo "${bold}${blue}┌─ Welcome to Todo Reminder! ─────────────────────────┐${reset}"
         echo "${bold}${blue}│${reset} ${green}✨ Get started:${reset} ${cyan}todo \"Your first task\"${reset}              ${bold}${blue}│${reset}"
-        echo "${bold}${blue}│${reset} ${green}📚 Quick help:${reset} ${cyan}todo_help${reset}                           ${bold}${blue}│${reset}"
-        echo "${bold}${blue}│${reset} ${green}⚙️  Customize:${reset} ${cyan}todo_setup${reset}                          ${bold}${blue}│${reset}"
+        echo "${bold}${blue}│${reset} ${green}📚 Quick help:${reset} ${cyan}todo help${reset}                           ${bold}${blue}│${reset}"
+        echo "${bold}${blue}│${reset} ${green}⚙️  Customize:${reset} ${cyan}todo setup${reset}                          ${bold}${blue}│${reset}"
         echo "${bold}${blue}└─────────────────────────────────────────────────────┘${reset}"
         echo "${gray}💡 Your tasks will appear above the prompt automatically${reset}"
         echo
@@ -378,53 +378,90 @@ function format_affirmation() {
 autoload -U add-zsh-hook
 add-zsh-hook precmd todo_display
 
-# Add a new task with automatic color assignment and validation
-function todo_add_task() {
-    if [[ $# -gt 0 ]]; then
-        # Source: http://stackoverflow.com/a/8997314/1298019
-        local task=$(echo -E "$@" | tr '\n' '\000' | sed 's:\x00\x00.*:\n:g' | tr '\000' '\n')
-        
-        # Task length validation for security and performance
-        if [[ ${#task} -gt 500 ]]; then
-            echo "⚠️  Task too long (max 500 characters), truncating..." >&2
-            task="${task:0:497}..."
-        fi
-        
-        # Basic input sanitization - remove control characters
-        task="${task//[$'\x00'-$'\x1f']/}"
-        
-        local color=$'\e[38;5;'${TODO_COLORS[${todo_color_index}]}$'m'
 
-        load_tasks
-        todo_tasks+="$task"
-        todo_tasks_colors+="$color"
-        (( todo_color_index %= ${#TODO_COLORS} ))
-        (( todo_color_index += 1 ))
-        todo_save
-        
-        # Success feedback for users
-        echo "✅ Task added: \"$task\""
-        if [[ ${#todo_tasks} -eq 1 ]]; then
-            echo "💡 Your tasks appear above the prompt. Remove with: todo_remove \"$(echo "$task" | cut -c1-10)\""
-        fi
-    else
-        echo "Usage: todo \"task description\""
-        echo "Example: todo \"Buy groceries\""
-        echo "💡 For more commands: todo_help"
+# Main todo command dispatcher - pure subcommand interface
+function todo() {
+    case "${1:-help}" in
+        help)
+            _todo_help_command "${@:2}"
+            ;;
+        done)
+            _todo_done_command "${@:2}"
+            ;;
+        hide)
+            _todo_hide_command
+            ;;
+        show)
+            _todo_show_command
+            ;;
+        toggle)
+            _todo_toggle_command "${@:2}"
+            ;;
+        setup)
+            _todo_setup_command
+            ;;
+        config)
+            _todo_config_command "${@:2}"
+            ;;
+        *)
+            # Default: add task
+            _todo_add_command "$@"
+            ;;
+    esac
+}
+
+# Internal command implementations
+function _todo_add_command() {
+    if [[ $# -eq 0 ]]; then
+        _todo_help_command
+        return 1
+    fi
+    
+    # Add a new task with automatic color assignment and validation
+    # Source: http://stackoverflow.com/a/8997314/1298019
+    local task=$(echo -E "$@" | tr '\n' '\000' | sed 's:\x00\x00.*:\n:g' | tr '\000' '\n')
+    
+    # Task length validation for security and performance
+    if [[ ${#task} -gt 500 ]]; then
+        echo "⚠️  Task too long (max 500 characters), truncating..." >&2
+        task="${task:0:497}..."
+    fi
+    
+    # Basic input sanitization - remove control characters
+    task="${task//[$'\x00'-$'\x1f']/}"
+    
+    local color=$'\e[38;5;'${TODO_COLORS[${todo_color_index}]}$'m'
+
+    load_tasks
+    todo_tasks+="$task"
+    todo_tasks_colors+="$color"
+    (( todo_color_index %= ${#TODO_COLORS} ))
+    (( todo_color_index += 1 ))
+    todo_save
+    
+    # Success feedback for users
+    echo "✅ Task added: \"$task\""
+    if [[ ${#todo_tasks} -eq 1 ]]; then
+        echo "💡 Your tasks appear above the prompt. Remove with: todo done \"$(echo "$task" | cut -c1-10)\""
     fi
 }
 
-alias todo=todo_add_task
-
-# Remove a completed task by pattern matching
-function todo_task_done() {
+function _todo_done_command() {
     local pattern="$1"
 
     if [[ -z "$pattern" ]]; then
-        echo "Usage: todo_task_done <pattern>" >&2
-        echo "       todo_remove <pattern>" >&2
-        echo "Example: todo_remove \"Buy groceries\"" >&2
-        echo "💡 Use tab completion to see available tasks" >&2
+        echo "Usage: todo done <pattern>"
+        echo "Example: todo done \"Buy groceries\""
+        echo "💡 Use tab completion to see available tasks"
+        load_tasks
+        if [[ ${#todo_tasks} -gt 0 ]]; then
+            echo "Current tasks:"
+            local i=1
+            for task in "${todo_tasks[@]}"; do
+                echo "  $i. $task"
+                ((i++))
+            done
+        fi
         return 1
     fi
 
@@ -443,220 +480,304 @@ function todo_task_done() {
             echo "🎉 All tasks done! Add new ones with: todo \"task description\""
         fi
     else
-        echo "❌ No task found matching: $pattern" >&2
+        echo "❌ No task found matching: $pattern"
         if [[ ${#todo_tasks} -gt 0 ]]; then
-            echo "💡 Available tasks:" >&2
+            echo "💡 Available tasks:"
             local i=1
             for task in "${todo_tasks[@]}"; do
-                echo "   $i. $task" >&2
+                echo "   $i. $task"
                 ((i++))
             done
-            echo "💡 Try: todo_remove \"$(echo "${todo_tasks[1]}" | cut -c1-10)\"" >&2
+            echo "💡 Try: todo done \"$(echo "${todo_tasks[1]}" | cut -c1-10)\""
         else
-            echo "💡 No tasks exist. Add one with: todo \"task description\"" >&2
+            echo "💡 No tasks exist. Add one with: todo \"task description\""
         fi
         return 1
     fi
 }
+
+function _todo_hide_command() {
+    todo_toggle_all hide
+}
+
+function _todo_show_command() {
+    todo_toggle_all show
+}
+
+function _todo_toggle_command() {
+    case "${1:-}" in
+        affirmation)
+            todo_toggle_affirmation "${@:2}"
+            ;;
+        box)
+            todo_toggle_box "${@:2}"
+            ;;
+        "")
+            todo_toggle_all
+            ;;
+        *)
+            echo "Usage: todo toggle [affirmation|box]"
+            echo "  todo toggle           # Toggle everything"
+            echo "  todo toggle affirmation # Toggle affirmations only"
+            echo "  todo toggle box       # Toggle todo box only"
+            return 1
+            ;;
+    esac
+}
+
+function _todo_setup_command() {
+    todo_config_wizard
+}
+
+function _todo_config_command() {
+    case "${1:-}" in
+        export)
+            todo_config_export "${@:2}"
+            ;;
+        import)
+            todo_config_import "${@:2}"
+            ;;
+        set)
+            todo_config_set "${@:2}"
+            ;;
+        reset)
+            todo_config_reset "${@:2}"
+            ;;
+        preset)
+            todo_config_preset "${@:2}"
+            ;;
+        save-preset)
+            todo_config_save_preset "${@:2}"
+            ;;
+        "")
+            echo "Usage: todo config <action> [options]"
+            echo "Actions:"
+            echo "  export [file]         # Export configuration"
+            echo "  import <file>         # Import configuration"
+            echo "  set <key> <value>     # Set configuration value"
+            echo "  reset                 # Reset to defaults"
+            echo "  preset <name>         # Apply preset (minimal/colorful/work/dark)"
+            echo "  save-preset <name>    # Save current settings as preset"
+            return 1
+            ;;
+        *)
+            echo "Unknown config action: $1"
+            echo "Run 'todo config' for usage help"
+            return 1
+            ;;
+    esac
+}
+
+function _todo_help_command() {
+    case "${1:-}" in
+        --full|--more|-f|-m)
+            todo_help_full
+            ;;
+        --colors)
+            todo_colors
+            ;;
+        --config)
+            _todo_show_config_help
+            ;;
+        "")
+            _todo_show_basic_help
+            ;;
+        *)
+            echo "Unknown help option: $1"
+            echo "Available help options: --full, --colors, --config"
+            return 1
+            ;;
+    esac
+}
+
+function _todo_show_basic_help() {
+    local bold=$'\e[1m'
+    local reset=$'\e[0m'
+    local blue=$'\e[38;5;39m'
+    local green=$'\e[38;5;46m'
+    local cyan=$'\e[38;5;51m'
+    local gray=$'\e[38;5;244m'
+    
+    echo "${bold}${blue}📝 Todo - Simple Task Management${reset}"
+    echo "${gray}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
+    echo
+    echo "${green}Commands:${reset}"
+    echo "  ${cyan}todo <task>${reset}        Add a new task"
+    echo "  ${cyan}todo done <task>${reset}   Complete a task"
+    echo "  ${cyan}todo hide${reset}          Hide todo display"
+    echo "  ${cyan}todo show${reset}          Show todo display"
+    echo "  ${cyan}todo toggle${reset}        Toggle display components"
+    echo "  ${cyan}todo setup${reset}         Interactive configuration"
+    echo "  ${cyan}todo config${reset}        Advanced configuration"
+    echo "  ${cyan}todo help${reset}          Show this help"
+    echo
+    echo "${green}Examples:${reset}"
+    echo "  ${gray}todo \"Buy groceries\"${reset}"
+    echo "  ${gray}todo done \"Buy\"${reset}"
+    echo "  ${gray}todo toggle affirmation${reset}"
+    echo
+    echo "${green}More Help:${reset}"
+    echo "  ${cyan}todo help --full${reset}     Complete documentation"
+    echo "  ${cyan}todo help --colors${reset}   Color reference"
+    echo "  ${cyan}todo help --config${reset}   Configuration help"
+    echo
+    echo "${gray}💡 Tasks appear above your prompt automatically${reset}"
+}
+
+function _todo_show_config_help() {
+    local bold=$'\e[1m'
+    local reset=$'\e[0m'
+    local blue=$'\e[38;5;39m'
+    local green=$'\e[38;5;46m'
+    local cyan=$'\e[38;5;51m'
+    local gray=$'\e[38;5;244m'
+    
+    echo "${bold}${blue}⚙️ Configuration Help${reset}"
+    echo "${gray}━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
+    echo
+    echo "${green}Quick Setup:${reset}"
+    echo "  ${cyan}todo setup${reset}                Interactive wizard"
+    echo
+    echo "${green}Advanced Configuration:${reset}"
+    echo "  ${cyan}todo config export${reset}        Export settings to file"
+    echo "  ${cyan}todo config import <file>${reset} Import settings from file"
+    echo "  ${cyan}todo config preset <name>${reset} Apply built-in preset"
+    echo "  ${cyan}todo config reset${reset}         Reset to defaults"
+    echo
+    echo "${green}Available Presets:${reset}"
+    echo "  ${gray}minimal, colorful, work, dark${reset}"
+    echo
+    echo "${green}Environment Variables:${reset}"
+    echo "  ${cyan}TODO_TITLE${reset}               Box title (default: REMEMBER)"
+    echo "  ${cyan}TODO_HEART_CHAR${reset}          Affirmation character (default: ♥)"
+    echo "  ${cyan}TODO_TASK_COLORS${reset}         Task colors (comma-separated)"
+    echo "  ${cyan}TODO_SHOW_AFFIRMATION${reset}    Show affirmations (true/false)"
+    echo "  ${cyan}TODO_PADDING_LEFT${reset}        Left padding (default: 0)"
+    echo
+    echo "${gray}💡 See ${cyan}todo help --full${gray} for complete documentation${reset}"
+}
+
+# Remove a completed task by pattern matching
 
 # ============================================================================
 # Tab Completion System
 # ============================================================================
 
-# Completion for task removal commands (todo_task_done, todo_remove)
-function _todo_task_done() {
-    load_tasks
-    if [[ ${#todo_tasks} -gt 0 ]]; then
-        compadd $(echo ${TODO_TASKS} | tr '\000' '\n')
-    fi
-}
-
-# Universal completion function for all todo commands and command discovery
-function _todo_universal() {
+# Tab completion for the new pure subcommand interface
+function _todo_completion() {
     local context state line
     
-    # Handle command-specific argument completion
-    case ${words[1]} in
-        todo_config)
-            _todo_config_completion
+    case $CURRENT in
+        1) # Completing 'todo' itself - only show 'todo'
+            compadd 'todo'
             ;;
-        todo_help)
-            _todo_help_completion
+        2) # First argument after 'todo' (todo <TAB>)
+            local -a commands=(
+                'done:Complete a task'
+                'hide:Hide todo display'
+                'show:Show todo display'
+                'toggle:Toggle display components'
+                'setup:Interactive configuration'
+                'config:Advanced configuration'
+                'help:Show help'
+            )
+            _describe 'todo commands' commands
             ;;
-        todo_toggle_*|todo_affirm|todo_box|todo_toggle)
-            _todo_toggle_completion
+        3) # Second argument - context specific completion
+            case ${words[2]} in
+                done)
+                    # Show current tasks for completion
+                    load_tasks
+                    if [[ ${#todo_tasks} -gt 0 ]]; then
+                        compadd "${todo_tasks[@]}"
+                    else
+                        _message 'no tasks to complete'
+                    fi
+                    ;;
+                toggle)
+                    local -a toggle_options=(
+                        'affirmation:Toggle affirmation display'
+                        'box:Toggle todo box display'
+                    )
+                    _describe 'toggle options' toggle_options
+                    ;;
+                config)
+                    local -a config_commands=(
+                        'export:Export configuration to file'
+                        'import:Import configuration from file'
+                        'set:Set configuration value'
+                        'reset:Reset to defaults'
+                        'preset:Apply preset'
+                        'save-preset:Save current as preset'
+                    )
+                    _describe 'config commands' config_commands
+                    ;;
+                help)
+                    local -a help_options=(
+                        '--full:Show comprehensive help'
+                        '--more:Show comprehensive help'
+                        '--colors:Show color reference'
+                        '--config:Show configuration help'
+                    )
+                    _describe 'help options' help_options
+                    ;;
+                *)
+                    _message 'task description'
+                    ;;
+            esac
             ;;
-        todo_colors)
-            _todo_colors_completion
-            ;;
-        todo|todo_add_task)
-            # For the main todo command, provide helpful message
-            if [[ CURRENT -eq 2 ]]; then
-                _message 'task description (e.g. "Buy groceries")'
-            fi
-            ;;
-        *)
-            # For other commands, no additional completion needed
+        4) # Third argument - deeper context completion
+            case "${words[2]} ${words[3]}" in
+                "config export")
+                    _files
+                    ;;
+                "config import")
+                    _files
+                    ;;
+                "config preset")
+                    local -a presets=('minimal' 'colorful' 'work' 'dark')
+                    _describe 'presets' presets
+                    ;;
+                "config set")
+                    local -a settings=(
+                        'title:Set box title'
+                        'heart-char:Set affirmation heart character'
+                        'heart-position:Set heart position (left|right|both|none)'
+                        'bullet-char:Set task bullet character'
+                        'colors:Set task colors (comma-separated)'
+                        'border-color:Set border color'
+                        'text-color:Set text color'
+                        'padding-left:Set left padding'
+                        'box-width:Set box width fraction'
+                    )
+                    _describe 'settings' settings
+                    ;;
+            esac
             ;;
     esac
 }
 
-# Command discovery completion for todo_ prefix
-function _todo_commands() {
-    local -a todo_commands
-    
-    # Build list of available todo commands with descriptions
-    todo_commands=(
-        # Core commands (Layer 1 - essential for beginners)
-        'todo:Add a new task'
-        'todo_remove:Remove completed task (with tab completion)'
-        'todo_hide:Hide todo display'
-        'todo_show:Show todo display'
-        'todo_setup:Interactive customization wizard'
-        'todo_help:Show essential commands'
-        
-        # Intermediate commands (Layer 2 - natural discovery)
-        'todo_toggle:Toggle all display elements'
-        'todo_colors:Show color reference'
-        'todo_affirm:Toggle affirmations'
-        'todo_box:Toggle todo box'
-        
-        # Advanced commands (Layer 3 - power users)
-        'todo_config:Advanced configuration management'
-        'todo_toggle_affirmation:Control affirmation display'
-        'todo_toggle_box:Control todo box display'
-        'todo_toggle_all:Control all display elements'
-        
-        # Less common/legacy commands
-        'task_done:Remove completed task (legacy alias)'
-        'todo_task_done:Remove completed task (internal function)'
-    )
-    
-    _describe 'todo commands' todo_commands
-}
-
-# Completion for todo_config subcommands
-function _todo_config_completion() {
-    local -a config_commands
-    config_commands=(
-        'export:Export configuration to file'
-        'import:Import configuration from file'
-        'set:Set individual configuration value'
-        'reset:Reset configuration to defaults'
-        'preset:Apply built-in preset'
-        'save-preset:Save current settings as preset'
-        'help:Show configuration help'
-    )
-    
-    if [[ CURRENT -eq 2 ]]; then
-        _describe 'config commands' config_commands
-    elif [[ CURRENT -eq 3 ]]; then
-        case ${words[2]} in
-            preset)
-                local -a presets
-                presets=('minimal' 'colorful' 'work' 'dark')
-                _describe 'presets' presets
-                ;;
-            set)
-                local -a settings
-                settings=(
-                    'title:Set box title'
-                    'heart-char:Set affirmation heart character'
-                    'heart-position:Set heart position (left|right|both|none)'
-                    'bullet-char:Set task bullet character'
-                    'colors:Set task colors (comma-separated)'
-                    'border-color:Set border color'
-                    'text-color:Set text color'
-                    'padding-left:Set left padding'
-                    'box-width:Set box width fraction'
-                )
-                _describe 'settings' settings
-                ;;
-            export|import)
-                _files
-                ;;
-        esac
-    elif [[ CURRENT -eq 4 && ${words[2]} == "export" ]]; then
-        # Handle --colors-only flag for export
-        compadd --colors-only
-    fi
-}
-
-# Completion for todo_help subcommands
-function _todo_help_completion() {
-    if [[ CURRENT -eq 2 ]]; then
-        local -a help_options
-        help_options=(
-            '--more:Show comprehensive help'
-            '--full:Show comprehensive help'
-            '-m:Show comprehensive help (short)'
-            '-f:Show comprehensive help (short)'
-        )
-        _describe 'help options' help_options
-    fi
-}
-
-# Completion for toggle commands
-function _todo_toggle_completion() {
-    if [[ CURRENT -eq 2 ]]; then
-        local -a toggle_options
-        toggle_options=('show' 'hide' 'toggle')
-        _describe 'toggle options' toggle_options
-    fi
-}
-
-# Completion for todo_colors command
-function _todo_colors_completion() {
-    if [[ CURRENT -eq 2 ]]; then
-        _message 'max colors (default: 256)'
-    fi
-}
-
-# Enable tab completion if compdef is available
+# Enable tab completion
 if command -v compdef >/dev/null 2>&1; then
-    # Task removal completion (specific to these commands)
-    compdef _todo_task_done todo_task_done
-    compdef _todo_task_done todo_remove
-    compdef _todo_task_done task_done
+    # Load completion functions
+    autoload -U _describe _message _files
     
-    # Command-specific argument completion for individual commands
-    compdef _todo_universal todo
-    compdef _todo_universal todo_add_task
-    compdef _todo_universal todo_help
-    compdef _todo_universal todo_colors
-    compdef _todo_universal todo_config
-    compdef _todo_universal todo_setup
-    compdef _todo_universal todo_config_wizard
-    compdef _todo_universal todo_hide
-    compdef _todo_universal todo_show
-    compdef _todo_universal todo_toggle
-    compdef _todo_universal todo_toggle_all
-    compdef _todo_universal todo_toggle_affirmation
-    compdef _todo_universal todo_toggle_box
-    compdef _todo_universal todo_affirm
-    compdef _todo_universal todo_box
-fi
-
-# Enhanced command completion integration
-# This will make tab completion work better for command discovery
-if command -v compinit >/dev/null 2>&1 && [[ ${+functions[compinit]} -eq 1 || ${+functions[_main_complete]} -eq 1 ]]; then
-    # Hook into the default completion system to provide todo command suggestions
-    # when users type "todo_" and press tab
-    function _todo_command_completer() {
-        if [[ "$PREFIX" =~ ^todo_ ]]; then
-            _todo_commands
-            return 0
-        fi
-        return 1
-    }
+    # Register completion for main todo command only
+    compdef _todo_completion todo
     
-    # Add to the completion system as a completer
-    if [[ -n "${compstate:-}" ]] || autoload -U compinit && compinit -D; then
-        # This integrates with zsh's completion system
-        zstyle ':completion:*' completer _todo_command_completer _complete _ignored
-    fi
+    # Prevent zsh from offering all todo_* functions when completing todo<TAB>
+    # This sets up a style that ignores all internal functions for command completion
+    zstyle ':completion:*:*:*:*:functions' ignored-patterns \
+        'todo_*' '_todo_*' 'autoload_todo_module' 'calculate_box_width' \
+        'draw_todo_box' 'fetch_affirmation_async' 'format_affirmation' \
+        'format_todo_line' 'load_tasks' 'regenerate_colors_for_existing_tasks' \
+        'show_*' 'wrap_todo_text'
+        
+    # Also ignore internal variables
+    zstyle ':completion:*:*:*:*:parameters' ignored-patterns \
+        'todo_color_index' 'todo_tasks' 'todo_tasks_colors' \
+        'TODO_*' '_TODO_*'
 fi
-alias task_done=todo_task_done
 
 # Wrap text to fit within specified width, handling bullet and text colors separately
 # Args: text, max_width, bullet_color, is_title
@@ -1826,16 +1947,9 @@ function todo_config_wizard() {
 }
 
 # ============================================================================
-# Aliases and Command Shortcuts
+# Legacy Aliases (Backward Compatibility)
 # ============================================================================
-
-# Layer 2 (Intermediate) aliases
-alias todo_affirm=todo_toggle_affirmation
-alias todo_box=todo_toggle_box
-
-# Layer 1 (Beginner-friendly) aliases
-alias todo_remove=todo_task_done
-alias todo_hide="todo_toggle_all hide"
-alias todo_show="todo_toggle_all show"
-alias todo_toggle=todo_toggle_all
-alias todo_setup=todo_config_wizard
+# Pure Subcommand Interface
+# All functionality accessible through: todo <subcommand>
+# Legacy functions kept as internal implementation details
+# ============================================================================

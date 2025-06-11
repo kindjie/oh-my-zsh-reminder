@@ -2,6 +2,39 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚧 ACTIVE DEVELOPMENT: Testing Refactor Plan
+
+**Target**: Achieve 100% passing tests with comprehensive coverage of pure subcommand interface.
+
+### **Phase 1: Quick Wins** ⚡
+- Update command syntax in config_management.zsh, wizard tests  
+- Fix remaining UX test failures with simple command updates
+- Update welcome message references and help system calls
+
+### **Phase 2: Interface Testing** 🔧
+- Create subcommand_interface.zsh with focused interface tests
+- Update interface.zsh for new command structure  
+- Add tab completion integration tests
+
+### **Phase 3: Documentation & UX** 📝
+- Rewrite critical UX tests for new interface patterns
+- Update documentation tests for new command examples
+- Create user workflow tests for end-to-end validation
+
+### **Phase 4: Test Runner Enhancement** 🎯
+- Update test runner with better UX (spinner/progress)
+- Ensure compatibility with all test changes
+- Improve debugging capabilities while maintaining defaults
+
+### **Phase 5: Documentation** 📚
+- Update README.md for pure subcommand interface
+- Update CLAUDE.md to reflect new architecture
+- Identify and note needed screengrab updates
+
+**Expected Outcome**: ~150-160 focused tests with 95%+ pass rate, excellent UX, complete documentation.
+
+---
+
 ## Project Overview
 
 This is a zsh plugin that displays TODO reminders above the terminal prompt. It's a beautiful, configurable zsh plugin with persistent task storage and colorized display.

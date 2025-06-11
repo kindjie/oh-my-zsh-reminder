@@ -58,9 +58,9 @@ function test_first_run_welcome() {
        [[ "$output" == *"Get started:"* ]] && \
        [[ "$output" == *"todo"* ]] && \
        [[ "$output" == *"Quick help:"* ]] && \
-       [[ "$output" == *"todo_help"* ]] && \
+       [[ "$output" == *"todo help"* ]] && \
        [[ "$output" == *"Customize:"* ]] && \
-       [[ "$output" == *"todo_setup"* ]]; then
+       [[ "$output" == *"todo setup"* ]]; then
         echo "✅ PASS: $test_name"
         ((passed_count++))
     else
@@ -123,24 +123,28 @@ function test_beginner_aliases() {
     local test_name="Beginner-friendly aliases exist"
     ((test_count++))
     
-    local aliases_output=$(zsh -c 'source reminder.plugin.zsh; alias | grep -E "(todo_remove|todo_hide|todo_show|todo_setup|todo_toggle)"')
+    # Test pure subcommand interface is discoverable
+    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo 2>/dev/null')
     
-    local required_aliases=("todo_remove" "todo_hide" "todo_show" "todo_setup" "todo_toggle")
-    local missing_aliases=()
+    # Test that key subcommands work
+    local subcommands=("done" "hide" "show" "toggle" "help")
+    local missing_commands=()
     
-    for alias_name in "${required_aliases[@]}"; do
-        if [[ "$aliases_output" != *"$alias_name="* ]]; then
-            missing_aliases+=("$alias_name")
+    for cmd in "${subcommands[@]}"; do
+        # Test that subcommand exists (may return error but shouldn't be "command not found")
+        local output=$(zsh -c "source reminder.plugin.zsh; todo $cmd 2>&1")
+        if [[ "$output" == *"command not found"* ]] || [[ "$output" == *"Unknown"* ]]; then
+            missing_commands+=("$cmd")
         fi
     done
     
-    if [[ ${#missing_aliases[@]} -eq 0 ]]; then
-        echo "✅ PASS: $test_name"
-        echo "  Found: todo_remove, todo_hide, todo_show, todo_setup, todo_toggle"
+    if [[ ${#missing_commands[@]} -eq 0 ]] && [[ "$help_output" == *"Commands:"* ]]; then
+        echo "✅ PASS: $test_name (pure subcommand interface)"
+        echo "  Found: todo done, todo hide, todo show, todo toggle, todo help"
         ((passed_count++))
     else
         echo "❌ FAIL: $test_name"
-        echo "  Missing aliases: ${missing_aliases[*]}"
+        echo "  Missing subcommands: ${missing_commands[*]}"
         ((failed_count++))
     fi
 }
@@ -150,18 +154,20 @@ function test_alias_clarity() {
     local test_name="Alias names are self-explanatory"
     ((test_count++))
     
-    # Check that aliases point to logical functions
-    local todo_remove_target=$(zsh -c 'source reminder.plugin.zsh; alias todo_remove' | cut -d= -f2)
-    local todo_hide_target=$(zsh -c 'source reminder.plugin.zsh; alias todo_hide' | cut -d= -f2)
+    # Test that subcommand names are intuitive and clear
+    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo help')
     
-    if [[ "$todo_remove_target" == *"todo_task_done"* ]] && \
-       [[ "$todo_hide_target" == *"hide"* ]]; then
-        echo "✅ PASS: $test_name"
-        echo "  todo_remove → task removal, todo_hide → hiding functionality"
+    # Check for clear command naming in help
+    if [[ "$help_output" == *"todo done"* ]] && \
+       [[ "$help_output" == *"todo hide"* ]] && \
+       [[ "$help_output" == *"todo show"* ]] && \
+       [[ "$help_output" == *"Complete a task"* ]]; then
+        echo "✅ PASS: $test_name (subcommand interface)"
+        echo "  Commands: done (complete), hide/show (control), toggle (switch)"
         ((passed_count++))
     else
         echo "❌ FAIL: $test_name"
-        echo "  Aliases don't point to expected functions"
+        echo "  Subcommand names or descriptions unclear"
         ((failed_count++))
     fi
 }
@@ -204,7 +210,7 @@ function test_task_addition_feedback() {
     local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        todo_add_task "Test task for feedback"
+        todo "Test task for feedback"
     ')
     
     if [[ "$output" == *"✅ Task added:"* ]] && \
@@ -233,11 +239,11 @@ function test_first_task_guidance() {
     local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        todo_add_task "First task ever"
+        todo "First task ever"
     ')
     
     if [[ "$output" == *"appear above the prompt"* ]] && \
-       [[ "$output" == *"Remove with: todo_remove"* ]]; then
+       [[ "$output" == *"Remove with: todo done"* ]]; then
         echo "✅ PASS: $test_name"
         echo "  First task includes explanation and removal example"
         ((passed_count++))
@@ -262,8 +268,8 @@ function test_task_removal_feedback() {
     local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        todo_add_task "Task to remove" >/dev/null;
-        todo_task_done "Task to remove"
+        todo "Task to remove" >/dev/null;
+        todo done "Task to remove"
     ')
     
     if [[ "$output" == *"✅ Task completed:"* ]] && \
@@ -290,7 +296,7 @@ function test_helpful_errors() {
     local error_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        todo_task_done "nonexistent" 2>&1
+        todo done "nonexistent" 2>&1
     ')
     
     if [[ "$error_output" == *"❌ No task found"* ]] && \
@@ -314,10 +320,10 @@ function test_missing_args_help() {
     local test_name="Missing arguments provide usage examples"
     ((test_count++))
     
-    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo_add_task 2>&1')
+    local help_output=$(zsh -c 'source reminder.plugin.zsh; todo 2>&1')
     
-    if [[ "$help_output" == *"Usage: todo"* ]] && \
-       [[ "$help_output" == *"Example:"* ]]; then
+    if [[ "$help_output" == *"Commands:"* ]] && \
+       [[ "$help_output" == *"Examples:"* ]]; then
         echo "✅ PASS: $test_name"
         echo "  Missing args show usage and examples"
         ((passed_count++))
@@ -345,7 +351,7 @@ function test_simple_help_brevity() {
     local test_name="Simplified help is concise (< 20 lines)"
     ((test_count++))
     
-    local help_lines=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo_help' | wc -l)
+    local help_lines=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo help' | wc -l)
     
     if [[ $help_lines -lt 20 ]]; then
         echo "✅ PASS: $test_name"
@@ -363,8 +369,8 @@ function test_simple_help_essentials() {
     local test_name="Simplified help shows Layer 1 commands"
     ((test_count++))
     
-    local help_output=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo_help')
-    local essential_commands=("todo" "todo_remove" "todo_hide" "todo_show" "todo_setup")
+    local help_output=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo help')
+    local essential_commands=("todo" "todo done" "todo hide" "todo show" "todo setup")
     local missing_commands=()
     
     for cmd in "${essential_commands[@]}"; do
@@ -389,9 +395,9 @@ function test_help_discovery_path() {
     local test_name="Simple help points to advanced help"
     ((test_count++))
     
-    local help_output=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo_help')
+    local help_output=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo help')
     
-    if [[ "$help_output" == *"--more"* ]] || [[ "$help_output" == *"todo_help --more"* ]]; then
+    if [[ "$help_output" == *"--more"* ]] || [[ "$help_output" == *"todo help --more"* ]]; then
         echo "✅ PASS: $test_name"
         echo "  Simple help includes path to advanced help"
         ((passed_count++))
@@ -407,7 +413,7 @@ function test_advanced_help_preserved() {
     local test_name="Advanced help preserves all features"
     ((test_count++))
     
-    local full_help=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo_help --more')
+    local full_help=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo help --more')
     local advanced_features=("todo_config" "export" "import" "preset" "TODO_TASK_COLORS" "TODO_BORDER_COLOR")
     local missing_features=()
     
@@ -501,7 +507,7 @@ function test_beginner_workflow() {
     local help_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        todo_help
+        todo help
     ')
     
     if [[ "$help_output" != *"todo"* ]]; then
@@ -525,7 +531,7 @@ function test_beginner_workflow() {
     local remove_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        eval "todo_remove \"Learn\""
+        eval "todo done \"Learn\""
     ')
     
     if [[ "$remove_output" != *"✅ Task completed"* ]]; then
@@ -552,8 +558,8 @@ function test_layer_2_discovery() {
     local test_name="Layer 2 features discoverable from Layer 1"
     ((test_count++))
     
-    local help_output=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo_help')
-    local layer_2_hints=("todo_setup" "todo_colors" "todo_hide" "todo_show")
+    local help_output=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo help')
+    local layer_2_hints=("todo setup" "todo help --colors" "todo hide" "todo show")
     local missing_hints=()
     
     for hint in "${layer_2_hints[@]}"; do

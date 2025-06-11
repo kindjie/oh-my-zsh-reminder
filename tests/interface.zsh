@@ -109,14 +109,14 @@ test_toggle_commands() {
     original_affirmation_state="$TODO_SHOW_AFFIRMATION"
     echo "Original affirmation state: $TODO_SHOW_AFFIRMATION"
     
-    todo_toggle_affirmation hide >/dev/null
+    todo toggle affirmation hide >/dev/null
     if [[ "$TODO_SHOW_AFFIRMATION" == "false" ]]; then
         echo "✅ PASS: Affirmation hiding works"
     else
         echo "❌ FAIL: Affirmation hiding failed"
     fi
     
-    todo_toggle_affirmation show >/dev/null
+    todo toggle affirmation show >/dev/null
     if [[ "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
         echo "✅ PASS: Affirmation showing works"
     else
@@ -127,14 +127,14 @@ test_toggle_commands() {
     original_box_state="$TODO_SHOW_TODO_BOX"
     echo "Original todo box state: $TODO_SHOW_TODO_BOX"
     
-    todo_toggle_box hide >/dev/null
+    todo toggle box hide >/dev/null
     if [[ "$TODO_SHOW_TODO_BOX" == "false" ]]; then
         echo "✅ PASS: Todo box hiding works"
     else
         echo "❌ FAIL: Todo box hiding failed"
     fi
     
-    todo_toggle_box show >/dev/null
+    todo toggle box show >/dev/null
     if [[ "$TODO_SHOW_TODO_BOX" == "true" ]]; then
         echo "✅ PASS: Todo box showing works"
     else
@@ -142,14 +142,14 @@ test_toggle_commands() {
     fi
     
     # Test toggle all
-    todo_toggle_all hide >/dev/null
+    todo hide >/dev/null
     if [[ "$TODO_SHOW_AFFIRMATION" == "false" && "$TODO_SHOW_TODO_BOX" == "false" ]]; then
         echo "✅ PASS: Toggle all hide works"
     else
         echo "❌ FAIL: Toggle all hide failed"
     fi
     
-    todo_toggle_all show >/dev/null
+    todo show >/dev/null
     if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" ]]; then
         echo "✅ PASS: Toggle all show works"
     else
@@ -158,7 +158,7 @@ test_toggle_commands() {
     
     # Test toggle without arguments (should toggle)
     original_affirmation_state2="$TODO_SHOW_AFFIRMATION"
-    todo_toggle_affirmation >/dev/null  # Should toggle
+    todo toggle affirmation >/dev/null  # Should toggle
     if [[ "$TODO_SHOW_AFFIRMATION" != "$original_affirmation_state2" ]]; then
         echo "✅ PASS: Toggle affirmation without arguments works"
     else
@@ -166,7 +166,7 @@ test_toggle_commands() {
     fi
     
     # Test invalid arguments
-    error_output=$(todo_toggle_affirmation invalid 2>&1)
+    error_output=$(todo toggle affirmation invalid 2>&1)
     if [[ $? -ne 0 && "$error_output" == *"Usage:"* ]]; then
         echo "✅ PASS: Invalid toggle arguments produce error"
     else
@@ -174,8 +174,8 @@ test_toggle_commands() {
     fi
     
     # Test toggle all combinations
-    todo_toggle_all hide >/dev/null
-    todo_toggle_all toggle >/dev/null  # Should show both
+    todo hide >/dev/null
+    todo toggle >/dev/null  # Should show both
     if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" ]]; then
         echo "✅ PASS: Toggle all from hide to show works"
     else
@@ -336,35 +336,42 @@ test_colors_command() {
 }
 
 # Test 4: Command aliases
-test_command_aliases() {
-    echo "\n4. Testing command aliases:"
+test_subcommand_interface() {
+    echo "\n4. Testing pure subcommand interface:"
     
-    # Test that aliases are defined (check with alias command)
-    if alias todo_affirm >/dev/null 2>&1; then
-        echo "✅ PASS: todo_affirm alias exists"
+    source_test_plugin
+    
+    # Test that main subcommands are accessible
+    if todo help >/dev/null 2>&1; then
+        echo "✅ PASS: todo help command works"
     else
-        echo "❌ FAIL: todo_affirm alias not found"
+        echo "❌ FAIL: todo help command failed"
     fi
     
-    if alias todo_box >/dev/null 2>&1; then
-        echo "✅ PASS: todo_box alias exists"
+    if todo toggle >/dev/null 2>&1; then
+        echo "✅ PASS: todo toggle command works"
     else
-        echo "❌ FAIL: todo_box alias not found"
+        echo "❌ FAIL: todo toggle command failed"
     fi
     
-    # Test that alias points to correct function (check alias definition)
-    affirm_alias_def=$(alias todo_affirm 2>/dev/null | cut -d'=' -f2- | tr -d "'")
-    if [[ "$affirm_alias_def" == "todo_toggle_affirmation" ]]; then
-        echo "✅ PASS: todo_affirm alias points to correct function"
+    # Test that nested subcommands work
+    if todo toggle affirmation >/dev/null 2>&1; then
+        echo "✅ PASS: todo toggle affirmation command works"
     else
-        echo "❌ FAIL: todo_affirm alias definition incorrect (got: $affirm_alias_def)"
+        echo "❌ FAIL: todo toggle affirmation command failed"
     fi
     
-    box_alias_def=$(alias todo_box 2>/dev/null | cut -d'=' -f2- | tr -d "'")
-    if [[ "$box_alias_def" == "todo_toggle_box" ]]; then
-        echo "✅ PASS: todo_box alias points to correct function"
+    if todo toggle box >/dev/null 2>&1; then
+        echo "✅ PASS: todo toggle box command works"
     else
-        echo "❌ FAIL: todo_box alias definition incorrect (got: $box_alias_def)"
+        echo "❌ FAIL: todo toggle box command failed"
+    fi
+    
+    # Test that legacy aliases are no longer available (clean namespace)
+    if ! alias todo_affirm >/dev/null 2>&1; then
+        echo "✅ PASS: Legacy aliases removed from namespace"
+    else
+        echo "❌ FAIL: Legacy aliases still exist (not clean namespace)"
     fi
 }
 
@@ -374,9 +381,9 @@ test_error_handling() {
     
     # Test toggle commands with invalid arguments
     local error_tests=(
-        "todo_toggle_affirmation invalid_arg"
-        "todo_toggle_box invalid_arg"
-        "todo_toggle_all invalid_arg"
+        "todo toggle affirmation invalid_arg"
+        "todo toggle box invalid_arg"
+        "todo toggle invalid_arg"
     )
     
     for test_cmd in "${error_tests[@]}"; do
@@ -390,7 +397,7 @@ test_error_handling() {
     
     # Test that commands handle empty parameters gracefully (should default to toggle)
     original_state="$TODO_SHOW_AFFIRMATION"
-    todo_toggle_affirmation "" >/dev/null 2>&1
+    todo toggle affirmation "" >/dev/null 2>&1
     if [[ $? -eq 0 && "$TODO_SHOW_AFFIRMATION" != "$original_state" ]]; then
         echo "✅ PASS: Empty arguments default to toggle behavior"
         # Restore original state
@@ -409,8 +416,8 @@ test_state_persistence() {
     original_box="$TODO_SHOW_TODO_BOX"
     
     # Change states
-    todo_toggle_affirmation hide >/dev/null
-    todo_toggle_box hide >/dev/null
+    todo toggle affirmation hide >/dev/null
+    todo toggle box hide >/dev/null
     
     # Check that states are preserved
     if [[ "$TODO_SHOW_AFFIRMATION" == "false" && "$TODO_SHOW_TODO_BOX" == "false" ]]; then
@@ -420,8 +427,8 @@ test_state_persistence() {
     fi
     
     # Test that states can be restored
-    todo_toggle_affirmation show >/dev/null
-    todo_toggle_box show >/dev/null
+    todo toggle affirmation show >/dev/null
+    todo toggle box show >/dev/null
     
     if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" ]]; then
         echo "✅ PASS: Toggle states can be restored"
@@ -508,7 +515,7 @@ main() {
     test_toggle_commands
     test_help_command
     test_colors_command
-    test_command_aliases
+    test_subcommand_interface
     test_error_handling
     test_state_persistence
     test_help_alignment
