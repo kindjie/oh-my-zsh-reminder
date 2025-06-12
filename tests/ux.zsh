@@ -207,7 +207,7 @@ function test_task_addition_feedback() {
     ((test_count++))
     
     local temp_save="$TMPDIR/test_feedback_$$"
-    local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         todo "Test task for feedback"
@@ -236,7 +236,7 @@ function test_first_task_guidance() {
     ((test_count++))
     
     local temp_save="$TMPDIR/test_first_task_$$"
-    local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         todo "First task ever"
@@ -265,7 +265,7 @@ function test_task_removal_feedback() {
     local temp_save="$TMPDIR/test_removal_$$"
     
     # Add and remove a task
-    local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         todo "Task to remove" >/dev/null;
@@ -293,7 +293,7 @@ function test_helpful_errors() {
     ((test_count++))
     
     local temp_save="$TMPDIR/test_errors_$$"
-    local error_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local error_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         todo done "nonexistent" 2>&1
@@ -504,7 +504,7 @@ function test_beginner_workflow() {
     local workflow_log=""
     
     # Step 1: Get help
-    local help_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local help_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         todo help
@@ -516,7 +516,7 @@ function test_beginner_workflow() {
     fi
     
     # Step 2: Add first task
-    local add_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local add_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         eval "todo \"Learn todo plugin\""
@@ -528,7 +528,7 @@ function test_beginner_workflow() {
     fi
     
     # Step 3: Remove task using new alias
-    local remove_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local remove_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         eval "todo done \"Learn\""

@@ -12,6 +12,7 @@ cd "$TEST_TMPDIR"
 # Setup test environment with isolated todo file
 export TODO_SAVE_FILE="$TEST_TMPDIR/test_todo.save"
 export TODO_AFFIRMATION_FILE="$TEST_TMPDIR/test_affirmation"
+export TODO_DISABLE_MIGRATION="true"
 export COLUMNS=80
 
 # Clean up on exit
@@ -21,9 +22,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Load the plugin
+# Load the plugin and config module
 autoload -U colors
 colors
+source "$SCRIPT_DIR/../lib/config.zsh"
 source "$SCRIPT_DIR/../reminder.plugin.zsh"
 
 # Test counter
@@ -49,7 +51,7 @@ run_test() {
 
 # Test 1: Export configuration to stdout
 test_export_stdout() {
-    local output=$(todo config export 2>/dev/null)
+    local output=$(todo_config_export_config 2>/dev/null)
     
     # Check if output contains expected configuration variables
     if [[ "$output" =~ TODO_TITLE && "$output" =~ TODO_HEART_CHAR && "$output" =~ TODO_TASK_COLORS ]]; then
@@ -65,7 +67,7 @@ test_export_file() {
     local config_file="$TEST_TMPDIR/test_export.conf"
     
     # Export to file
-    todo config export "$config_file" >/dev/null 2>&1
+    todo_config_export_config "$config_file" >/dev/null 2>&1
     
     # Check if file was created and contains expected content
     if [[ -f "$config_file" ]] && grep -q "TODO_TITLE" "$config_file"; then
@@ -78,7 +80,7 @@ test_export_file() {
 
 # Test 3: Export colors only
 test_export_colors_only() {
-    local output=$(todo config export --colors-only 2>/dev/null)
+    local output=$(todo_config_export_config "" "true" 2>/dev/null)
     
     # Should contain color variables but not display variables like TODO_TITLE (not TODO_TITLE_COLOR)
     if [[ "$output" =~ TODO_TASK_COLORS && "$output" =~ TODO_BORDER_COLOR && ! "$output" =~ TODO_TITLE=\".*\" ]]; then
@@ -102,7 +104,7 @@ TODO_BORDER_COLOR="150"
 EOF
     
     # Import the config
-    todo config import "$config_file" >/dev/null 2>&1
+    todo_config_import_config "$config_file" >/dev/null 2>&1
     
     # Check if variables were set correctly
     if [[ "$TODO_TITLE" == "TEST TITLE" && "$TODO_HEART_CHAR" == "🧪" && "$TODO_BORDER_COLOR" == "150" ]]; then
@@ -124,14 +126,14 @@ TODO_SHOW_AFFIRMATION="invalid_value"
 TODO_SHOW_TODO_BOX="also_invalid"
 EOF
     
-    # Import should succeed but reset invalid values
-    local output=$(todo config import "$config_file" 2>&1)
+    # Import should fail with validation errors
+    local output=$(todo_config_import_config "$config_file" 2>&1)
     
-    # Check that invalid values were reset with warnings
-    if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" && "$output" =~ "Warning" ]]; then
+    # Check that import failed due to validation
+    if [[ "$output" =~ "Error" ]]; then
         return 0
     else
-        echo "Import validation failed to handle invalid values properly"
+        echo "Import validation should have failed for invalid values"
         return 1
     fi
 }
@@ -315,7 +317,7 @@ validate_preset_values() {
 
 # Test 10: Apply subtle preset
 test_preset_subtle() {
-    todo config preset subtle >/dev/null 2>&1
+    todo_config_apply_preset subtle >/dev/null 2>&1
     
     # Comprehensive validation
     if ! validate_preset_values "subtle"; then
@@ -340,7 +342,7 @@ test_preset_subtle() {
 
 # Test 11: Apply vibrant preset
 test_preset_vibrant() {
-    todo config preset vibrant >/dev/null 2>&1
+    todo_config_apply_preset vibrant >/dev/null 2>&1
     
     # Comprehensive validation
     if ! validate_preset_values "vibrant"; then
@@ -365,7 +367,7 @@ test_preset_vibrant() {
 
 # Test 12: Apply balanced preset
 test_preset_balanced() {
-    todo config preset balanced >/dev/null 2>&1
+    todo_config_apply_preset balanced >/dev/null 2>&1
     
     # Comprehensive validation
     if ! validate_preset_values "balanced"; then
@@ -390,7 +392,7 @@ test_preset_balanced() {
 
 # Test 13: Apply loud preset
 test_preset_loud() {
-    todo config preset loud >/dev/null 2>&1
+    todo_config_apply_preset loud >/dev/null 2>&1
     
     # Comprehensive validation
     if ! validate_preset_values "loud"; then
@@ -415,42 +417,37 @@ test_preset_loud() {
 
 # Test 14: Invalid preset handling
 test_preset_invalid() {
-    local output=$(todo config preset nonexistent 2>&1)
+    local output=$(todo_config_apply_preset nonexistent 2>&1)
     
-    if [[ "$output" =~ "Error" && "$output" =~ "Unknown preset" ]]; then
+    if [[ "$output" =~ "Error" && "$output" =~ "not found" ]]; then
         return 0
     else
-        echo "Should have failed with unknown preset error"
+        echo "Should have failed with preset not found error"
         return 1
     fi
 }
 
-# Test 15: Theme mode detection
-test_theme_mode_detection() {
-    # Test default theme mode detection
-    local original_theme_mode="$TODO_THEME_MODE"
-    unset TODO_THEME_MODE
+# Test 15: Tinted preset selection
+test_tinted_preset_selection() {
+    # Test tinted preset selection when TINTED_SHELL_ENABLE_BASE16_VARS is set
+    local original_tinted="$TINTED_SHELL_ENABLE_BASE16_VARS"
     
-    # Mock tinty command not available
-    if command -v tinty >/dev/null 2>&1; then
-        # Skip this test if tinty is actually installed
-        echo "Skipping theme mode test - tinty is installed"
-        return 0
-    fi
+    # Test with tinted-shell enabled
+    export TINTED_SHELL_ENABLE_BASE16_VARS=1
     
-    # Should default to static when no tinty
-    todo config preset subtle >/dev/null 2>&1
+    # Apply a preset that has a tinted variant
+    todo_config_apply_preset subtle >/dev/null 2>&1
     
-    # Check that colors were applied (exact values depend on implementation)
+    # Check that colors were applied
     if [[ -n "$TODO_TASK_COLORS" ]]; then
+        # Restore original
+        TINTED_SHELL_ENABLE_BASE16_VARS="$original_tinted"
         return 0
     else
-        echo "Theme mode detection failed"
+        echo "Tinted preset selection failed"
+        TINTED_SHELL_ENABLE_BASE16_VARS="$original_tinted"
         return 1
     fi
-    
-    # Restore original
-    TODO_THEME_MODE="$original_theme_mode"
 }
 
 # Test 20: Save current preset
@@ -460,10 +457,10 @@ test_save_preset() {
     TODO_HEART_CHAR="🔥"
     
     # Save as preset
-    todo config save-preset test-custom >/dev/null 2>&1
+    todo_config_save_user_preset test-custom "Test preset description" >/dev/null 2>&1
     
-    # Check if preset file was created
-    local preset_file="$HOME/.config/todo-reminder-test-custom.conf"
+    # Check if preset file was created in new location
+    local preset_file="$HOME/.config/todo-reminder/presets/test-custom.conf"
     if [[ -f "$preset_file" ]] && grep -q "CUSTOM TEST" "$preset_file"; then
         # Clean up
         rm -f "$preset_file"
@@ -474,34 +471,17 @@ test_save_preset() {
     fi
 }
 
-# Test 21: Preset list consistency
-test_preset_list_consistency() {
-    # Get the available presets from the constant
-    local preset_list="$_TODO_PRESET_LIST"
-    # Remove spaces after commas for proper splitting
-    preset_list="${preset_list//,/,}"
-    preset_list="${preset_list//  / }"
+# Test 21: Preset discovery and availability
+test_preset_discovery() {
+    # Test preset discovery function
+    local preset_names=($(todo_config_get_preset_names))
     
-    local -a available_presets
-    available_presets=(${(s:,:)preset_list})
-    
-    # Test each preset in the list exists
+    # Should find at least the 4 semantic presets
+    local required_presets=("subtle" "balanced" "vibrant" "loud")
     local missing_presets=()
-    for preset in "${available_presets[@]}"; do
-        # Trim any whitespace
-        preset="${preset## }"
-        preset="${preset%% }"
-        
-        # Skip empty entries
-        if [[ -z "$preset" ]]; then
-            continue
-        fi
-        
-        # No dynamic presets to skip in semantic system
-        
-        # Try to apply the preset
-        local output=$(todo config preset "$preset" 2>&1)
-        if [[ "$output" =~ "Unknown preset" ]]; then
+    
+    for preset in "${required_presets[@]}"; do
+        if [[ ! "${preset_names[@]}" =~ "$preset" ]]; then
             missing_presets+=("$preset")
         fi
     done
@@ -509,7 +489,8 @@ test_preset_list_consistency() {
     if [[ ${#missing_presets[@]} -eq 0 ]]; then
         return 0
     else
-        echo "Presets in _TODO_PRESET_LIST but not implemented: ${missing_presets[@]}"
+        echo "Required presets not discovered: ${missing_presets[@]}"
+        echo "Available presets: ${preset_names[@]}"
         return 1
     fi
 }
@@ -529,7 +510,7 @@ test_config_dispatcher() {
 
 # Test 23: Error handling for missing files
 test_import_missing_file() {
-    local output=$(todo config import "/nonexistent/file.conf" 2>&1)
+    local output=$(todo_config_import_config "/nonexistent/file.conf" 2>&1)
     
     if [[ "$output" =~ "Error" && "$output" =~ "not found" ]]; then
         return 0
@@ -549,7 +530,7 @@ test_export_import_roundtrip() {
     TODO_PADDING_LEFT="5"
     
     # Export
-    todo config export "$config_file" >/dev/null 2>&1
+    todo_config_export_config "$config_file" >/dev/null 2>&1
     
     # Change values
     TODO_TITLE="CHANGED"
@@ -557,7 +538,7 @@ test_export_import_roundtrip() {
     TODO_PADDING_LEFT="0"
     
     # Import back
-    todo config import "$config_file" >/dev/null 2>&1
+    todo_config_import_config "$config_file" >/dev/null 2>&1
     
     # Check if original values were restored
     if [[ "$TODO_TITLE" == "ROUNDTRIP TEST" && "$TODO_HEART_CHAR" == "🔄" && "$TODO_PADDING_LEFT" == "5" ]]; then
@@ -618,9 +599,9 @@ run_test "Apply vibrant preset" test_preset_vibrant
 run_test "Apply balanced preset" test_preset_balanced
 run_test "Apply loud preset" test_preset_loud
 run_test "Invalid preset handling" test_preset_invalid
-run_test "Theme mode detection" test_theme_mode_detection
+run_test "Tinted preset selection" test_tinted_preset_selection
 run_test "Save current preset" test_save_preset
-run_test "Preset list consistency" test_preset_list_consistency
+run_test "Preset discovery and availability" test_preset_discovery
 run_test "Main command dispatcher" test_config_dispatcher
 run_test "Error handling for missing files" test_import_missing_file
 run_test "Export/import round trip" test_export_import_roundtrip

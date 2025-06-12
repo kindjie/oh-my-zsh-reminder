@@ -1,9 +1,13 @@
+# Load configuration module
+_TODO_INTERNAL_PLUGIN_DIR="${0:A:h}"
+source "${0:A:h}/lib/config.zsh"
+
 # Configuration variables - can be overridden before sourcing plugin
 TODO_SAVE_FILE="${TODO_SAVE_FILE:-$HOME/.todo.save}"
 TODO_AFFIRMATION_FILE="${TODO_AFFIRMATION_FILE:-${TMPDIR:-/tmp}/todo_affirmation}"
 
-# Available configuration presets (single source of truth)
-_TODO_AVAILABLE_PRESETS=("subtle" "balanced" "vibrant" "loud")
+# Available configuration presets (dynamically discovered)
+_TODO_AVAILABLE_PRESETS=($(todo_config_get_preset_names))
 _TODO_PRESET_LIST="${(j:, :)_TODO_AVAILABLE_PRESETS}"
 
 # Box width configuration (fraction of terminal width, with min/max limits)
@@ -542,10 +546,34 @@ function _todo_setup_command() {
 function _todo_config_command() {
     case "${1:-}" in
         export)
-            todo_config_export "${@:2}"
+            # Parse options for export
+            local output_file=""
+            local colors_only="false"
+            local args=("${@:2}")
+            
+            for arg in "${args[@]}"; do
+                case "$arg" in
+                    --colors-only)
+                        colors_only="true"
+                        ;;
+                    -*)
+                        echo "Unknown option: $arg" >&2
+                        return 1
+                        ;;
+                    *)
+                        output_file="$arg"
+                        ;;
+                esac
+            done
+            
+            todo_config_export_config "$output_file" "$colors_only"
             ;;
         import)
-            todo_config_import "${@:2}"
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: Import requires a config file" >&2
+                return 1
+            fi
+            todo_config_import_config "$2"
             ;;
         set)
             todo_config_set "${@:2}"
@@ -557,7 +585,13 @@ function _todo_config_command() {
             todo_config_preset "${@:2}"
             ;;
         save-preset)
-            todo_config_save_preset "${@:2}"
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: save-preset requires a preset name" >&2
+                return 1
+            fi
+            local preset_name="$2"
+            local description="${3:-}"
+            todo_config_save_user_preset "$preset_name" "$description"
             ;;
         preview)
             todo_config_preview "${@:2}"
@@ -1602,142 +1636,24 @@ function todo_help_full() {
     echo "  ${gray}Releases:   https://github.com/kindjie/zsh-todo-reminder/releases${reset}"
 }
 
-# Export current configuration to file
+# Deprecated: Use todo_config_export_config instead
 function todo_config_export() {
-    local output_file=""
-    local colors_only=""
+    echo "Warning: todo_config_export is deprecated, use todo_config_export_config" >&2
     
-    # Parse arguments
+    # Parse legacy arguments and call new function
+    local output_file=""
+    local colors_only="false"
     for arg in "$@"; do
         if [[ "$arg" == "--colors-only" ]]; then
-            colors_only="--colors-only"
+            colors_only="true"
         else
             output_file="$arg"
         fi
     done
     
-    # Create configuration content
-    local config_content=""
-    
-    if [[ "$colors_only" == "--colors-only" ]]; then
-        # Export only color-related settings
-        config_content+="TODO_TASK_COLORS=\"$TODO_TASK_COLORS\"\n"
-        config_content+="TODO_BORDER_COLOR=\"$TODO_BORDER_COLOR\"\n"
-        config_content+="TODO_BORDER_BG_COLOR=\"$TODO_BORDER_BG_COLOR\"\n"
-        config_content+="TODO_CONTENT_BG_COLOR=\"$TODO_CONTENT_BG_COLOR\"\n"
-        config_content+="TODO_TEXT_COLOR=\"$TODO_TEXT_COLOR\"\n"
-        config_content+="TODO_TASK_TEXT_COLOR=\"$TODO_TASK_TEXT_COLOR\"\n"
-        config_content+="TODO_TITLE_COLOR=\"$TODO_TITLE_COLOR\"\n"
-        config_content+="TODO_AFFIRMATION_COLOR=\"$TODO_AFFIRMATION_COLOR\"\n"
-        config_content+="TODO_BULLET_COLOR=\"$TODO_BULLET_COLOR\"\n"
-    else
-        # Export all configuration settings
-        config_content+="# Todo Reminder Configuration\n"
-        config_content+="# Generated on $(date)\n\n"
-        
-        # Display settings
-        config_content+="TODO_TITLE=\"$TODO_TITLE\"\n"
-        config_content+="TODO_HEART_CHAR=\"$TODO_HEART_CHAR\"\n"
-        config_content+="TODO_HEART_POSITION=\"$TODO_HEART_POSITION\"\n"
-        config_content+="TODO_BULLET_CHAR=\"$TODO_BULLET_CHAR\"\n"
-        config_content+="TODO_BOX_WIDTH_FRACTION=\"$TODO_BOX_WIDTH_FRACTION\"\n"
-        config_content+="TODO_SHOW_AFFIRMATION=\"$TODO_SHOW_AFFIRMATION\"\n"
-        config_content+="TODO_SHOW_TODO_BOX=\"$TODO_SHOW_TODO_BOX\"\n"
-        config_content+="TODO_SHOW_HINTS=\"$TODO_SHOW_HINTS\"\n\n"
-        
-        # Padding settings
-        config_content+="TODO_PADDING_TOP=\"$TODO_PADDING_TOP\"\n"
-        config_content+="TODO_PADDING_RIGHT=\"$TODO_PADDING_RIGHT\"\n"
-        config_content+="TODO_PADDING_BOTTOM=\"$TODO_PADDING_BOTTOM\"\n"
-        config_content+="TODO_PADDING_LEFT=\"$TODO_PADDING_LEFT\"\n\n"
-        
-        # Color settings
-        config_content+="TODO_TASK_COLORS=\"$TODO_TASK_COLORS\"\n"
-        config_content+="TODO_BORDER_COLOR=\"$TODO_BORDER_COLOR\"\n"
-        config_content+="TODO_BORDER_BG_COLOR=\"$TODO_BORDER_BG_COLOR\"\n"
-        config_content+="TODO_CONTENT_BG_COLOR=\"$TODO_CONTENT_BG_COLOR\"\n"
-        config_content+="TODO_TEXT_COLOR=\"$TODO_TEXT_COLOR\"\n"
-        config_content+="TODO_TASK_TEXT_COLOR=\"$TODO_TASK_TEXT_COLOR\"\n"
-        config_content+="TODO_TITLE_COLOR=\"$TODO_TITLE_COLOR\"\n"
-        config_content+="TODO_AFFIRMATION_COLOR=\"$TODO_AFFIRMATION_COLOR\"\n"
-        config_content+="TODO_BULLET_COLOR=\"$TODO_BULLET_COLOR\"\n\n"
-        
-        # Box drawing characters
-        config_content+="TODO_BOX_TOP_LEFT=\"$TODO_BOX_TOP_LEFT\"\n"
-        config_content+="TODO_BOX_TOP_RIGHT=\"$TODO_BOX_TOP_RIGHT\"\n"
-        config_content+="TODO_BOX_BOTTOM_LEFT=\"$TODO_BOX_BOTTOM_LEFT\"\n"
-        config_content+="TODO_BOX_BOTTOM_RIGHT=\"$TODO_BOX_BOTTOM_RIGHT\"\n"
-        config_content+="TODO_BOX_HORIZONTAL=\"$TODO_BOX_HORIZONTAL\"\n"
-        config_content+="TODO_BOX_VERTICAL=\"$TODO_BOX_VERTICAL\"\n"
-    fi
-    
-    # Write to file or stdout
-    if [[ "$output_file" != "" ]]; then
-        if ! echo -e "$config_content" > "$output_file"; then
-            echo "Error: Could not write to file $output_file" >&2
-            return 1
-        fi
-        echo "Configuration exported to $output_file"
-    else
-        echo -e "$config_content"
-    fi
+    todo_config_export_config "$output_file" "$colors_only"
 }
 
-# Import configuration from file
-function todo_config_import() {
-    local input_file=""
-    local colors_only=""
-    
-    # Parse arguments
-    for arg in "$@"; do
-        if [[ "$arg" == "--colors-only" ]]; then
-            colors_only="--colors-only"
-        else
-            input_file="$arg"
-        fi
-    done
-    
-    if [[ -z "$input_file" ]]; then
-        echo "Usage: todo_config_import <file> [--colors-only]" >&2
-        return 1
-    fi
-    
-    if [[ ! -f "$input_file" ]]; then
-        echo "Error: Configuration file $input_file not found" >&2
-        return 1
-    fi
-    
-    # Source the configuration file
-    if ! source "$input_file"; then
-        echo "Error: Could not source configuration file $input_file" >&2
-        return 1
-    fi
-    
-    # Reinitialize color array and validate settings
-    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-    
-    # Basic validation of imported values
-    if [[ ! "$TODO_SHOW_AFFIRMATION" =~ ^(true|false)$ ]]; then
-        echo "Warning: Invalid TODO_SHOW_AFFIRMATION value, resetting to true" >&2
-        TODO_SHOW_AFFIRMATION="true"
-    fi
-    
-    if [[ ! "$TODO_SHOW_TODO_BOX" =~ ^(true|false)$ ]]; then
-        echo "Warning: Invalid TODO_SHOW_TODO_BOX value, resetting to true" >&2
-        TODO_SHOW_TODO_BOX="true"
-    fi
-    
-    if [[ ! "$TODO_SHOW_HINTS" =~ ^(true|false)$ ]]; then
-        echo "Warning: Invalid TODO_SHOW_HINTS value, resetting to true" >&2
-        TODO_SHOW_HINTS="true"
-    fi
-    
-    if [[ "$colors_only" == "--colors-only" ]]; then
-        echo "Color configuration imported from $input_file"
-    else
-        echo "Configuration imported from $input_file"
-    fi
-}
 
 # Set individual configuration values
 function todo_config_set() {
@@ -1880,195 +1796,22 @@ function todo_config_reset() {
     fi
 }
 
-# Load preset from file
-# Apply semantic preset configurations (simplified)
-function _todo_apply_semantic_preset() {
-    local preset="$1"
-    
-    case "$preset" in
-        "subtle")
-            TODO_TITLE="TODO"
-            TODO_HEART_CHAR="•"
-            TODO_HEART_POSITION="none"
-            TODO_BULLET_CHAR="•"
-            TODO_TASK_COLORS="250,248,246,244"
-            TODO_BORDER_COLOR="238"
-            TODO_TASK_TEXT_COLOR="245"
-            TODO_TITLE_COLOR="255"
-            TODO_AFFIRMATION_COLOR="250"
-            TODO_SHOW_AFFIRMATION="false"
-            TODO_PADDING_LEFT="0"
-            TODO_PADDING_RIGHT="2"
-            ;;
-        "balanced")
-            TODO_TITLE="TASKS"
-            TODO_HEART_CHAR="♥"
-            TODO_HEART_POSITION="left"
-            TODO_BULLET_CHAR="▪"
-            TODO_TASK_COLORS="167,214,110,109"
-            TODO_BORDER_COLOR="240"
-            TODO_TASK_TEXT_COLOR="252"
-            TODO_TITLE_COLOR="214"
-            TODO_AFFIRMATION_COLOR="109"
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_PADDING_LEFT="1"
-            TODO_PADDING_RIGHT="2"
-            ;;
-        "vibrant")
-            TODO_TITLE="✨ TASKS ✨"
-            TODO_HEART_CHAR="💖"
-            TODO_HEART_POSITION="both"
-            TODO_BULLET_CHAR="🔸"
-            TODO_TASK_COLORS="196,208,226,46,51,201"
-            TODO_BORDER_COLOR="201"
-            TODO_TASK_TEXT_COLOR="255"
-            TODO_TITLE_COLOR="226"
-            TODO_AFFIRMATION_COLOR="213"
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_PADDING_LEFT="1"
-            TODO_PADDING_RIGHT="1"
-            ;;
-        "loud")
-            TODO_TITLE="🚨 URGENT 🚨"
-            TODO_HEART_CHAR="🔥"
-            TODO_HEART_POSITION="both"
-            TODO_BULLET_CHAR="⚡"
-            TODO_TASK_COLORS="196,208,226,46,51,201,167,214"
-            TODO_BORDER_COLOR="196"
-            TODO_TASK_TEXT_COLOR="15"
-            TODO_TITLE_COLOR="11"
-            TODO_AFFIRMATION_COLOR="9"
-            TODO_SHOW_AFFIRMATION="true"
-            TODO_PADDING_LEFT="2"
-            TODO_PADDING_RIGHT="1"
-            ;;
-    esac
-}
 
-# Apply semantic intensity presets
+# Apply presets (delegate to config module)
 function todo_config_preset() {
-    local preset="$1"
-    
-    if [[ -z "$preset" ]]; then
-        echo "Usage: todo_config_preset <preset>" >&2
-        echo "Available presets: ${_TODO_PRESET_LIST}" >&2
-        if command -v tinty >/dev/null 2>&1; then
-            echo "💡 Install tinty + tinted-shell for 200+ additional themes" >&2
-        fi
-        return 1
-    fi
-    
-    # Validate preset name
-    if [[ ! "${_TODO_AVAILABLE_PRESETS[@]}" =~ "$preset" ]]; then
-        echo "Error: Unknown preset '$preset'" >&2
-        echo "Available presets: ${_TODO_PRESET_LIST}" >&2
-        return 1
-    fi
-    
-    # Apply semantic preset
-    _todo_apply_semantic_preset "$preset"
-    
-    # Update color arrays
-    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
-    
-    echo "Applied $preset preset"
-    if command -v tinty >/dev/null 2>&1; then
-        echo "💡 Tip: Use 'tinty apply [theme]' for theme integration"
-    fi
+    todo_config_apply_preset "$@"
     
     # Save configuration changes for persistence
     todo_save
 }
 
 
-# Preview color swatches for available presets
+# Preview color swatches (delegate to config module)
 function todo_config_preview() {
-    local preset="${1:-all}"
-    
-    echo "🎨 Todo Reminder Preset Preview"
-    echo "════════════════════════════════"
-    echo
-    
-    if [[ "$preset" == "all" ]]; then
-        for p in "${_TODO_AVAILABLE_PRESETS[@]}"; do
-            _todo_show_preset_swatch "$p"
-            echo
-        done
-        
-        # Show tinty integration tip
-        if command -v tinty >/dev/null 2>&1; then
-            echo "💡 Tinty Integration:"
-            echo "  ✅ tinty detected - use 'tinty apply [theme]' for 200+ themes"
-        else
-            echo "💡 Tip: Install tinty + tinted-shell for 200+ additional themes"
-        fi
-    else
-        _todo_show_preset_swatch "$preset"
-    fi
-}
-
-# Show color swatch for a specific preset
-function _todo_show_preset_swatch() {
-    local preset="$1"
-    
-    # Temporarily apply preset to get colors
-    local saved_colors="$TODO_TASK_COLORS"
-    local saved_border="$TODO_BORDER_COLOR"
-    local saved_title="$TODO_TITLE_COLOR"
-    local saved_text="$TODO_TEXT_COLOR"
-    
-    # Apply preset quietly
-    todo_config_preset "$preset" >/dev/null 2>&1
-    
-    if [[ $? -eq 0 ]]; then
-        echo "📦 ${(C)preset} Theme:"
-        echo -n "  Title: \e[38;5;${TODO_TITLE_COLOR}m${TODO_TITLE}\e[0m"
-        echo "  Border: \e[38;5;${TODO_BORDER_COLOR}m█\e[0m"
-        echo -n "  Colors: "
-        
-        # Show color swatches
-        IFS=',' read -A colors <<< "$TODO_TASK_COLORS"
-        for color in "${colors[@]}"; do
-            echo -n "\e[38;5;${color}m●\e[0m "
-        done
-        echo
-        echo "  Text: \e[38;5;${TODO_TEXT_COLOR}m▪ Sample task item\e[0m"
-    else
-        echo "❌ Unknown preset: $preset"
-    fi
-    
-    # Restore previous colors
-    TODO_TASK_COLORS="$saved_colors"
-    TODO_BORDER_COLOR="$saved_border"  
-    TODO_TITLE_COLOR="$saved_title"
-    TODO_TEXT_COLOR="$saved_text"
-    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+    todo_config_preview_presets "$@"
 }
 
 # Save current configuration as a preset file
-function todo_config_save_preset() {
-    local preset_name="$1"
-    
-    if [[ -z "$preset_name" ]]; then
-        echo "Usage: todo_config_save_preset <name>" >&2
-        return 1
-    fi
-    
-    local preset_file="$HOME/.config/todo-reminder-${preset_name}.conf"
-    
-    # Create config directory if it doesn't exist
-    mkdir -p "$(dirname "$preset_file")"
-    
-    # Export current configuration to preset file
-    todo_config_export "$preset_file"
-    
-    if [[ $? -eq 0 ]]; then
-        echo "Preset '$preset_name' saved to $preset_file"
-    else
-        echo "Error: Could not save preset '$preset_name'" >&2
-        return 1
-    fi
-}
 
 # ============================================================================
 # Lazy Loading Infrastructure

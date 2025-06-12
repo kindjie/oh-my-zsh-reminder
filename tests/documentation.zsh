@@ -645,7 +645,7 @@ function test_documented_edge_cases() {
     local edge_case_failures=()
     
     # Test documented behavior: "Empty task list produces no output (or only contextual hints)"
-    local empty_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local empty_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         todo_display
@@ -664,7 +664,7 @@ function test_documented_edge_cases() {
     fi
     
     # Test documented behavior: "Invalid task removal shows helpful error"
-    local error_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" zsh -c '
+    local error_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
         todo done "nonexistent" 2>&1

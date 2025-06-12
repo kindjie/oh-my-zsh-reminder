@@ -15,6 +15,7 @@ cd "$TEST_TMPDIR"
 # Setup test environment
 export TODO_SAVE_FILE="$TEST_TMPDIR/test_todo.save"
 export _TODO_INTERNAL_FIRST_RUN_FILE="$TEST_TMPDIR/test_first_run"
+export TODO_DISABLE_MIGRATION="true"
 export COLUMNS=80
 
 # Clean up on exit
