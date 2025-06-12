@@ -50,6 +50,28 @@ PASSED_TESTS=0
 FAILED_TESTS=0
 WARNING_TESTS=0
 
+# Spinner for showing progress during test execution  
+show_spinner() {
+    local pid=$1
+    local delay=0.2
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+    
+    # Hide cursor
+    tput civis 2>/dev/null || true
+    
+    while kill -0 $pid 2>/dev/null; do
+        local char=${spinstr:$((i % ${#spinstr})):1}
+        printf " %s\b\b" "$char"
+        sleep $delay
+        ((i++))
+    done
+    
+    # Show cursor and clear spinner
+    tput cnorm 2>/dev/null || true
+    printf " \b\b"
+}
+
 # Function to run a single test file
 run_test_file() {
     local test_file="$1"
@@ -89,12 +111,28 @@ run_test_file() {
     cd "$TESTS_DIR/.."
     
     # Add timeout to prevent hanging tests
-    if command -v timeout >/dev/null 2>&1; then
-        output=$(timeout 30 "$test_path" 2>&1)
+    if [[ "$verbose" == false ]]; then
+        # Run with spinner for non-verbose mode
+        if command -v timeout >/dev/null 2>&1; then
+            timeout 30 "$test_path" > /tmp/test_output_$$ 2>&1 &
+        else
+            "$test_path" > /tmp/test_output_$$ 2>&1 &
+        fi
+        local test_pid=$!
+        show_spinner $test_pid
+        wait $test_pid
         exit_code=$?
+        output=$(cat /tmp/test_output_$$)
+        rm -f /tmp/test_output_$$
     else
-        output=$("$test_path" 2>&1)
-        exit_code=$?
+        # Run normally for verbose mode
+        if command -v timeout >/dev/null 2>&1; then
+            output=$(timeout 30 "$test_path" 2>&1)
+            exit_code=$?
+        else
+            output=$("$test_path" 2>&1)
+            exit_code=$?
+        fi
     fi
     
     cd "$original_pwd"
@@ -728,65 +766,91 @@ main() {
         echo
     fi
     
-    # Run functional tests unless skipped
+    # Calculate total test count for proper numbering
+    local all_tests=()
+    local current_test_num=1
+    
+    # Add functional tests
     if [[ "$skip_functional" == false && ${#specific_tests[@]} -eq 0 ]]; then
-        local current_test=1
-        local total_functional_tests=${#TEST_FILES[@]}
-        for test_file in "${TEST_FILES[@]}"; do
-            run_test_file "$test_file" "$current_test" "$total_functional_tests"
-            ((current_test++))
-        done
+        all_tests+=("${TEST_FILES[@]}")
     fi
     
-    # Run performance tests unless skipped
+    # Add extended tests
     if [[ "$skip_performance" == false && ${#specific_tests[@]} -eq 0 ]]; then
-        if [[ "$verbose" == false ]]; then
-            echo -n "${CYAN}▶${RESET} performance.zsh ... "
-        else
-            echo
-        fi
-        run_performance_tests
+        all_tests+=("performance.zsh")
     fi
-    
-    # Run UX tests unless skipped
     if [[ "$skip_ux" == false && ${#specific_tests[@]} -eq 0 ]]; then
-        if [[ "$verbose" == false ]]; then
-            echo -n "${CYAN}▶${RESET} ux.zsh ... "
-        else
-            echo
-        fi
-        run_ux_tests
+        all_tests+=("ux.zsh")
     fi
-    
-    # Run user workflow tests (part of functional tests)
     if [[ ${#specific_tests[@]} -eq 0 || " ${specific_tests[@]} " =~ " user_workflows " ]]; then
-        if [[ "$verbose" == false ]]; then
-            echo -n "${CYAN}▶${RESET} user_workflows.zsh ... "
-        else
-            echo
-        fi
-        run_user_workflows "$verbose"
+        all_tests+=("user_workflows.zsh")
+    fi
+    if [[ "$skip_documentation" == false && ${#specific_tests[@]} -eq 0 ]]; then
+        all_tests+=("documentation.zsh")
+        all_tests+=("help_examples.zsh")
     fi
     
-    # Run documentation tests unless skipped
-    if [[ "$skip_documentation" == false && ${#specific_tests[@]} -eq 0 ]]; then
-        if [[ "$verbose" == false ]]; then
-            echo -n "${CYAN}▶${RESET} documentation.zsh ... "
-        else
-            echo
-        fi
-        run_documentation_tests
-    fi
+    local total_test_count=${#all_tests[@]}
     
-    # Run help examples tests (always run with documentation tests)
-    if [[ "$skip_documentation" == false && ${#specific_tests[@]} -eq 0 ]]; then
-        if [[ "$verbose" == false ]]; then
-            echo -n "${CYAN}▶${RESET} help_examples.zsh ... "
+    # Run all tests with proper numbering
+    for test_file in "${all_tests[@]}"; do
+        if [[ " ${TEST_FILES[@]} " =~ " $test_file " ]]; then
+            # Functional test - run with standard function
+            run_test_file "$test_file" "$current_test_num" "$total_test_count"
         else
-            echo
+            # Extended test - run with custom display and spinner
+            if [[ "$verbose" == false ]]; then
+                echo -n "${CYAN}[$current_test_num/$total_test_count]${RESET} $test_file ... "
+                
+                # Run test in background with spinner
+                case "$test_file" in
+                    "performance.zsh")
+                        run_performance_tests &
+                        ;;
+                    "ux.zsh")
+                        run_ux_tests &
+                        ;;
+                    "user_workflows.zsh")
+                        run_user_workflows "$verbose" &
+                        ;;
+                    "documentation.zsh")
+                        run_documentation_tests &
+                        ;;
+                    "help_examples.zsh")
+                        run_help_examples_tests &
+                        ;;
+                esac
+                
+                local test_pid=$!
+                show_spinner $test_pid
+                wait $test_pid
+                local test_exit_code=$?
+                
+                # The test functions handle their own output, so we don't need to print results here
+                
+            else
+                echo
+                case "$test_file" in
+                    "performance.zsh")
+                        run_performance_tests
+                        ;;
+                    "ux.zsh")
+                        run_ux_tests
+                        ;;
+                    "user_workflows.zsh")
+                        run_user_workflows "$verbose"
+                        ;;
+                    "documentation.zsh")
+                        run_documentation_tests
+                        ;;
+                    "help_examples.zsh")
+                        run_help_examples_tests
+                        ;;
+                esac
+            fi
         fi
-        run_help_examples_tests
-    fi
+        ((current_test_num++))
+    done
     
     # Run meta-analysis if requested
     if [[ "$run_meta" == true ]]; then
