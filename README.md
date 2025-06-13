@@ -182,10 +182,10 @@ todo config export my-settings.conf
 todo config import my-settings.conf
 
 # Apply semantic intensity presets
-todo config preset subtle      # Minimal decoration, muted colors
-todo config preset balanced    # Professional appearance, moderate colors
-todo config preset vibrant     # Bright colors, full decoration
-todo config preset loud        # Maximum contrast, high visibility
+todo config preset subtle         # Minimal decoration, muted colors
+todo config preset balanced       # Professional appearance, moderate colors
+todo config preset vibrant        # Bright colors, full decoration
+todo config preset loud           # Maximum contrast, high visibility
 
 # Save your current setup as a preset
 todo config save-preset my-theme
@@ -250,14 +250,13 @@ export TODO_TASK_COLORS="196,46,33,21,129,201"  # Task bullet colors (default: "
 export TODO_BORDER_COLOR=244                 # Box border foreground color (default: 240)
 export TODO_BORDER_BG_COLOR=233              # Box border background color (default: 235)
 export TODO_CONTENT_BG_COLOR=234             # Box content background color (default: 235)
-export TODO_TEXT_COLOR=245                   # Task text color (legacy, default: 240)
 export TODO_TASK_TEXT_COLOR=245              # Task text color (default: 240)
 export TODO_TITLE_COLOR=255                  # Box title color (default: 250)
 export TODO_AFFIRMATION_COLOR=33             # Affirmation text color (default: 109)
 export TODO_BULLET_COLOR=39                  # Bullet character color (default: 39)
 
-# Legacy compatibility
-export TODO_BACKGROUND_COLOR=235             # Sets both border and content bg if new vars not set
+# Legacy compatibility (deprecated - use TODO_BORDER_BG_COLOR and TODO_CONTENT_BG_COLOR instead)
+export TODO_TEXT_COLOR=245                   # Deprecated - use TODO_TASK_TEXT_COLOR instead
 
 # File locations
 export TODO_SAVE_FILE="$HOME/.my_todos"      # Save location (default: ~/.todo.save)
@@ -469,6 +468,7 @@ Tasks are stored in `~/.todo.save` with this format:
 - Line 1: Tasks (null-byte separated)
 - Line 2: Colors (null-byte separated)
 - Line 3: Next color index
+- Line 4: Configuration data (serialized settings)
 
 ### Dependencies
 

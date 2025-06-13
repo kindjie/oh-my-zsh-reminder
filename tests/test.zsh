@@ -36,6 +36,10 @@ TEST_FILES=(
     "subcommand_interface.zsh"
     "character.zsh"
     "wizard_noninteractive.zsh"
+    "color_mode.zsh"
+    "preset_detection.zsh"
+    "preset_filtering.zsh"
+    "token_size.zsh"
 )
 
 PERFORMANCE_TEST_FILE="performance.zsh"

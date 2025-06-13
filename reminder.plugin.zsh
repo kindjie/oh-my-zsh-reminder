@@ -6,9 +6,13 @@ source "${0:A:h}/lib/config.zsh"
 TODO_SAVE_FILE="${TODO_SAVE_FILE:-$HOME/.todo.save}"
 TODO_AFFIRMATION_FILE="${TODO_AFFIRMATION_FILE:-${TMPDIR:-/tmp}/todo_affirmation}"
 
+# Color mode configuration
+TODO_COLOR_MODE="${TODO_COLOR_MODE:-auto}"                   # Color selection mode: "static", "dynamic", "auto"
+
 # Available configuration presets (dynamically discovered)
-_TODO_AVAILABLE_PRESETS=($(todo_config_get_preset_names))
-_TODO_PRESET_LIST="${(j:, :)_TODO_AVAILABLE_PRESETS}"
+_TODO_AVAILABLE_PRESETS=($(todo_config_get_preset_names))              # Internal use - all presets
+_TODO_USER_PRESETS=($(todo_config_get_user_preset_names))               # User display - filtered base presets
+_TODO_PRESET_LIST="${(j:, :)_TODO_USER_PRESETS}"                       # Used in help text
 
 # Box width configuration (fraction of terminal width, with min/max limits)
 TODO_BOX_WIDTH_FRACTION="${TODO_BOX_WIDTH_FRACTION:-0.5}"  # 50% by default
@@ -36,18 +40,9 @@ TODO_PADDING_LEFT="${TODO_PADDING_LEFT:-0}"               # Left padding/margin
 TODO_TASK_COLORS="${TODO_TASK_COLORS:-167,71,136,110,139,73}"    # Task bullet colors (comma-separated)
 TODO_BORDER_COLOR="${TODO_BORDER_COLOR:-240}"                     # Box border foreground color
 
-# Handle legacy compatibility first
-if [[ -n "${TODO_BACKGROUND_COLOR:-}" ]]; then
-    # If TODO_BACKGROUND_COLOR is set, use it as default for both new variables
-    TODO_BORDER_BG_COLOR="${TODO_BORDER_BG_COLOR:-$TODO_BACKGROUND_COLOR}"
-    TODO_CONTENT_BG_COLOR="${TODO_CONTENT_BG_COLOR:-$TODO_BACKGROUND_COLOR}"
-else
-    # Use individual defaults if legacy variable not set
-    TODO_BORDER_BG_COLOR="${TODO_BORDER_BG_COLOR:-235}"               # Box border background color
-    TODO_CONTENT_BG_COLOR="${TODO_CONTENT_BG_COLOR:-235}"             # Box content background color
-fi
+TODO_BORDER_BG_COLOR="${TODO_BORDER_BG_COLOR:-235}"               # Box border background color
+TODO_CONTENT_BG_COLOR="${TODO_CONTENT_BG_COLOR:-235}"             # Box content background color
 
-TODO_TEXT_COLOR="${TODO_TEXT_COLOR:-240}"                         # Task text color (legacy)
 TODO_TASK_TEXT_COLOR="${TODO_TASK_TEXT_COLOR:-240}"               # Task text color
 TODO_TITLE_COLOR="${TODO_TITLE_COLOR:-250}"                       # Box title color
 TODO_AFFIRMATION_COLOR="${TODO_AFFIRMATION_COLOR:-109}"           # Affirmation text color
@@ -95,6 +90,12 @@ if [[ "$TODO_SHOW_HINTS" != "true" && "$TODO_SHOW_HINTS" != "false" ]]; then
     return 1
 fi
 
+# Validate color mode configuration
+if [[ "$TODO_COLOR_MODE" != "static" && "$TODO_COLOR_MODE" != "dynamic" && "$TODO_COLOR_MODE" != "auto" ]]; then
+    echo "Error: TODO_COLOR_MODE must be 'static', 'dynamic', or 'auto', got: '$TODO_COLOR_MODE'" >&2
+    return 1
+fi
+
 # Validate padding configurations are numeric
 for padding_var in TODO_PADDING_TOP TODO_PADDING_RIGHT TODO_PADDING_BOTTOM TODO_PADDING_LEFT; do
     local padding_value="${(P)padding_var}"
@@ -105,7 +106,7 @@ for padding_var in TODO_PADDING_TOP TODO_PADDING_RIGHT TODO_PADDING_BOTTOM TODO_
 done
 
 # Validate color configurations are numeric
-for color_var in TODO_BORDER_COLOR TODO_BORDER_BG_COLOR TODO_CONTENT_BG_COLOR TODO_TEXT_COLOR TODO_TASK_TEXT_COLOR TODO_TITLE_COLOR TODO_AFFIRMATION_COLOR TODO_BULLET_COLOR; do
+for color_var in TODO_BORDER_COLOR TODO_BORDER_BG_COLOR TODO_CONTENT_BG_COLOR TODO_TASK_TEXT_COLOR TODO_TITLE_COLOR TODO_AFFIRMATION_COLOR TODO_BULLET_COLOR; do
     local color_value="${(P)color_var}"
     if [[ ! "$color_value" =~ ^[0-9]+$ ]] || [[ $color_value -gt 255 ]]; then
         echo "Error: $color_var must be a number between 0-255, got: '$color_value'" >&2
@@ -113,13 +114,6 @@ for color_var in TODO_BORDER_COLOR TODO_BORDER_BG_COLOR TODO_CONTENT_BG_COLOR TO
     fi
 done
 
-# Validate legacy TODO_BACKGROUND_COLOR if set
-if [[ -n "${TODO_BACKGROUND_COLOR:-}" ]]; then
-    if [[ ! "$TODO_BACKGROUND_COLOR" =~ ^[0-9]+$ ]] || [[ $TODO_BACKGROUND_COLOR -gt 255 ]]; then
-        echo "Error: TODO_BACKGROUND_COLOR must be a number between 0-255, got: '$TODO_BACKGROUND_COLOR'" >&2
-        return 1
-    fi
-fi
 
 # Validate and parse task colors
 if [[ -z "$TODO_TASK_COLORS" ]] || [[ ! "$TODO_TASK_COLORS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
@@ -385,6 +379,24 @@ function format_affirmation() {
         *)
             # Fallback to left if somehow invalid
             echo "${TODO_HEART_CHAR} ${text}"
+            ;;
+    esac
+}
+
+# Determine whether to use tinted (theme-adaptive) preset variants
+function _should_use_tinted_preset() {
+    case "$TODO_COLOR_MODE" in
+        "static") 
+            return 1  # Never use tinted presets
+            ;;
+        "dynamic") 
+            return 0  # Always use tinted presets
+            ;;
+        "auto")
+            # Auto-detect: use tinted if tinted-shell is active or tinty is available
+            [[ "$TINTED_SHELL_ENABLE_BASE16_VARS" == "1" ]] && return 0
+            command -v tinty >/dev/null 2>&1 && return 0
+            return 1  # Default to static if no tinted tools detected
             ;;
     esac
 }
@@ -691,6 +703,7 @@ function _todo_show_config_help() {
     echo "  ${gray}${_TODO_PRESET_LIST}${reset}"
     echo
     echo "${green}Environment Variables:${reset}"
+    echo "  ${cyan}TODO_COLOR_MODE${reset}          Color selection mode: static, dynamic, auto (default: auto)"
     echo "  ${cyan}TODO_TITLE${reset}               Box title (default: REMEMBER)"
     echo "  ${cyan}TODO_HEART_CHAR${reset}          Affirmation character (default: ♥)"
     echo "  ${cyan}TODO_TASK_COLORS${reset}         Task colors (comma-separated)"
@@ -785,6 +798,7 @@ function _todo_completion() {
                     ;;
                 "config set")
                     local -a settings=(
+                        'color-mode:Set color selection mode (static|dynamic|auto)'
                         'title:Set box title'
                         'heart-char:Set affirmation heart character'
                         'heart-position:Set heart position (left|right|both|none)'
@@ -1202,7 +1216,7 @@ function _todo_load_config_from_line() {
             
             # Only load known configuration variables for security
             case "$key" in
-                TODO_TITLE|TODO_HEART_CHAR|TODO_HEART_POSITION|TODO_BULLET_CHAR|\
+                TODO_COLOR_MODE|TODO_TITLE|TODO_HEART_CHAR|TODO_HEART_POSITION|TODO_BULLET_CHAR|\
                 TODO_BOX_WIDTH_FRACTION|TODO_BOX_MIN_WIDTH|TODO_BOX_MAX_WIDTH|\
                 TODO_SHOW_AFFIRMATION|TODO_SHOW_TODO_BOX|TODO_SHOW_HINTS|\
                 TODO_PADDING_TOP|TODO_PADDING_RIGHT|TODO_PADDING_BOTTOM|TODO_PADDING_LEFT|\
@@ -1227,6 +1241,7 @@ function _todo_serialize_config() {
     
     # Core configuration variables to persist
     local config_vars=(
+        "TODO_COLOR_MODE"
         "TODO_TITLE"
         "TODO_HEART_CHAR" 
         "TODO_HEART_POSITION"
@@ -1391,18 +1406,59 @@ function todo_toggle_all() {
 }
 
 # Display color reference for choosing color values
+# Shared function to render a single color with consistent formatting
+function render_color_sample() {
+    local color="$1"
+    local format="${2:-full}"  # full, compact, minimal
+    
+    # Validate color input
+    if [[ ! "$color" =~ ^[0-9]+$ ]] || [[ "$color" -gt 255 ]]; then
+        printf "???"
+        return 1
+    fi
+    
+    # Use correct ANSI escape sequences: bg color for spaces, fg color for solid characters
+    case "$format" in
+        "compact")
+            # Single colored block with number: 167█ (fg color for solid block)
+            printf "%03d\033[38;5;%dm█\033[0m" "$color" "$color"
+            ;;
+        "minimal")
+            # Just colored blocks: ████ (fg color for solid blocks)
+            printf "\033[38;5;%dm████\033[0m" "$color"
+            ;;
+        "dot")
+            # Colored dot with number: 167● (fg color for dot)
+            printf "%03d\033[38;5;%dm●\033[0m" "$color" "$color"
+            ;;
+        "square")
+            # Colored square with number: 167▪ (fg color for square)
+            printf "%03d\033[38;5;%dm▪\033[0m" "$color" "$color"
+            ;;
+        "sandwich")
+            # Blocks on both sides: █167█ (fg color for blocks)
+            printf "\033[38;5;%dm█\033[0m%03d\033[38;5;%dm█\033[0m" "$color" "$color" "$color"
+            ;;
+        "full"|*)
+            # Default: number + colored background: 167████ (bg color for spaces)
+            printf "%03d\033[48;5;%dm    \033[0m" "$color" "$color"
+            ;;
+    esac
+}
+
 # Helper function to display a row of color squares 
 function show_color_square_row() {
     local start_n="$1"
     local count="$2" 
     local row_len="${3:-12}"
+    local format="${4:-full}"  # Add format parameter
     
-    # Show each color as: normal text number + colored rectangle
+    # Show each color using the shared render function
     for ((i=0; i<count; i++)); do
         local color=$((start_n + i))
         if [[ $color -gt 255 ]]; then break; fi
-        # Normal text number followed by colored rectangle
-        printf "%03d\e[48;5;${color}m    \e[0m " "$color"
+        render_color_sample "$color" "$format"
+        printf " "  # Space between colors
     done
     echo
 }
@@ -1466,7 +1522,7 @@ function todo_colors() {
     printf "    Border:     %03d\e[48;5;%dm    \e[0m\n" "$TODO_BORDER_COLOR" "$TODO_BORDER_COLOR"
     printf "    Border BG:  %03d\e[48;5;%dm    \e[0m\n" "$TODO_BORDER_BG_COLOR" "$TODO_BORDER_BG_COLOR"
     printf "    Content BG: %03d\e[48;5;%dm    \e[0m\n" "$TODO_CONTENT_BG_COLOR" "$TODO_CONTENT_BG_COLOR"
-    printf "    Text:       %03d\e[48;5;%dm    \e[0m\n" "$TODO_TEXT_COLOR" "$TODO_TEXT_COLOR"
+    printf "    Text:       %03d\e[48;5;%dm    \e[0m\n" "$TODO_TASK_TEXT_COLOR" "$TODO_TASK_TEXT_COLOR"
     printf "    Title:      %03d\e[48;5;%dm    \e[0m\n" "$TODO_TITLE_COLOR" "$TODO_TITLE_COLOR"
     printf "    Heart:      %03d\e[48;5;%dm    \e[0m\n" "$TODO_AFFIRMATION_COLOR" "$TODO_AFFIRMATION_COLOR"
 }
@@ -1505,7 +1561,7 @@ function todo_help() {
     echo "  ${gray}todo done \"Buy\"          ${cyan}# Remove when done (try tab completion!)${reset}"
     echo "  ${gray}todo setup                ${cyan}# Customize colors and appearance${reset}"
     echo
-    echo "${gray}💡 More commands and options: ${cyan}todo_help --full${reset}"
+    echo "${gray}💡 More commands and options: ${cyan}todo help --full${reset}"
 }
 
 # Show comprehensive help with all configuration options
@@ -1534,7 +1590,7 @@ function todo_help_full() {
     echo "  ${cyan}todo toggle all${reset} [show|hide]             ${gray}Control everything${reset}"
     echo "  ${cyan}todo hide${reset}                               ${gray}Hide all components${reset}"
     echo "  ${cyan}todo show${reset}                               ${gray}Show all components${reset}"
-    echo "  ${cyan}todo help --colors${reset} [max_colors]           ${gray}Show color reference (default: 72)${reset}"
+    echo "  ${cyan}todo help --colors${reset} [max_colors]           ${gray}Show color reference (default: 256)${reset}"
     echo
     echo "${bold}${green}⚙️  Configuration:${reset}"
     echo "  ${cyan}todo config export${reset} [file] [--colors-only] ${gray}Export configuration${reset}"
@@ -1547,6 +1603,8 @@ function todo_help_full() {
     echo "      ${white}balanced${reset} - Professional appearance, moderate colors"
     echo "      ${white}vibrant${reset}  - Bright colors, full decoration"
     echo "      ${white}loud${reset}     - Maximum contrast, high visibility"
+    echo "    ${gray}📌 Theme-adaptive variants (_tinted) are selected automatically${reset}"
+    echo "    ${gray}   when tinted-shell or tinty are detected (TODO_COLOR_MODE=auto)${reset}"
     if command -v tinty >/dev/null 2>&1; then
         echo "    ${gray}💡 Tip: Use 'tinty apply [theme]' for 200+ additional themes${reset}"
     fi
@@ -1555,6 +1613,8 @@ function todo_help_full() {
     echo "  ${cyan}todo setup${reset}                               ${gray}Interactive configuration wizard${reset}"
     echo
     echo "${bold}${magenta}⚙️  Configuration Variables:${reset} ${gray}(set before sourcing plugin)${reset}"
+    echo "  ${white}Color Mode:${reset}"
+    echo "    ${cyan}TODO_COLOR_MODE${reset}                    ${gray}static|dynamic|auto (default: auto)${reset}"
     echo "  ${white}Display Settings:${reset}"
     echo "    ${cyan}TODO_TITLE${reset}                         ${gray}Box title (default: REMEMBER)${reset}"
     echo "    ${cyan}TODO_BULLET_CHAR${reset}                   ${gray}Task bullet (default: ▪)${reset}"
@@ -1584,12 +1644,8 @@ function todo_help_full() {
     echo "    ${cyan}TODO_BORDER_COLOR${reset}                  ${gray}Box border foreground color (default: 240)${reset}"
     echo "    ${cyan}TODO_BORDER_BG_COLOR${reset}               ${gray}Box border background color (default: 235)${reset}"
     echo "    ${cyan}TODO_CONTENT_BG_COLOR${reset}              ${gray}Box content background color (default: 235)${reset}"
-    echo "    ${cyan}TODO_TEXT_COLOR${reset}                    ${gray}Task text color (default: 240)${reset}"
     echo "    ${cyan}TODO_TITLE_COLOR${reset}                   ${gray}Box title color (default: 250)${reset}"
     echo "    ${cyan}TODO_AFFIRMATION_COLOR${reset}             ${gray}Affirmation text color (default: 109)${reset}"
-    echo
-    echo "  ${white}Legacy Compatibility:${reset}"
-    echo "    ${cyan}TODO_BACKGROUND_COLOR${reset}              ${gray}Sets both border and content bg if new vars not set${reset}"
     echo
     echo "${bold}${green}📁 Files:${reset}"
     echo "  ${gray}~/.todo.save                       Task storage${reset}"
@@ -1636,24 +1692,6 @@ function todo_help_full() {
     echo "  ${gray}Releases:   https://github.com/kindjie/zsh-todo-reminder/releases${reset}"
 }
 
-# Deprecated: Use todo_config_export_config instead
-function todo_config_export() {
-    echo "Warning: todo_config_export is deprecated, use todo_config_export_config" >&2
-    
-    # Parse legacy arguments and call new function
-    local output_file=""
-    local colors_only="false"
-    for arg in "$@"; do
-        if [[ "$arg" == "--colors-only" ]]; then
-            colors_only="true"
-        else
-            output_file="$arg"
-        fi
-    done
-    
-    todo_config_export_config "$output_file" "$colors_only"
-}
-
 
 # Set individual configuration values
 function todo_config_set() {
@@ -1662,11 +1700,25 @@ function todo_config_set() {
     
     if [[ -z "$setting" || -z "$value" ]]; then
         echo "Usage: todo_config_set <setting> <value>" >&2
-        echo "Settings: title, heart-char, heart-position, bullet-char, colors, border-color, text-color, padding-left, etc." >&2
+        echo "Settings: color-mode, title, heart-char, heart-position, bullet-char, colors, border-color, text-color, padding-left, etc." >&2
         return 1
     fi
     
     case "$setting" in
+        "color-mode")
+            if [[ "$value" =~ ^(static|dynamic|auto)$ ]]; then
+                typeset -g TODO_COLOR_MODE="$value"
+                echo "Color mode set to: $value"
+                case "$value" in
+                    "static") echo "  Will always use regular presets (256-color codes)" ;;
+                    "dynamic") echo "  Will always use theme-adaptive presets (base16 colors)" ;;
+                    "auto") echo "  Will auto-detect tinted-shell/tinty for theme integration" ;;
+                esac
+            else
+                echo "Error: Color mode must be 'static', 'dynamic', or 'auto'" >&2
+                return 1
+            fi
+            ;;
         "title")
             TODO_TITLE="$value"
             echo "Title set to: $value"
@@ -1736,7 +1788,7 @@ function todo_config_set() {
             ;;
         *)
             echo "Error: Unknown setting '$setting'" >&2
-            echo "Available settings: title, heart-char, heart-position, bullet-char, colors, border-color, text-color, padding-left, box-width" >&2
+            echo "Available settings: color-mode, title, heart-char, heart-position, bullet-char, colors, border-color, text-color, padding-left, box-width" >&2
             return 1
             ;;
     esac
@@ -1764,6 +1816,7 @@ function todo_config_reset() {
         echo "Color configuration reset to defaults"
     else
         # Reset all settings to defaults
+        TODO_COLOR_MODE="auto"
         TODO_TITLE="REMEMBER"
         TODO_HEART_CHAR="♥"
         TODO_HEART_POSITION="left"
@@ -1872,10 +1925,3 @@ function todo_config_wizard() {
     _todo_config_wizard_real "$@"
 }
 
-# ============================================================================
-# Legacy Aliases (Backward Compatibility)
-# ============================================================================
-# Pure Subcommand Interface
-# All functionality accessible through: todo <subcommand>
-# Legacy functions kept as internal implementation details
-# ============================================================================

@@ -173,9 +173,9 @@ function test_show_color_option_with_color() {
     if [[ "$output" == *"1)"* ]] && \
        [[ "$output" == *"Test color"* ]] && \
        [[ "$output" == *"196"* ]] && \
-       [[ "$output" == *"[48;5;196m"* ]]; then
+       [[ "$output" == *"[38;5;196m"* ]]; then
         echo "✅ PASS: $test_name"
-        echo "  Color option displays with background color sample"
+        echo "  Color option displays with colored block sample"
         ((passed_count++))
     else
         echo "❌ FAIL: $test_name"

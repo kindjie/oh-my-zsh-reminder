@@ -111,39 +111,27 @@ function show_designer_color_palette() {
     
     # System Colors (0-15) - 8 per row
     echo "System Colors (0-15):"
-    show_color_square_row 0 8
-    show_color_square_row 8 8  
+    show_color_square_row 0 8 8 compact
+    show_color_square_row 8 8 8 compact  
     echo
     
-    # Extended colors (16-231) - Designer Palette (96 colors: 16-111)
-    echo "Designer Palette (16-111):"
+    # 216-color cube (6x6x6 RGB combinations)
+    echo "216-Color Cube (16-231):"
     local n=16
-    for ((n=16; n<=96; n+=12)); do
-        show_color_square_row $n 12
-        # Add spacing every 3 rows
-        if [[ $((($n - 16) / 12 % 3)) -eq 2 ]]; then
+    for ((n=16; n<=220; n+=12)); do
+        show_color_square_row $n 12 12 compact
+        # Add spacing every 6 rows for visual grouping
+        if [[ $((($n - 16) / 12 % 6)) -eq 5 ]]; then
             echo
         fi
     done
-    show_color_square_row 108 4  # Last row: 108-111
-    echo
-    
-    # Additional colors (112-231)
-    echo "Extended Colors (112-231):"
-    for ((n=112; n<=220; n+=12)); do
-        show_color_square_row $n 12
-        # Add spacing every 3 rows
-        if [[ $((($n - 112) / 12 % 3)) -eq 2 ]]; then
-            echo
-        fi
-    done
-    show_color_square_row 228 4  # Last row: 228-231
+    show_color_square_row 228 4 12 compact  # Last row: 228-231
     echo
     
     # Grayscale (232-255)
     echo "Grayscale Ramp (232-255):"
-    show_color_square_row 232 12
-    show_color_square_row 244 12
+    show_color_square_row 232 12 12 compact
+    show_color_square_row 244 12 12 compact
     echo
 }
 
@@ -151,6 +139,7 @@ function show_color_option() {
     local option_key="$1"
     local option_desc="$2"
     local color_code="$3"
+    local format="${4:-compact}"  # Default to compact format for wizard
     
     if [[ -n "$color_code" ]]; then
         # Handle comma-separated color lists by showing each color
@@ -161,12 +150,13 @@ function show_color_option() {
             # Remove any whitespace
             color="${color// /}"
             if [[ "$color" =~ ^[0-9]+$ ]]; then
-                # Show normal text number with colored rectangle
-                color_samples+="$(printf "%03d" $color)$(printf "\e[48;5;%dm    \e[0m " $color)"
+                # Use shared render function with specified format
+                color_samples+="$(render_color_sample "$color" "$format") "
             fi
         done
         
-        printf "   ${fg[cyan]}%s)${reset_color} %-20s %s\n" "$option_key" "$option_desc" "$color_samples"
+        # Use consistent field width for alignment (40 characters for better spacing)
+        printf "   ${fg[cyan]}%s)${reset_color} %-40s %s\n" "$option_key" "$option_desc" "$color_samples"
     else
         printf "   ${fg[cyan]}%s)${reset_color} %s\n" "$option_key" "$option_desc"
     fi
@@ -174,6 +164,10 @@ function show_color_option() {
 
 # Interactive configuration wizard
 function _todo_config_wizard_real() {
+    # Ensure colors are properly initialized
+    autoload -U colors
+    colors
+    
     # Clear screen and show header
     clear
     echo "${fg[bold]}${fg[blue]}🧙 Todo Reminder Configuration Wizard${reset_color}"
@@ -202,11 +196,11 @@ function _todo_config_wizard_real() {
             show_wizard_preview "Preset Selection"
             show_step_header "1b" "Preset Selection" "Choose a preset theme to start with"
             
-            # Display all available semantic presets
-            show_color_option "1" "subtle       - Minimal, muted colors" "250"
-            show_color_option "2" "balanced     - Moderate, professional" "167"
-            show_color_option "3" "vibrant      - Bright, colorful" "196"
-            show_color_option "4" "loud         - Maximum contrast" "9"
+            # Display all available semantic presets with representative color samples
+            show_color_option "1" "subtle       - Minimal, muted colors" "250,248,246,244"
+            show_color_option "2" "balanced     - Moderate, professional" "167,214,110,109"
+            show_color_option "3" "vibrant      - Bright, colorful" "196,208,226,46,51,201"
+            show_color_option "4" "loud         - Maximum contrast" "196,208,226,46,51,201,167,214"
             echo
             
             if command -v tinty >/dev/null 2>&1; then
@@ -820,10 +814,10 @@ function _todo_config_real() {
     
     case "$command" in
         "export")
-            todo_config_export "$@"
+            todo_config_export_config "$@"
             ;;
         "import")
-            todo_config_import "$@"
+            todo_config_import_config "$@"
             ;;
         "set")
             todo_config_set "$@"
@@ -835,7 +829,7 @@ function _todo_config_real() {
             todo_config_preset "$@"
             ;;
         "save-preset")
-            todo_config_save_preset "$@"
+            todo_config_save_user_preset "$@"
             ;;
         "wizard")
             _todo_config_wizard_real "$@"
@@ -844,7 +838,7 @@ function _todo_config_real() {
             echo "Usage: todo_config <command> [args]" >&2
             echo "Commands:" >&2
             echo "  export [file] [--colors-only]    Export configuration" >&2
-            echo "  import <file> [--colors-only]    Import configuration" >&2
+            echo "  import <file>                    Import configuration" >&2
             echo "  set <setting> <value>           Change setting" >&2
             echo "  reset [--colors-only]           Reset to defaults" >&2
             echo "  preset <name>                   Apply built-in preset" >&2

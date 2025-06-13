@@ -27,10 +27,10 @@ test_default_colors() {
         echo "❌ FAIL: Default border color wrong (got: $TODO_BORDER_COLOR)"
     fi
     
-    if [[ "$TODO_TEXT_COLOR" == "240" ]]; then
-        echo "✅ PASS: Default text color correct"
+    if [[ "$TODO_TASK_TEXT_COLOR" == "240" ]]; then
+        echo "✅ PASS: Default task text color correct"
     else
-        echo "❌ FAIL: Default text color wrong (got: $TODO_TEXT_COLOR)"
+        echo "❌ FAIL: Default task text color wrong (got: $TODO_TASK_TEXT_COLOR)"
     fi
     
     if [[ "$TODO_TITLE_COLOR" == "250" ]]; then
@@ -259,9 +259,9 @@ test_custom_colors() {
     TODO_COLORS=(${(s:,:)TODO_TASK_COLORS})
 }
 
-# Test 6: Border color combinations and legacy compatibility
+# Test 6: Border color combinations
 test_border_color_combinations() {
-    echo "\n6. Testing border color combinations and legacy compatibility:"
+    echo "\n6. Testing border color combinations:"
     
     # Test default combination (border and content should be same)
     source_test_plugin
@@ -270,31 +270,6 @@ test_border_color_combinations() {
         echo "✅ PASS: Default border and content background colors match (unified look)"
     else
         echo "❌ FAIL: Default border and content background colors don't match (got border: $TODO_BORDER_BG_COLOR, content: $TODO_CONTENT_BG_COLOR)"
-    fi
-    
-    # Test legacy TODO_BACKGROUND_COLOR compatibility
-    original_border_bg="$TODO_BORDER_BG_COLOR"
-    original_content_bg="$TODO_CONTENT_BG_COLOR"
-    original_background_color="${TODO_BACKGROUND_COLOR:-}"
-    
-    # Simulate legacy variable being set
-    TODO_BACKGROUND_COLOR=220
-    unset TODO_BORDER_BG_COLOR
-    unset TODO_CONTENT_BG_COLOR
-    
-    # Test that legacy compatibility works by checking the validation logic
-    if [[ -n "$TODO_BACKGROUND_COLOR" ]]; then
-        # Simulate what the plugin does for legacy compatibility
-        TODO_BORDER_BG_COLOR="${TODO_BORDER_BG_COLOR:-$TODO_BACKGROUND_COLOR}"
-        TODO_CONTENT_BG_COLOR="${TODO_CONTENT_BG_COLOR:-$TODO_BACKGROUND_COLOR}"
-        
-        if [[ "$TODO_BORDER_BG_COLOR" == "220" && "$TODO_CONTENT_BG_COLOR" == "220" ]]; then
-            echo "✅ PASS: Legacy TODO_BACKGROUND_COLOR compatibility works"
-        else
-            echo "❌ FAIL: Legacy TODO_BACKGROUND_COLOR compatibility failed (border: $TODO_BORDER_BG_COLOR, content: $TODO_CONTENT_BG_COLOR)"
-        fi
-    else
-        echo "❌ FAIL: Legacy variable not set for testing"
     fi
     
     # Test contrasting border and content colors
@@ -323,14 +298,9 @@ test_border_color_combinations() {
         echo "❌ FAIL: Same foreground/background color combination rejected"
     fi
     
-    # Restore original values
-    TODO_BORDER_BG_COLOR="$original_border_bg"
-    TODO_CONTENT_BG_COLOR="$original_content_bg"
-    if [[ -n "$original_background_color" ]]; then
-        TODO_BACKGROUND_COLOR="$original_background_color"
-    else
-        unset TODO_BACKGROUND_COLOR
-    fi
+    # Restore original values for cleanup
+    TODO_BORDER_BG_COLOR=235
+    TODO_CONTENT_BG_COLOR=235
 }
 
 # Run all color tests
