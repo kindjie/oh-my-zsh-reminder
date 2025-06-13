@@ -7,6 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a zsh plugin that displays TODO reminders above the terminal prompt. It's a beautiful, configurable zsh plugin with persistent task storage and colorized display.
 
+**Plugin Manager Compatibility**: Works with oh-my-zsh, zinit, antidote, and manual installation.
+
 ## Architecture
 
 - **Pure Subcommand Interface**: All functionality accessible through `todo <subcommand>` pattern for consistency
@@ -47,11 +49,17 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - `todo_colors`: Interactive color reference showing 256-color codes
 - `show_welcome_message`: First-run onboarding experience
 
+### Utility Functions
+- `autoload_todo_module`: Lazy loading system for optional components
+- `_todo_parse_config_file`: Secure configuration file parser
+- `_todo_convert_to_internal_vars`: Environment variable migration system
+
 ## Development Notes
 
-- This is a pure zsh script - no build process required
-- The plugin uses zsh-specific features like typeset arrays and precmd hooks
-- External dependency: `curl` and `jq` for affirmations feature
+- **Language**: Pure zsh script (no build process required)
+- **Dependencies**: zsh 5.0+, `curl` and `jq` for affirmations feature
+- **Features**: Uses zsh-specific typeset arrays and precmd hooks
+- **Compatibility**: MacOS and Linux terminals with 256-color support
 
 ## Security Practices
 
@@ -110,171 +118,60 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 
 ## Development Workflow - Documentation Consistency
 
-### The Pragmatic Combo (High ROI Prevention Strategy)
+### Documentation Consistency Strategy
 
-To prevent help text and documentation inconsistencies, follow this **3-step workflow** whenever making interface changes:
+**3-step workflow** to prevent help text and documentation inconsistencies:
 
-#### 1. **Always Do: Comprehensive Search** (5 minutes, prevents 80%+ of issues)
-
-Before completing any command interface changes:
-
+#### 1. **Comprehensive Search** (prevents 80%+ of issues)
 ```bash
-# Check for specific old command references
-./dev-tools/check-command-references.sh old_command_name
-
-# Run comprehensive check for common issues  
-./dev-tools/check-command-references.sh
-
-# Example workflow when replacing 'task_done' with 'todo done':
-./dev-tools/check-command-references.sh task_done
-# Fix all found references, then verify:
-./dev-tools/check-command-references.sh task_done  # Should show "No references found"
+# Search for old command references when making changes
+rg "old_command_name" --type zsh
+# Fix all found references, then verify removal
 ```
 
-**Why this works:** Catches interface inconsistencies immediately, uses existing tools, scales to any codebase size.
-
-#### 2. **Do Once: Help Example Validation** (30 minutes setup, permanent protection)
-
-Validate that all help examples actually work:
-
+#### 2. **Help Example Validation** (continuous protection)
 ```bash
-# Test that help examples are executable and produce expected outputs
-./tests/help_examples.zsh
-
-# Add to main test suite for continuous protection
-./tests/test.zsh  # (includes help_examples.zsh automatically)
+./tests/help_examples.zsh    # Validates all help examples work
+./tests/documentation.zsh    # Tests doc accuracy
 ```
 
-This test suite:
-- Extracts command examples from help output
-- Validates they execute without errors
-- Checks for expected output patterns (success messages, help sections)
-- Detects obsolete command references in help text
-
-#### 3. **Do Eventually: Single Source of Truth** (centralized configuration)
-
-Presets, command lists, and repeated content now use centralized constants:
-
+#### 3. **Centralized Constants** (single source of truth)
 ```bash
-# Available presets defined once in reminder.plugin.zsh:
+# Presets defined once in reminder.plugin.zsh:
 _TODO_AVAILABLE_PRESETS=("subtle" "balanced" "vibrant" "loud")
-_TODO_PRESET_LIST="${(j:, :)_TODO_AVAILABLE_PRESETS}"
-
-# Used consistently in all help functions:
-echo "Available presets: ${_TODO_PRESET_LIST}"
+# Used consistently across all help functions
 ```
 
-**Future additions:** Define command lists, color options, and other repeated content centrally.
+**Development Checklist:**
+- [ ] Make interface changes
+- [ ] Search and fix all references  
+- [ ] Run help example validation
+- [ ] Execute test suite
+- [ ] Update centralized constants if needed
 
-### Development Checklist
+**Quick Testing Commands**:
+```bash
+# Basic functionality
+COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo "Test"; todo_display'
 
-When making interface changes:
+# Complete test suite
+./tests/test.zsh                    # All tests (~60s)
+./tests/test.zsh --only-functional  # Core tests (~10s)
 
-- [ ] **Make the change** (modify commands, functions, interfaces)
-- [ ] **Run comprehensive search** (`./dev-tools/check-command-references.sh`)
-- [ ] **Fix all found references** (help text, examples, documentation)  
-- [ ] **Validate help examples** (`./tests/help_examples.zsh`)
-- [ ] **Run test suite** (`./tests/test.zsh --only-functional`)
-- [ ] **Update centralized constants** (if adding new presets/commands)
+# Individual test categories
+./tests/{display,config,interface}.zsh  # Specific modules
+```
 
-### Error Prevention Classes
-
-This workflow prevents:
-
-1. **Interface Evolution Inconsistency** - Old command names in help text
-2. **Incomplete Updates** - Missing references during refactoring  
-3. **Data Synchronization Issues** - Different preset lists across functions
-4. **Test-Implementation Drift** - Tests expecting old behavior
-5. **Documentation Inconsistency** - Conflicting information between help commands
-
-**Success Metric:** Zero broken examples in help output, consistent command syntax throughout all user-facing text.
-
-To test plugin modifications:
-
-1. **Basic functionality test**:
-   ```bash
-   COLUMNS=80 zsh -c 'autoload -U colors; colors; source reminder.plugin.zsh; todo_display'
-   ```
-
-2. **Test with sample data**:
-   ```bash
-   COLUMNS=80 zsh -c 'autoload -U colors; colors; source reminder.plugin.zsh; todo "Test task"; todo_display'
-   ```
-
-3. **Test command output preservation**:
-   ```bash
-   COLUMNS=80 zsh -c 'autoload -U colors; colors; source reminder.plugin.zsh; todo_display; echo "test output"'
-   ```
-
-4. **Verify task management**:
-   - Add tasks: `todo "New task"`
-   - Remove tasks: `todo done "partial match"`
-   - Check storage: `cat ~/.todo.save`
-
-5. **Run complete functional test suite**:
-   ```bash
-   ./tests/test.zsh
-   ```
-   (Runs ALL tests by default: functional, performance, UX, documentation - ~60 seconds)
-
-6. **Run only functional tests**:
-   ```bash
-   ./tests/test.zsh --only-functional
-   ```
-   (Runs only core functional tests - ~10 seconds)
-
-7. **Run specific test categories**:
-   ```bash
-   ./tests/test.zsh --skip-perf        # Run all except performance tests
-   ./tests/test.zsh --skip-docs --skip-ux  # Run only functional + performance
-   ./tests/test.zsh --only-functional --meta  # Functional tests + Claude analysis
-   ```
-
-8. **Run individual test modules**:
-   ```bash
-   ./tests/display.zsh              # Display functionality and layout tests
-   ./tests/configuration.zsh        # Padding, characters, and config tests
-   ./tests/config_management.zsh    # Configuration export/import/presets
-   ./tests/color.zsh                # Color configuration and validation tests
-   ./tests/interface.zsh            # Commands, toggles, and help tests
-   ./tests/subcommand_interface.zsh # Pure subcommand interface testing
-   ./tests/character.zsh            # Character width and emoji handling tests
-   ./tests/wizard_noninteractive.zsh # Setup wizard functionality
-   ./tests/performance.zsh          # Performance and network behavior tests
-   ./tests/ux.zsh                   # User experience and onboarding tests
-   ./tests/user_workflows.zsh       # End-to-end user workflow scenarios
-   ./tests/documentation.zsh        # Documentation accuracy and example validation
-   ```
-
-9. **Performance testing specifically**:
-   ```bash
-   ./tests/performance.zsh
-   ```
-   (16 performance tests validating display speed, network behavior, and async design)
-
-10. **UX testing specifically**:
-   ```bash
-   ./tests/ux.zsh
-   ```
-   (18 UX tests validating onboarding, progressive disclosure, and usability)
-
-11. **Documentation testing specifically**:
-   ```bash
-   ./tests/documentation.zsh
-   ```
-   (12 documentation tests validating accuracy and example functionality)
-
-12. **Visual padding demonstration**:
-   ```bash
-   ./demo_padding.zsh
-   ```
-   (Shows all padding configurations with visual borders)
+**Manual Testing**:
+- Task management: `todo "task"`, `todo done "pattern"`
+- Configuration: `todo config preset subtle`, `todo toggle box`
+- Storage verification: `cat ~/.todo.save`
 
 ## Test Coverage Summary
 
-The test suite provides comprehensive coverage with **164 functional tests** achieving 100% pass rate:
+The test suite provides comprehensive coverage with **202 functional tests** achieving 100% pass rate:
 
-### **Functional Tests (164 total)**
+### **Functional Tests (202 total)**
 - **Display Tests (7)**: Basic rendering, layout, text wrapping
 - **Configuration Tests (14)**: Padding, dimensions, character settings  
 - **Config Management Tests (20)**: Export/import, presets, wizard functionality
@@ -324,120 +221,57 @@ The performance test suite validates the plugin's async design and ensures displ
 
 ## Display Layout
 
-- Right side: Todo box (configurable width, default 50%) with configurable borders
-- Left side: Motivational affirmation with configurable heart positioning
-- Configurable title (default: "REMEMBER") displays in bright color
-- Regular tasks display with customizable bullet characters (default: ▪) and gray text
-- Text wraps within box boundaries with proper emoji-aware indentation
-- Dual-color system: bright bullets for visual emphasis, configurable text/border colors for readability
-- Independent border and content background colors for visual distinction
-- Configurable box drawing characters (corners, lines) for style customization
-- Configurable padding on all sides (top/right/bottom/left)
-- Runtime show/hide controls for all components
-- Full emoji and Unicode support with proper terminal width calculation
-- No screen clearing - preserves command output
+**Two-column design** with configurable visual elements:
+- **Right**: Todo box (configurable width, borders, padding) 
+- **Left**: Motivational affirmations with heart positioning
+- **Styling**: Customizable bullets, colors, box characters, Unicode support
+- **Behavior**: Runtime toggle controls, preserves command output
 
 ## User Experience Philosophy & Target Audience
 
 ### Multi-Tier User Base Design
 
-This plugin is designed to serve a diverse user base through **progressive disclosure** and **dual-track UX strategy**:
+**Progressive disclosure strategy** targeting two user groups through **layered interface complexity**:
 
-#### Primary Users (90%): Casual Developers & Terminal Newcomers
-- **Profile**: MacBook users, VSCode terminal, minimal zsh experience beyond basic commands
-- **Mental Model**: Coming from GUI todo apps, expect visual feedback and immediate gratification
-- **Needs**: Simple installation, clear commands, works without configuration
-- **Pain Points**: Intimidated by terminal configuration, fear of breaking things
-- **Success Metrics**: Can add/remove tasks successfully within 2 minutes of installation
+#### Primary Users (90%): Terminal Newcomers
+- **Profile**: MacBook/VSCode users, minimal zsh experience
+- **Needs**: Simple commands, immediate success, zero configuration
+- **Success Metric**: Add/remove tasks within 2 minutes of installation
 
-#### Secondary Users (10%): Advanced Terminal Power Users  
-- **Profile**: Complex zsh setups, plugin managers, extensive terminal workflows
-- **Mental Model**: Expect powerful configuration, performance, and integration
-- **Needs**: Rich customization, aesthetic control, efficient muscle-memory commands
-- **Pain Points**: Want full control without compromising functionality
-- **Success Metrics**: Can customize appearance and integrate into existing workflow
+#### Secondary Users (10%): Power Users
+- **Profile**: Complex zsh setups, advanced terminal workflows  
+- **Needs**: Rich customization, aesthetic control, integration flexibility
+- **Success Metric**: Full appearance customization and workflow integration
 
-### UX Design Principles
+### UX Design Layers
 
-#### 1. **Layer 1: Essential Commands (Beginner Success)**
+#### Layer 1: Essential Commands (Beginner Focus)
 ```bash
-todo "task description"          # Add a task
-todo_remove "partial match"      # Remove a task (clearer than task_done)
-todo_hide                       # Hide everything
-todo_show                       # Show everything
-todo_help                       # Quick help (5-6 lines only)
-```
-- **Goal**: 90% of users should never need beyond Layer 1
-- **Principle**: Immediate success with zero configuration
-
-#### 2. **Layer 2: Customization (Natural Discovery)**
-```bash
-todo_setup                      # Interactive setup wizard
-todo_colors                     # Show color options  
-todo_toggle                     # Toggle visibility states
-todo_help --more               # Full documentation
-```
-- **Goal**: Users naturally discover when ready for customization
-- **Principle**: Progressive disclosure through contextual hints
-
-#### 3. **Layer 3: Advanced (Power User Preservation)**
-```bash
-todo_config export              # Export settings
-todo_config preset vibrant      # Apply themes
-# All current 30+ configuration variables preserved
-```
-- **Goal**: Preserve all existing power features
-- **Principle**: Advanced features don't intimidate beginners
-
-### Critical UX Issues to Address
-
-#### 1. **Onboarding Experience (CRITICAL)**
-- **Current Issue**: Plugin loads silently with no guidance
-- **Solution**: First-run welcome message with clear next steps
-- **Success Feedback**: Immediate confirmation when tasks are added/removed
-
-#### 2. **Command Discovery (COMPLETED ✅)**
-- **Resolved**: Simplified help system with essential commands
-- **Resolved**: Tab completion fully functional for all commands
-- **Resolved**: Pure subcommand interface for consistency
-
-#### 3. **Command Naming Clarity (COMPLETED ✅)**
-- **Resolved**: All commands follow consistent `todo <subcommand>` pattern
-- **Resolved**: Clear command naming throughout interface
-
-#### 4. **Progressive Hints (MEDIUM)**
-- **Empty State**: Show helpful message when no tasks exist
-- **Growth Guidance**: Suggest customization after several tasks added
-- **Error Recovery**: Clear guidance when things go wrong
-
-### Implementation Guidelines
-
-#### Preserve Power, Add Approachability
-- **Never remove** existing advanced features
-- **Add** beginner-friendly entry points
-- **Maintain** backward compatibility for existing users
-
-#### Dual-Track Help System
-- `todo_help` → Essential commands only (beginner focus)
-- `todo_help --more` → Current comprehensive documentation
-- `todo_help <topic>` → Contextual help for specific areas
-
-#### Smart Defaults Strategy
-- **Works immediately** after installation with no configuration
-- **Gentle introduction** to advanced features through contextual hints
-- **Fallback gracefully** when dependencies (curl/jq) missing
-
-#### First-Run Experience Design
-```bash
-# After sourcing plugin for first time
-┌─ Welcome to Todo Reminder! ─────────────────────────┐
-│ ✨ Get started: todo "Your first task"              │
-│ 📚 Quick help: todo_help                           │
-│ ⚙️  Customize: todo_setup                          │
-└─────────────────────────────────────────────────────┘
+todo "task description"    # Add task
+todo done "pattern"        # Remove task  
+todo help                  # Quick help
+todo setup                 # Interactive setup
 ```
 
-This approach **expands the user base** to include terminal newcomers while **preserving all existing functionality** for power users. The key insight is that advanced users will naturally discover deeper features, while beginners need immediate success with simple commands.
+#### Layer 2: Customization (Natural Discovery)
+```bash
+todo config preset         # Apply themes
+todo toggle                # Visibility controls
+todo help --full           # Complete documentation
+```
+
+#### Layer 3: Advanced Features (Power Users)
+```bash
+todo config export/import  # Configuration management
+todo colors                # Color reference
+# All 26+ configuration options available
+```
+
+### Implementation Strategy
+- **Smart Defaults**: Works immediately without configuration
+- **Progressive Hints**: Contextual guidance without overwhelming
+- **Backward Compatibility**: All existing features preserved
+- **Dual Help System**: Basic vs comprehensive documentation paths
 
 ---
 
@@ -484,184 +318,5 @@ Successfully replaced 9 theme-based presets with 4 semantic intensity presets th
 
 ---
 
-# TEMPORARY IMPLEMENTATION PLAN - Private Environment Variables
-
-## Overview
-Convert public environment variables to private `_TODO_INTERNAL_*` naming and expose all configuration through `todo config` subcommands with enhanced tab completion.
-
-## Files Requiring Changes
-
-### **0. Security Fix: Replace `source` with Manual Parsing** (CRITICAL)
-**Security Risk**: Currently using `source` to load preset files and imported configs allows arbitrary code execution.
-
-**Files to Update:**
-- **lib/config.zsh**: Replace `source "$preset_file"` in `todo_config_apply_preset()` (line ~275)
-- **lib/config.zsh**: Replace `source "$config_file"` in `todo_config_import_config()` 
-- **reminder.plugin.zsh**: Replace any `source` calls for user-provided files
-
-**Implementation:**
-- Create `_todo_parse_config_file()` function to safely parse key=value pairs
-- Validate all keys against allow list of known configuration variables
-- Sanitize all values according to expected type (string, number, enum)
-- Reject any lines that don't match `VARIABLE_NAME="value"` or `VARIABLE_NAME=value` pattern
-- Log warnings for ignored/invalid lines
-- Never execute arbitrary code from config files
-
-**Example Safe Parser:**
-```bash
-function _todo_parse_config_file() {
-    local config_file="$1"
-    local line_num=0
-    
-    while IFS= read -r line; do
-        ((line_num++))
-        
-        # Skip empty lines and comments
-        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-        
-        # Only allow KEY=VALUE or KEY="VALUE" format
-        if [[ "$line" =~ ^([A-Z_][A-Z0-9_]*)=(.*)$ ]]; then
-            local key="${BASH_REMATCH[1]}"
-            local value="${BASH_REMATCH[2]}"
-            
-            # Remove quotes if present
-            value="${value#\"}"
-            value="${value%\"}"
-            
-            # Validate key is in allow list
-            if _todo_is_valid_config_key "$key"; then
-                # Validate and sanitize value
-                if _todo_validate_config_value "$key" "$value"; then
-                    typeset -g "$key"="$value"
-                else
-                    echo "Warning: Invalid value for $key on line $line_num, skipping" >&2
-                fi
-            else
-                echo "Warning: Unknown configuration key '$key' on line $line_num, skipping" >&2
-            fi
-        else
-            echo "Warning: Invalid line format on line $line_num, skipping: $line" >&2
-        fi
-    done < "$config_file"
-}
-```
-
-### **1. reminder.plugin.zsh** (Lines 5-57, ~100 locations)
-**Variable Renaming (Lines 5-57):**
-- TODO_TITLE → _TODO_INTERNAL_TITLE
-- TODO_HEART_CHAR → _TODO_INTERNAL_HEART_CHAR  
-- TODO_HEART_POSITION → _TODO_INTERNAL_HEART_POSITION
-- TODO_BULLET_CHAR → _TODO_INTERNAL_BULLET_CHAR
-- TODO_BOX_WIDTH_FRACTION → _TODO_INTERNAL_BOX_WIDTH_FRACTION
-- TODO_BOX_MIN_WIDTH → _TODO_INTERNAL_BOX_MIN_WIDTH
-- TODO_BOX_MAX_WIDTH → _TODO_INTERNAL_BOX_MAX_WIDTH
-- TODO_SHOW_AFFIRMATION → _TODO_INTERNAL_SHOW_AFFIRMATION
-- TODO_SHOW_TODO_BOX → _TODO_INTERNAL_SHOW_TODO_BOX
-- TODO_SHOW_HINTS → _TODO_INTERNAL_SHOW_HINTS
-- TODO_PADDING_* → _TODO_INTERNAL_PADDING_*
-- TODO_TASK_COLORS → _TODO_INTERNAL_TASK_COLORS
-- TODO_BORDER_COLOR → _TODO_INTERNAL_BORDER_COLOR
-- TODO_BORDER_BG_COLOR → _TODO_INTERNAL_BORDER_BG_COLOR
-- TODO_CONTENT_BG_COLOR → _TODO_INTERNAL_CONTENT_BG_COLOR
-- TODO_TASK_TEXT_COLOR → _TODO_INTERNAL_TASK_TEXT_COLOR
-- TODO_TITLE_COLOR → _TODO_INTERNAL_TITLE_COLOR
-- TODO_AFFIRMATION_COLOR → _TODO_INTERNAL_AFFIRMATION_COLOR
-- TODO_BULLET_COLOR → _TODO_INTERNAL_BULLET_COLOR
-- TODO_BOX_* → _TODO_INTERNAL_BOX_*
-
-**Usage Updates (~100 references throughout file):**
-- All function references to these variables need updating
-- Validation sections (lines 60-141)
-- Display functions (todo_display, draw_todo_box, etc.)
-- Color functions (todo_colors, render_color_sample)
-- Configuration functions (todo_config_set, todo_config_reset)
-
-**New Functions to Add:**
-- `_todo_config_get_command()` - Handle `todo config get`
-- `_todo_config_list_command()` - Handle `todo config list/show`
-- Enhanced `_todo_config_set_command()` with validation
-- Enhanced tab completion in `_todo_completion()` function (lines 723-843)
-
-### **2. lib/config.zsh** (~20 locations)
-**Variable References:**
-- Update preset loading functions to use new variable names
-- Update export/import functions for new naming
-- Update validation functions
-- Update serialization functions (_todo_serialize_config, _todo_load_config_from_line)
-
-### **3. lib/wizard.zsh** (~15 locations)  
-**Interactive Setup:**
-- Update wizard steps to use new variable names
-- Update preview and application logic
-- Update user feedback messages
-
-### **4. Tab Completion System** (reminder.plugin.zsh lines 723-843)
-**Enhanced Completion:**
-- Add `get`, `list`, `show` to config subcommands
-- Add setting names completion for `todo config set <TAB>`
-- Add setting names completion for `todo config get <TAB>`
-- Add enum values for specific settings (heart-position: left|right|both|none)
-- Add `...` indicator for free-form string settings
-
-### **5. Help System Updates** (reminder.plugin.zsh lines 631-693, 1531-1693)
-**Remove `--vars` option:**
-- Update `_todo_help_command()` to remove `--vars` case
-- Update `_todo_show_config_help()` with new content (no env vars)
-- Remove environment variable documentation from help system
-
-### **6. README.md** (Lines 216-267)
-**Configuration Section:**
-- Remove environment variable examples
-- Replace with `todo config` examples
-- Update "Configuration" section to focus on `todo config` interface
-- Keep file format documentation but note variables are internal
-
-### **7. Test Files** (~10 files)
-**Test Updates:**
-- tests/configuration.zsh - Update variable references
-- tests/config_management.zsh - Test new get/list/show commands
-- tests/color.zsh - Update color variable references  
-- tests/interface.zsh - Test new config subcommands
-- tests/documentation.zsh - Update variable exclusion lists
-- tests/wizard_noninteractive.zsh - Update variable names
-- All test files that set TODO_* variables for test isolation
-
-### **8. Preset Files** (presets/*.conf)
-**Preset Configuration:**
-- Update all preset files to use new _TODO_INTERNAL_* variable names
-- Maintain backward compatibility during transition
-
-## Implementation Strategy
-
-### **Phase 1: Internal Variable Rename**
-1. Update reminder.plugin.zsh variable declarations and usage
-2. Update lib/config.zsh and lib/wizard.zsh
-3. Update preset files
-4. Update test files for new variable names
-
-### **Phase 2: Enhanced Config Interface**  
-1. Implement `todo config get <setting>`
-2. Implement `todo config list/show`
-3. Enhance `todo config set` validation and user feedback
-4. Update tab completion for new subcommands
-
-### **Phase 3: Documentation Updates**
-1. Remove environment variable documentation from help
-2. Update README.md configuration section
-3. Update help system to focus on config interface
-4. Update examples throughout documentation
-
-### **Phase 4: Testing & Validation**
-1. Run full test suite to ensure no regressions
-2. Test tab completion functionality
-3. Validate all config operations work correctly
-4. Test preset system with new variables
-
-## Benefits
-- **Cleaner Public Interface**: Only `todo config` commands exposed to users
-- **No Config Conflicts**: Save file config can't be overridden by stale env vars
-- **Better Discoverability**: Tab completion guides users to valid options
-- **Consistent Interface**: All configuration through unified `todo config` system
-- **Maintainable**: Single source of truth for configuration options
 
 ---
