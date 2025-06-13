@@ -232,7 +232,7 @@ function test_wizard_preset_application() {
         todo_config preset "subtle" >/dev/null 2>&1
         
         # Check result
-        echo "Title: $TODO_TITLE"
+        echo "Title: $_TODO_INTERNAL_TITLE"
     ' 2>&1)
     
     if [[ "$output" == *"Title:"* ]]; then
@@ -262,8 +262,8 @@ function test_wizard_custom_title() {
         source reminder.plugin.zsh;
         
         # Set custom title directly
-        TODO_TITLE="MY TASKS"
-        echo "Final title: $TODO_TITLE"
+        _TODO_INTERNAL_TITLE="MY TASKS"
+        echo "Final title: $_TODO_INTERNAL_TITLE"
     ' 2>&1)
     
     if [[ "$output" == *"Final title: MY TASKS"* ]]; then
@@ -341,17 +341,17 @@ function test_wizard_heart_positions() {
         source reminder.plugin.zsh;
         
         # Test all heart positions
-        TODO_HEART_CHAR="♥"
-        TODO_HEART_POSITION="left"
+        _TODO_INTERNAL_HEART_CHAR="♥"
+        _TODO_INTERNAL_HEART_POSITION="left"
         left_text=$(format_affirmation "Test")
         
-        TODO_HEART_POSITION="right"
+        _TODO_INTERNAL_HEART_POSITION="right"
         right_text=$(format_affirmation "Test")
         
-        TODO_HEART_POSITION="both"
+        _TODO_INTERNAL_HEART_POSITION="both"
         both_text=$(format_affirmation "Test")
         
-        TODO_HEART_POSITION="none"
+        _TODO_INTERNAL_HEART_POSITION="none"
         none_text=$(format_affirmation "Test")
         
         echo "Left: $left_text"

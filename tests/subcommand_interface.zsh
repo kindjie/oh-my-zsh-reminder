@@ -274,7 +274,7 @@ test_progressive_help() {
     local full_lines=$(echo "$full_help" | wc -l)
     
     if [[ $full_lines -gt $basic_lines ]] && \
-       [[ "$full_help" == *"Configuration Variables"* ]]; then
+       [[ "$full_help" == *"Configuration Management"* ]]; then
         echo "✅ PASS"
         ((pass_count++))
     else

@@ -74,19 +74,19 @@ test_custom_characters() {
     setup_test_data
     
     # Test with emoji bullet
-    original_bullet="$TODO_BULLET_CHAR"
-    original_heart="$TODO_HEART_CHAR"
+    original_bullet="$_TODO_INTERNAL_BULLET_CHAR"
+    original_heart="$_TODO_INTERNAL_HEART_CHAR"
     
-    TODO_BULLET_CHAR="🚀"
-    TODO_HEART_CHAR="💖"
+    _TODO_INTERNAL_BULLET_CHAR="🚀"
+    _TODO_INTERNAL_HEART_CHAR="💖"
     
     echo "Testing with rocket bullet (🚀) and heart emoji (💖):"
     # Show the complete box display (no truncation)
     COLUMNS=80 todo_display
     
     # Restore
-    TODO_BULLET_CHAR="$original_bullet"
-    TODO_HEART_CHAR="$original_heart"
+    _TODO_INTERNAL_BULLET_CHAR="$original_bullet"
+    _TODO_INTERNAL_HEART_CHAR="$original_heart"
     
     echo "✅ PASS: Custom characters work (visual test)"
 }
@@ -95,46 +95,46 @@ test_custom_characters() {
 test_padding_configuration() {
     echo "\n2. Testing padding configuration:"
     
-    original_padding_top="$TODO_PADDING_TOP"
-    original_padding_right="$TODO_PADDING_RIGHT"
-    original_padding_bottom="$TODO_PADDING_BOTTOM"
-    original_padding_left="$TODO_PADDING_LEFT"
+    original_padding_top="$_TODO_INTERNAL_PADDING_TOP"
+    original_padding_right="$_TODO_INTERNAL_PADDING_RIGHT"
+    original_padding_bottom="$_TODO_INTERNAL_PADDING_BOTTOM"
+    original_padding_left="$_TODO_INTERNAL_PADDING_LEFT"
     
     echo "--- Default padding (0,0,0,0) ---"
-    TODO_PADDING_TOP=0
-    TODO_PADDING_RIGHT=0  
-    TODO_PADDING_BOTTOM=0
-    TODO_PADDING_LEFT=0
+    _TODO_INTERNAL_PADDING_TOP=0
+    _TODO_INTERNAL_PADDING_RIGHT=0  
+    _TODO_INTERNAL_PADDING_BOTTOM=0
+    _TODO_INTERNAL_PADDING_LEFT=0
     COLUMNS=80 todo_display
     
     echo "\n--- Top padding (2,0,0,0) ---"
-    TODO_PADDING_TOP=2
-    TODO_PADDING_RIGHT=0
-    TODO_PADDING_BOTTOM=0
-    TODO_PADDING_LEFT=0
+    _TODO_INTERNAL_PADDING_TOP=2
+    _TODO_INTERNAL_PADDING_RIGHT=0
+    _TODO_INTERNAL_PADDING_BOTTOM=0
+    _TODO_INTERNAL_PADDING_LEFT=0
     COLUMNS=80 todo_display
     
     echo "\n--- Left padding (0,0,0,4) ---"
-    TODO_PADDING_TOP=0
-    TODO_PADDING_RIGHT=0
-    TODO_PADDING_BOTTOM=0
-    TODO_PADDING_LEFT=4
+    _TODO_INTERNAL_PADDING_TOP=0
+    _TODO_INTERNAL_PADDING_RIGHT=0
+    _TODO_INTERNAL_PADDING_BOTTOM=0
+    _TODO_INTERNAL_PADDING_LEFT=4
     COLUMNS=80 todo_display
     
     echo "\n--- All padding (1,2,1,3) ---"
-    TODO_PADDING_TOP=1
-    TODO_PADDING_RIGHT=2
-    TODO_PADDING_BOTTOM=1
-    TODO_PADDING_LEFT=3
+    _TODO_INTERNAL_PADDING_TOP=1
+    _TODO_INTERNAL_PADDING_RIGHT=2
+    _TODO_INTERNAL_PADDING_BOTTOM=1
+    _TODO_INTERNAL_PADDING_LEFT=3
     COLUMNS=80 todo_display
     
     echo "✅ PASS: Visual padding tests completed (check alignment above)"
     
     # Restore
-    TODO_PADDING_TOP="$original_padding_top"
-    TODO_PADDING_RIGHT="$original_padding_right"
-    TODO_PADDING_BOTTOM="$original_padding_bottom"
-    TODO_PADDING_LEFT="$original_padding_left"
+    _TODO_INTERNAL_PADDING_TOP="$original_padding_top"
+    _TODO_INTERNAL_PADDING_RIGHT="$original_padding_right"
+    _TODO_INTERNAL_PADDING_BOTTOM="$original_padding_bottom"
+    _TODO_INTERNAL_PADDING_LEFT="$original_padding_left"
 }
 
 # Test 3: Padding calculations (non-visual)
@@ -146,7 +146,7 @@ test_padding_calculations() {
     COLUMNS=60  # Narrow terminal
     
     # Test narrow terminal with high left padding
-    TODO_PADDING_LEFT=20
+    _TODO_INTERNAL_PADDING_LEFT=20
     output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -n "$output" ]] || [[ "$output" == *"Terminal too narrow"* ]]; then
         echo "✅ PASS: High left padding doesn't break display or shows terminal warning"
@@ -155,7 +155,7 @@ test_padding_calculations() {
     fi
     
     # Test that affirmation truncation works with padding
-    TODO_PADDING_LEFT=30
+    _TODO_INTERNAL_PADDING_LEFT=30
     output=$(COLUMNS=80 todo_display 2>&1)
     # Extract just the affirmation content (strip colors and padding, then check text after heart)
     affirmation_line=$(echo "$output" | grep "♥" | head -1)
@@ -174,7 +174,7 @@ test_padding_calculations() {
     
     # Restore
     COLUMNS="$original_columns"
-    TODO_PADDING_LEFT="$original_padding_left"
+    _TODO_INTERNAL_PADDING_LEFT="$original_padding_left"
 }
 
 # Test 4: Todo box padding functionality
@@ -185,10 +185,10 @@ test_box_padding() {
     setup_test_data
     
     # Test that top padding adds blank lines above the box
-    TODO_PADDING_TOP=2
-    TODO_PADDING_RIGHT=0
-    TODO_PADDING_BOTTOM=0
-    TODO_PADDING_LEFT=0
+    _TODO_INTERNAL_PADDING_TOP=2
+    _TODO_INTERNAL_PADDING_RIGHT=0
+    _TODO_INTERNAL_PADDING_BOTTOM=0
+    _TODO_INTERNAL_PADDING_LEFT=0
     output=$(COLUMNS=80 todo_display 2>&1)
     # Count leading blank lines (should be at least 2)
     leading_blanks=$(echo "$output" | grep -c "^[[:space:]]*$" || echo 0)
@@ -205,24 +205,24 @@ test_box_padding() {
     
     # Test that bottom padding adds blank lines after the box
     # Test the logic that bottom padding should add to line count
-    TODO_PADDING_TOP=0
-    TODO_PADDING_RIGHT=0  
-    TODO_PADDING_BOTTOM=3
-    TODO_PADDING_LEFT=0
+    _TODO_INTERNAL_PADDING_TOP=0
+    _TODO_INTERNAL_PADDING_RIGHT=0  
+    _TODO_INTERNAL_PADDING_BOTTOM=3
+    _TODO_INTERNAL_PADDING_LEFT=0
     
     # Test the implementation directly by checking if the logic works
-    if [[ $TODO_PADDING_BOTTOM -eq 3 ]]; then
+    if [[ $_TODO_INTERNAL_PADDING_BOTTOM -eq 3 ]]; then
         # Verify that the padding setting is recognized
-        echo "✅ PASS: Bottom padding configuration accepted (value: $TODO_PADDING_BOTTOM)"
+        echo "✅ PASS: Bottom padding configuration accepted (value: $_TODO_INTERNAL_PADDING_BOTTOM)"
     else
-        echo "❌ FAIL: Bottom padding configuration not working (value: $TODO_PADDING_BOTTOM)"
+        echo "❌ FAIL: Bottom padding configuration not working (value: $_TODO_INTERNAL_PADDING_BOTTOM)"
     fi
     
     # Test that left padding shifts the entire box right
-    TODO_PADDING_TOP=0
-    TODO_PADDING_RIGHT=0
-    TODO_PADDING_BOTTOM=0
-    TODO_PADDING_LEFT=5
+    _TODO_INTERNAL_PADDING_TOP=0
+    _TODO_INTERNAL_PADDING_RIGHT=0
+    _TODO_INTERNAL_PADDING_BOTTOM=0
+    _TODO_INTERNAL_PADDING_LEFT=5
     output=$(COLUMNS=80 todo_display 2>&1)
     # Check that box lines start with spaces (indicating left shift)
     box_line=$(echo "$output" | grep "┌" | head -1)
@@ -234,8 +234,8 @@ test_box_padding() {
             echo "✅ PASS: Left padding shifts todo box right"
         else
             # If we can't measure spaces accurately, just verify the setting is applied
-            if [[ $TODO_PADDING_LEFT -eq 5 ]]; then
-                echo "✅ PASS: Left padding configuration accepted (value: $TODO_PADDING_LEFT)"
+            if [[ $_TODO_INTERNAL_PADDING_LEFT -eq 5 ]]; then
+                echo "✅ PASS: Left padding configuration accepted (value: $_TODO_INTERNAL_PADDING_LEFT)"
             else
                 echo "❌ FAIL: Left padding not working (expected ≥5 spaces, got $((leading_spaces-1)))"
             fi
@@ -245,10 +245,10 @@ test_box_padding() {
     fi
     
     # Test that right padding doesn't break display (visual check)
-    TODO_PADDING_TOP=0
-    TODO_PADDING_RIGHT=8  # Reduce from 10 to avoid terminal width issues
-    TODO_PADDING_BOTTOM=0
-    TODO_PADDING_LEFT=0
+    _TODO_INTERNAL_PADDING_TOP=0
+    _TODO_INTERNAL_PADDING_RIGHT=8  # Reduce from 10 to avoid terminal width issues
+    _TODO_INTERNAL_PADDING_BOTTOM=0
+    _TODO_INTERNAL_PADDING_LEFT=0
     output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -n "$output" ]] && ([[ "$output" == *"┌"* ]] || [[ "$output" == *"Terminal too narrow"* ]]); then
         echo "✅ PASS: Right padding doesn't break todo box display"
@@ -257,10 +257,10 @@ test_box_padding() {
     fi
     
     # Test combined padding doesn't break layout - use smaller values
-    TODO_PADDING_TOP=1
-    TODO_PADDING_RIGHT=2
-    TODO_PADDING_BOTTOM=1
-    TODO_PADDING_LEFT=3
+    _TODO_INTERNAL_PADDING_TOP=1
+    _TODO_INTERNAL_PADDING_RIGHT=2
+    _TODO_INTERNAL_PADDING_BOTTOM=1
+    _TODO_INTERNAL_PADDING_LEFT=3
     output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -n "$output" ]] && ([[ "$output" == *"┌"* ]] || [[ "$output" == *"Terminal too narrow"* ]]); then
         echo "✅ PASS: Combined padding maintains todo box structure"
@@ -269,10 +269,10 @@ test_box_padding() {
     fi
     
     # Restore padding settings
-    TODO_PADDING_TOP="$original_padding_top"
-    TODO_PADDING_RIGHT="$original_padding_right"
-    TODO_PADDING_BOTTOM="$original_padding_bottom"
-    TODO_PADDING_LEFT="$original_padding_left"
+    _TODO_INTERNAL_PADDING_TOP="$original_padding_top"
+    _TODO_INTERNAL_PADDING_RIGHT="$original_padding_right"
+    _TODO_INTERNAL_PADDING_BOTTOM="$original_padding_bottom"
+    _TODO_INTERNAL_PADDING_LEFT="$original_padding_left"
 }
 
 # Test 5: Configuration validation

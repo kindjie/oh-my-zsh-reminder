@@ -219,13 +219,13 @@ function test_filtered_list_order() {
     return 0
 }
 
-# Test 14: Config help includes color-mode explanation
+# Test 14: Config help includes color configuration
 function test_config_help_color_mode() {
     local help_output
     help_output=$(todo help --config 2>&1)
     
-    # Should mention TODO_COLOR_MODE or color mode
-    [[ "$help_output" == *"TODO_COLOR_MODE"* ]] || return 1
+    # Should mention color configuration via config interface
+    [[ "$help_output" == *"todo config get colors"* ]] || return 1
     
     return 0
 }

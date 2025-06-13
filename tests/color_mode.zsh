@@ -19,8 +19,8 @@ function run_test() {
     
     # Setup isolated environment for each test
     local temp_save="$(mktemp)"
-    local original_save="$TODO_SAVE_FILE"
-    TODO_SAVE_FILE="$temp_save"
+    local original_save="$_TODO_INTERNAL_SAVE_FILE"
+    _TODO_INTERNAL_SAVE_FILE="$temp_save"
     
     # Create proper empty todo file format
     printf '\n\n1\n' > "$temp_save"
@@ -33,30 +33,30 @@ function run_test() {
     fi
     
     # Cleanup
-    TODO_SAVE_FILE="$original_save"
+    _TODO_INTERNAL_SAVE_FILE="$original_save"
     rm -f "$temp_save"
 }
 
 # Test 1: Environment variable validation
 function test_color_mode_validation() {
     # Test that the current plugin accepts valid values
-    local original_mode="$TODO_COLOR_MODE"
+    local original_mode="$_TODO_INTERNAL_COLOR_MODE"
     
     # Test valid values by setting them directly
-    TODO_COLOR_MODE="static"
-    [[ "$TODO_COLOR_MODE" == "static" ]] || return 1
+    _TODO_INTERNAL_COLOR_MODE="static"
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "static" ]] || return 1
     
-    TODO_COLOR_MODE="dynamic"
-    [[ "$TODO_COLOR_MODE" == "dynamic" ]] || return 1
+    _TODO_INTERNAL_COLOR_MODE="dynamic"
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "dynamic" ]] || return 1
     
-    TODO_COLOR_MODE="auto"
-    [[ "$TODO_COLOR_MODE" == "auto" ]] || return 1
+    _TODO_INTERNAL_COLOR_MODE="auto"
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "auto" ]] || return 1
     
     # Test validation function exists and works
-    TODO_COLOR_MODE="invalid"
-    if [[ "$TODO_COLOR_MODE" != "static" && "$TODO_COLOR_MODE" != "dynamic" && "$TODO_COLOR_MODE" != "auto" ]]; then
+    _TODO_INTERNAL_COLOR_MODE="invalid"
+    if [[ "$_TODO_INTERNAL_COLOR_MODE" != "static" && "$_TODO_INTERNAL_COLOR_MODE" != "dynamic" && "$_TODO_INTERNAL_COLOR_MODE" != "auto" ]]; then
         # Validation should catch this
-        TODO_COLOR_MODE="$original_mode"
+        _TODO_INTERNAL_COLOR_MODE="$original_mode"
         return 0
     fi
     
@@ -66,10 +66,10 @@ function test_color_mode_validation() {
 # Test 2: Default value behavior
 function test_color_mode_default() {
     # Test that default is set correctly (plugin already loaded)
-    [[ -n "$TODO_COLOR_MODE" ]] || return 1
+    [[ -n "$_TODO_INTERNAL_COLOR_MODE" ]] || return 1
     # Default should be "auto" if not explicitly set
     # Since plugin is loaded, this should be "auto" unless changed
-    [[ "$TODO_COLOR_MODE" == "auto" || "$TODO_COLOR_MODE" == "static" || "$TODO_COLOR_MODE" == "dynamic" ]] || return 1
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "auto" || "$_TODO_INTERNAL_COLOR_MODE" == "static" || "$_TODO_INTERNAL_COLOR_MODE" == "dynamic" ]] || return 1
     return 0
 }
 
@@ -80,15 +80,15 @@ function test_config_set_color_mode() {
     
     # Test static mode
     todo_config_set color-mode static >/dev/null 2>&1
-    [[ "$TODO_COLOR_MODE" == "static" ]] || { echo "Expected TODO_COLOR_MODE=static, got: $TODO_COLOR_MODE" >&2; return 1; }
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "static" ]] || { echo "Expected _TODO_INTERNAL_COLOR_MODE=static, got: $_TODO_INTERNAL_COLOR_MODE" >&2; return 1; }
     
     # Test dynamic mode
     todo_config_set color-mode dynamic >/dev/null 2>&1
-    [[ "$TODO_COLOR_MODE" == "dynamic" ]] || { echo "Expected TODO_COLOR_MODE=dynamic, got: $TODO_COLOR_MODE" >&2; return 1; }
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "dynamic" ]] || { echo "Expected _TODO_INTERNAL_COLOR_MODE=dynamic, got: $_TODO_INTERNAL_COLOR_MODE" >&2; return 1; }
     
     # Test auto mode
     todo_config_set color-mode auto >/dev/null 2>&1
-    [[ "$TODO_COLOR_MODE" == "auto" ]] || { echo "Expected TODO_COLOR_MODE=auto, got: $TODO_COLOR_MODE" >&2; return 1; }
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "auto" ]] || { echo "Expected _TODO_INTERNAL_COLOR_MODE=auto, got: $_TODO_INTERNAL_COLOR_MODE" >&2; return 1; }
     
     return 0
 }
@@ -110,20 +110,20 @@ function test_color_mode_persistence() {
     todo_config_set color-mode dynamic >/dev/null 2>&1
     
     # Verify it was set
-    [[ "$TODO_COLOR_MODE" == "dynamic" ]] || return 1
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "dynamic" ]] || return 1
     
     # Check that it was persisted to file
     local serialized=$(_todo_serialize_config)
-    [[ "$serialized" == *"TODO_COLOR_MODE=dynamic"* ]] || return 1
+    [[ "$serialized" == *"_TODO_INTERNAL_COLOR_MODE=dynamic"* ]] || return 1
     
     return 0
 }
 
 # Test 6: Config serialization contains color mode
 function test_config_serialization() {
-    TODO_COLOR_MODE="static"
+    _TODO_INTERNAL_COLOR_MODE="static"
     local serialized=$(_todo_serialize_config)
-    [[ "$serialized" == *"TODO_COLOR_MODE=static"* ]] || return 1
+    [[ "$serialized" == *"_TODO_INTERNAL_COLOR_MODE=static"* ]] || return 1
     return 0
 }
 
@@ -150,14 +150,14 @@ function test_config_reset_color_mode() {
     
     # Set non-default value
     todo_config_set color-mode dynamic >/dev/null 2>&1
-    [[ "$TODO_COLOR_MODE" == "dynamic" ]] || return 1
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "dynamic" ]] || return 1
     
-    # Reset config should reset TODO_COLOR_MODE too
-    # Check if the reset function includes TODO_COLOR_MODE
+    # Reset config should reset _TODO_INTERNAL_COLOR_MODE too
+    # Check if the reset function includes _TODO_INTERNAL_COLOR_MODE
     todo_config_reset >/dev/null 2>&1
     
     # Should be back to default "auto"
-    [[ "$TODO_COLOR_MODE" == "auto" ]] || return 1
+    [[ "$_TODO_INTERNAL_COLOR_MODE" == "auto" ]] || return 1
     return 0
 }
 

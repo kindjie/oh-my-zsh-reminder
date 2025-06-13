@@ -808,11 +808,219 @@ function _todo_config_wizard_real() {
 }
 
 # Main configuration command dispatcher
+# Get current value of a configuration setting
+function todo_config_get() {
+    local setting="$1"
+    
+    if [[ -z "$setting" ]]; then
+        echo "Usage: todo config get <setting>" >&2
+        echo "Available settings:" >&2
+        echo "  title, heart-char, heart-position, bullet-char" >&2
+        echo "  show-affirmation, show-todo-box, show-hints" >&2
+        echo "  padding-top, padding-right, padding-bottom, padding-left" >&2
+        echo "  box-width-fraction, box-min-width, box-max-width" >&2
+        echo "  colors, border-color, border-bg-color, content-bg-color" >&2
+        echo "  task-text-color, title-color, affirmation-color, bullet-color" >&2
+        echo "  box-top-left, box-top-right, box-bottom-left, box-bottom-right" >&2
+        echo "  box-horizontal, box-vertical, color-mode" >&2
+        return 1
+    fi
+    
+    case "$setting" in
+        "title")
+            echo "$_TODO_INTERNAL_TITLE"
+            ;;
+        "heart-char")
+            echo "$_TODO_INTERNAL_HEART_CHAR"
+            ;;
+        "heart-position")
+            echo "$_TODO_INTERNAL_HEART_POSITION"
+            ;;
+        "bullet-char")
+            echo "$_TODO_INTERNAL_BULLET_CHAR"
+            ;;
+        "show-affirmation")
+            echo "$_TODO_INTERNAL_SHOW_AFFIRMATION"
+            ;;
+        "show-todo-box")
+            echo "$_TODO_INTERNAL_SHOW_TODO_BOX"
+            ;;
+        "show-hints")
+            echo "$_TODO_INTERNAL_SHOW_HINTS"
+            ;;
+        "padding-top")
+            echo "$_TODO_INTERNAL_PADDING_TOP"
+            ;;
+        "padding-right")
+            echo "$_TODO_INTERNAL_PADDING_RIGHT"
+            ;;
+        "padding-bottom")
+            echo "$_TODO_INTERNAL_PADDING_BOTTOM"
+            ;;
+        "padding-left")
+            echo "$_TODO_INTERNAL_PADDING_LEFT"
+            ;;
+        "box-width-fraction")
+            echo "$_TODO_INTERNAL_BOX_WIDTH_FRACTION"
+            ;;
+        "box-min-width")
+            echo "$_TODO_INTERNAL_BOX_MIN_WIDTH"
+            ;;
+        "box-max-width")
+            echo "$_TODO_INTERNAL_BOX_MAX_WIDTH"
+            ;;
+        "colors"|"task-colors")
+            echo "$_TODO_INTERNAL_TASK_COLORS"
+            ;;
+        "border-color")
+            echo "$_TODO_INTERNAL_BORDER_COLOR"
+            ;;
+        "border-bg-color")
+            echo "$_TODO_INTERNAL_BORDER_BG_COLOR"
+            ;;
+        "content-bg-color")
+            echo "$_TODO_INTERNAL_CONTENT_BG_COLOR"
+            ;;
+        "task-text-color")
+            echo "$_TODO_INTERNAL_TASK_TEXT_COLOR"
+            ;;
+        "title-color")
+            echo "$_TODO_INTERNAL_TITLE_COLOR"
+            ;;
+        "affirmation-color")
+            echo "$_TODO_INTERNAL_AFFIRMATION_COLOR"
+            ;;
+        "bullet-color")
+            echo "$_TODO_INTERNAL_BULLET_COLOR"
+            ;;
+        "box-top-left")
+            echo "$_TODO_INTERNAL_BOX_TOP_LEFT"
+            ;;
+        "box-top-right")
+            echo "$_TODO_INTERNAL_BOX_TOP_RIGHT"
+            ;;
+        "box-bottom-left")
+            echo "$_TODO_INTERNAL_BOX_BOTTOM_LEFT"
+            ;;
+        "box-bottom-right")
+            echo "$_TODO_INTERNAL_BOX_BOTTOM_RIGHT"
+            ;;
+        "box-horizontal")
+            echo "$_TODO_INTERNAL_BOX_HORIZONTAL"
+            ;;
+        "box-vertical")
+            echo "$_TODO_INTERNAL_BOX_VERTICAL"
+            ;;
+        "color-mode")
+            echo "$_TODO_INTERNAL_COLOR_MODE"
+            ;;
+        *)
+            echo "Error: Unknown setting '$setting'" >&2
+            echo "Use 'todo config get' without arguments to see available settings" >&2
+            return 1
+            ;;
+    esac
+}
+
+# List all current configuration settings
+function todo_config_list() {
+    local format="${1:-table}"
+    
+    case "$format" in
+        "table"|"")
+            echo "Current Configuration Settings"
+            echo "==============================="
+            echo
+            echo "Display Settings:"
+            printf "  %-20s %s\n" "title" "$_TODO_INTERNAL_TITLE"
+            printf "  %-20s %s\n" "heart-char" "$_TODO_INTERNAL_HEART_CHAR"
+            printf "  %-20s %s\n" "heart-position" "$_TODO_INTERNAL_HEART_POSITION"
+            printf "  %-20s %s\n" "bullet-char" "$_TODO_INTERNAL_BULLET_CHAR"
+            echo
+            echo "Visibility Settings:"
+            printf "  %-20s %s\n" "show-affirmation" "$_TODO_INTERNAL_SHOW_AFFIRMATION"
+            printf "  %-20s %s\n" "show-todo-box" "$_TODO_INTERNAL_SHOW_TODO_BOX"
+            printf "  %-20s %s\n" "show-hints" "$_TODO_INTERNAL_SHOW_HINTS"
+            echo
+            echo "Layout Settings:"
+            printf "  %-20s %s\n" "padding-top" "$_TODO_INTERNAL_PADDING_TOP"
+            printf "  %-20s %s\n" "padding-right" "$_TODO_INTERNAL_PADDING_RIGHT"
+            printf "  %-20s %s\n" "padding-bottom" "$_TODO_INTERNAL_PADDING_BOTTOM"
+            printf "  %-20s %s\n" "padding-left" "$_TODO_INTERNAL_PADDING_LEFT"
+            printf "  %-20s %s\n" "box-width-fraction" "$_TODO_INTERNAL_BOX_WIDTH_FRACTION"
+            printf "  %-20s %s\n" "box-min-width" "$_TODO_INTERNAL_BOX_MIN_WIDTH"
+            printf "  %-20s %s\n" "box-max-width" "$_TODO_INTERNAL_BOX_MAX_WIDTH"
+            echo
+            echo "Color Settings:"
+            printf "  %-20s %s\n" "color-mode" "$_TODO_INTERNAL_COLOR_MODE"
+            printf "  %-20s %s\n" "task-colors" "$_TODO_INTERNAL_TASK_COLORS"
+            printf "  %-20s %s\n" "border-color" "$_TODO_INTERNAL_BORDER_COLOR"
+            printf "  %-20s %s\n" "border-bg-color" "$_TODO_INTERNAL_BORDER_BG_COLOR"
+            printf "  %-20s %s\n" "content-bg-color" "$_TODO_INTERNAL_CONTENT_BG_COLOR"
+            printf "  %-20s %s\n" "task-text-color" "$_TODO_INTERNAL_TASK_TEXT_COLOR"
+            printf "  %-20s %s\n" "title-color" "$_TODO_INTERNAL_TITLE_COLOR"
+            printf "  %-20s %s\n" "affirmation-color" "$_TODO_INTERNAL_AFFIRMATION_COLOR"
+            printf "  %-20s %s\n" "bullet-color" "$_TODO_INTERNAL_BULLET_COLOR"
+            echo
+            echo "Box Characters:"
+            printf "  %-20s %s\n" "box-top-left" "$_TODO_INTERNAL_BOX_TOP_LEFT"
+            printf "  %-20s %s\n" "box-top-right" "$_TODO_INTERNAL_BOX_TOP_RIGHT"
+            printf "  %-20s %s\n" "box-bottom-left" "$_TODO_INTERNAL_BOX_BOTTOM_LEFT"
+            printf "  %-20s %s\n" "box-bottom-right" "$_TODO_INTERNAL_BOX_BOTTOM_RIGHT"
+            printf "  %-20s %s\n" "box-horizontal" "$_TODO_INTERNAL_BOX_HORIZONTAL"
+            printf "  %-20s %s\n" "box-vertical" "$_TODO_INTERNAL_BOX_VERTICAL"
+            ;;
+        "export")
+            echo "# Current Configuration (export format)"
+            echo "TODO_TITLE=\"$_TODO_INTERNAL_TITLE\""
+            echo "TODO_HEART_CHAR=\"$_TODO_INTERNAL_HEART_CHAR\""
+            echo "TODO_HEART_POSITION=\"$_TODO_INTERNAL_HEART_POSITION\""
+            echo "TODO_BULLET_CHAR=\"$_TODO_INTERNAL_BULLET_CHAR\""
+            echo "TODO_SHOW_AFFIRMATION=\"$_TODO_INTERNAL_SHOW_AFFIRMATION\""
+            echo "TODO_SHOW_TODO_BOX=\"$_TODO_INTERNAL_SHOW_TODO_BOX\""
+            echo "TODO_SHOW_HINTS=\"$_TODO_INTERNAL_SHOW_HINTS\""
+            echo "TODO_PADDING_TOP=\"$_TODO_INTERNAL_PADDING_TOP\""
+            echo "TODO_PADDING_RIGHT=\"$_TODO_INTERNAL_PADDING_RIGHT\""
+            echo "TODO_PADDING_BOTTOM=\"$_TODO_INTERNAL_PADDING_BOTTOM\""
+            echo "TODO_PADDING_LEFT=\"$_TODO_INTERNAL_PADDING_LEFT\""
+            echo "TODO_BOX_WIDTH_FRACTION=\"$_TODO_INTERNAL_BOX_WIDTH_FRACTION\""
+            echo "TODO_BOX_MIN_WIDTH=\"$_TODO_INTERNAL_BOX_MIN_WIDTH\""
+            echo "TODO_BOX_MAX_WIDTH=\"$_TODO_INTERNAL_BOX_MAX_WIDTH\""
+            echo "TODO_TASK_COLORS=\"$_TODO_INTERNAL_TASK_COLORS\""
+            echo "TODO_BORDER_COLOR=\"$_TODO_INTERNAL_BORDER_COLOR\""
+            echo "TODO_BORDER_BG_COLOR=\"$_TODO_INTERNAL_BORDER_BG_COLOR\""
+            echo "TODO_CONTENT_BG_COLOR=\"$_TODO_INTERNAL_CONTENT_BG_COLOR\""
+            echo "TODO_TASK_TEXT_COLOR=\"$_TODO_INTERNAL_TASK_TEXT_COLOR\""
+            echo "TODO_TITLE_COLOR=\"$_TODO_INTERNAL_TITLE_COLOR\""
+            echo "TODO_AFFIRMATION_COLOR=\"$_TODO_INTERNAL_AFFIRMATION_COLOR\""
+            echo "TODO_BULLET_COLOR=\"$_TODO_INTERNAL_BULLET_COLOR\""
+            echo "TODO_BOX_TOP_LEFT=\"$_TODO_INTERNAL_BOX_TOP_LEFT\""
+            echo "TODO_BOX_TOP_RIGHT=\"$_TODO_INTERNAL_BOX_TOP_RIGHT\""
+            echo "TODO_BOX_BOTTOM_LEFT=\"$_TODO_INTERNAL_BOX_BOTTOM_LEFT\""
+            echo "TODO_BOX_BOTTOM_RIGHT=\"$_TODO_INTERNAL_BOX_BOTTOM_RIGHT\""
+            echo "TODO_BOX_HORIZONTAL=\"$_TODO_INTERNAL_BOX_HORIZONTAL\""
+            echo "TODO_BOX_VERTICAL=\"$_TODO_INTERNAL_BOX_VERTICAL\""
+            echo "TODO_COLOR_MODE=\"$_TODO_INTERNAL_COLOR_MODE\""
+            ;;
+        *)
+            echo "Error: Unknown format '$format'" >&2
+            echo "Available formats: table, export" >&2
+            return 1
+            ;;
+    esac
+}
+
 function _todo_config_real() {
     local command="$1"
     shift
     
     case "$command" in
+        "get")
+            todo_config_get "$@"
+            ;;
+        "list"|"show")
+            todo_config_list "$@"
+            ;;
         "export")
             todo_config_export_config "$@"
             ;;
@@ -837,10 +1045,12 @@ function _todo_config_real() {
         *)
             echo "Usage: todo_config <command> [args]" >&2
             echo "Commands:" >&2
-            echo "  export [file] [--colors-only]    Export configuration" >&2
-            echo "  import <file>                    Import configuration" >&2
+            echo "  get <setting>                   Get current value of setting" >&2
+            echo "  list                            List all current settings" >&2
             echo "  set <setting> <value>           Change setting" >&2
             echo "  reset [--colors-only]           Reset to defaults" >&2
+            echo "  export [file] [--colors-only]   Export configuration" >&2
+            echo "  import <file>                   Import configuration" >&2
             echo "  preset <name>                   Apply built-in preset" >&2
             echo "  save-preset <name>              Save current as preset" >&2
             echo "  wizard                          Interactive setup wizard" >&2

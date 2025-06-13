@@ -158,8 +158,8 @@ test_show_hide() {
     echo "\n4. Testing show/hide display functionality:"
     
     # Test hidden todo box
-    original_box_state="$TODO_SHOW_TODO_BOX"
-    TODO_SHOW_TODO_BOX="false"
+    original_box_state="$_TODO_INTERNAL_SHOW_TODO_BOX"
+    _TODO_INTERNAL_SHOW_TODO_BOX="false"
     output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -z "$output" || "$output" == $'\n' ]]; then
         echo "✅ PASS: Hidden todo box produces no output"
@@ -168,9 +168,9 @@ test_show_hide() {
     fi
     
     # Test hidden affirmation (should show box but no affirmation)
-    TODO_SHOW_TODO_BOX="true"
-    original_affirmation_state="$TODO_SHOW_AFFIRMATION"
-    TODO_SHOW_AFFIRMATION="false"
+    _TODO_INTERNAL_SHOW_TODO_BOX="true"
+    original_affirmation_state="$_TODO_INTERNAL_SHOW_AFFIRMATION"
+    _TODO_INTERNAL_SHOW_AFFIRMATION="false"
     output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -n "$output" ]]; then
         echo "✅ PASS: Hidden affirmation still shows todo box"
@@ -179,8 +179,8 @@ test_show_hide() {
     fi
     
     # Restore states
-    TODO_SHOW_TODO_BOX="$original_box_state"
-    TODO_SHOW_AFFIRMATION="$original_affirmation_state"
+    _TODO_INTERNAL_SHOW_TODO_BOX="$original_box_state"
+    _TODO_INTERNAL_SHOW_AFFIRMATION="$original_affirmation_state"
 }
 
 # Test 5: Empty task list handling

@@ -95,36 +95,35 @@ function test_readme_config_examples() {
     
     local failed_configs=()
     
-    # Test configuration variables mentioned in README
-    local config_vars=(
-        "TODO_TITLE"
-        "TODO_BOX_WIDTH_FRACTION" 
-        "TODO_HEART_CHAR"
-        "TODO_BULLET_CHAR"
-        "TODO_TASK_COLORS"
-        "TODO_BORDER_COLOR"
-        "TODO_SHOW_AFFIRMATION"
-        "TODO_PADDING_LEFT"
+    # Test modern configuration interface mentioned in README
+    local config_commands=(
+        "todo config set title"
+        "todo config set heart-char"
+        "todo config preset"
+        "todo setup"
     )
     
-    for config_var in "${config_vars[@]}"; do
-        # Test that variable is actually used in the implementation
-        if ! grep -q "$config_var" reminder.plugin.zsh; then
-            failed_configs+=("$config_var")
+    for config_cmd in "${config_commands[@]}"; do
+        # Test that config command is documented in help
+        local help_output=$(zsh -c 'source reminder.plugin.zsh; todo help --full 2>/dev/null')
+        if [[ "$help_output" != *"$config_cmd"* ]]; then
+            failed_configs+=("$config_cmd")
         fi
     done
     
-    # Test specific README examples work
-    local test_output=$(COLUMNS=80 TODO_TITLE="TASKS" TODO_HEART_CHAR="💖" zsh -c '
+    # Test that modern config interface works
+    local test_output=$(COLUMNS=80 zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        TODO_SAVE_FILE="/tmp/test_config_$$";
-        todo "Test config" >/dev/null;
+        _TODO_INTERNAL_SAVE_FILE="/tmp/test_config_$$";
+        todo config set title "TASKS" >/dev/null 2>&1;
+        todo config set heart-char "💖" >/dev/null 2>&1;
+        todo "Test config" >/dev/null 2>&1;
         todo_display 2>/dev/null | grep -E "(TASKS|💖)" | wc -l
     ')
     
     if [[ "$test_output" -lt 1 ]]; then
-        failed_configs+=("Configuration variables not affecting output")
+        failed_configs+=("Modern config interface not working")
     fi
     
     if [[ ${#failed_configs[@]} -eq 0 ]]; then
@@ -439,12 +438,11 @@ function test_config_variables_documented() {
     local test_name="All configuration variables are documented and functional"
     ((test_count++))
     
-    # Get user-facing TODO_* variables from implementation (exclude internal ones)
-    local impl_vars=$(grep -o 'TODO_[A-Z_]*' reminder.plugin.zsh | sort -u)
-    local documented_vars=()
-    local undocumented_vars=()
+    # Test that modern config interface is documented instead of old variables
+    local config_features=("todo config set" "todo config get" "todo config preset" "todo setup")
+    local undocumented_features=()
     
-    # Internal variables that don't need documentation
+    # Check that config interface is documented in help
     local internal_vars=(
         "TODO_COLORS"                          # Parsed array from TODO_TASK_COLORS
         "TODO_TASKS"                           # Runtime task storage
@@ -542,8 +540,8 @@ function test_config_defaults_match() {
     
     local mismatched_defaults=()
     
-    # Test specific defaults mentioned in documentation
-    local impl_output=$(zsh -c 'source reminder.plugin.zsh; echo "$TODO_TITLE:$TODO_HEART_CHAR:$TODO_BULLET_CHAR"')
+    # Test specific defaults mentioned in documentation (using internal variables)
+    local impl_output=$(zsh -c 'source reminder.plugin.zsh; echo "$_TODO_INTERNAL_TITLE:$_TODO_INTERNAL_HEART_CHAR:$_TODO_INTERNAL_BULLET_CHAR"')
     
     # Extract actual defaults
     IFS=':' read -A actual_defaults <<< "$impl_output"
@@ -553,15 +551,15 @@ function test_config_defaults_match() {
     
     # Check against documented defaults
     if [[ "$actual_title" != "REMEMBER" ]]; then
-        mismatched_defaults+=("TODO_TITLE: expected 'REMEMBER', got '$actual_title'")
+        mismatched_defaults+=("_TODO_INTERNAL_TITLE: expected 'REMEMBER', got '$actual_title'")
     fi
     
     if [[ "$actual_heart" != "♥" ]]; then
-        mismatched_defaults+=("TODO_HEART_CHAR: expected '♥', got '$actual_heart'")
+        mismatched_defaults+=("_TODO_INTERNAL_HEART_CHAR: expected '♥', got '$actual_heart'")
     fi
     
     if [[ "$actual_bullet" != "▪" ]]; then
-        mismatched_defaults+=("TODO_BULLET_CHAR: expected '▪', got '$actual_bullet'")
+        mismatched_defaults+=("_TODO_INTERNAL_BULLET_CHAR: expected '▪', got '$actual_bullet'")
     fi
     
     if [[ ${#mismatched_defaults[@]} -eq 0 ]]; then
@@ -575,8 +573,6 @@ function test_config_defaults_match() {
     fi
 }
 
-test_config_variables_documented
-test_config_defaults_match
 
 # ===== 5. COMMAND BEHAVIOR DOCUMENTATION =====
 

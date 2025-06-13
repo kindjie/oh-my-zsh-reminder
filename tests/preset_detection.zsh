@@ -19,11 +19,11 @@ function run_test() {
     
     # Setup isolated environment for each test
     local temp_save="$(mktemp)"
-    local original_save="$TODO_SAVE_FILE"
-    local original_color_mode="$TODO_COLOR_MODE"
+    local original_save="$_TODO_INTERNAL_SAVE_FILE"
+    local original_color_mode="$_TODO_INTERNAL_COLOR_MODE"
     local original_tinted_shell="$TINTED_SHELL_ENABLE_BASE16_VARS"
     
-    TODO_SAVE_FILE="$temp_save"
+    _TODO_INTERNAL_SAVE_FILE="$temp_save"
     printf '\n\n1\n' > "$temp_save"
     
     if $test_func; then
@@ -34,8 +34,8 @@ function run_test() {
     fi
     
     # Cleanup
-    TODO_SAVE_FILE="$original_save"
-    TODO_COLOR_MODE="$original_color_mode"
+    _TODO_INTERNAL_SAVE_FILE="$original_save"
+    _TODO_INTERNAL_COLOR_MODE="$original_color_mode"
     if [[ -n "$original_tinted_shell" ]]; then
         TINTED_SHELL_ENABLE_BASE16_VARS="$original_tinted_shell"
     else
@@ -46,7 +46,7 @@ function run_test() {
 
 # Test 1: Static mode never uses tinted presets
 function test_static_mode() {
-    TODO_COLOR_MODE="static"
+    _TODO_INTERNAL_COLOR_MODE="static"
     
     # Should return false regardless of environment
     unset TINTED_SHELL_ENABLE_BASE16_VARS
@@ -60,7 +60,7 @@ function test_static_mode() {
 
 # Test 2: Dynamic mode always uses tinted presets  
 function test_dynamic_mode() {
-    TODO_COLOR_MODE="dynamic"
+    _TODO_INTERNAL_COLOR_MODE="dynamic"
     
     # Should return true regardless of environment
     unset TINTED_SHELL_ENABLE_BASE16_VARS
@@ -74,7 +74,7 @@ function test_dynamic_mode() {
 
 # Test 3: Auto mode with tinted-shell detection
 function test_auto_tinted_shell() {
-    TODO_COLOR_MODE="auto"
+    _TODO_INTERNAL_COLOR_MODE="auto"
     
     # With tinted-shell enabled
     TINTED_SHELL_ENABLE_BASE16_VARS=1
@@ -96,7 +96,7 @@ function test_auto_tinted_shell() {
 
 # Test 4: Auto mode with tinty detection (mocked)
 function test_auto_tinty_detection() {
-    TODO_COLOR_MODE="auto"
+    _TODO_INTERNAL_COLOR_MODE="auto"
     unset TINTED_SHELL_ENABLE_BASE16_VARS
     
     # Mock tinty command availability
@@ -113,7 +113,7 @@ function test_auto_tinty_detection() {
 
 # Test 5: Smart preset selection - regular to tinted
 function test_smart_selection_to_tinted() {
-    TODO_COLOR_MODE="dynamic"
+    _TODO_INTERNAL_COLOR_MODE="dynamic"
     
     # Apply regular preset, should get tinted variant
     local output
@@ -125,7 +125,7 @@ function test_smart_selection_to_tinted() {
 
 # Test 6: Smart preset selection - tinted to regular  
 function test_smart_selection_to_regular() {
-    TODO_COLOR_MODE="static"
+    _TODO_INTERNAL_COLOR_MODE="static"
     
     # Apply tinted preset, should get regular variant
     local output
@@ -137,7 +137,7 @@ function test_smart_selection_to_regular() {
 
 # Test 7: Auto mode detection feedback
 function test_detection_feedback() {
-    TODO_COLOR_MODE="auto"
+    _TODO_INTERNAL_COLOR_MODE="auto"
     TINTED_SHELL_ENABLE_BASE16_VARS=1
     
     local output
@@ -149,7 +149,7 @@ function test_detection_feedback() {
 
 # Test 8: Missing tinted variant fallback
 function test_missing_tinted_fallback() {
-    TODO_COLOR_MODE="dynamic"
+    _TODO_INTERNAL_COLOR_MODE="dynamic"
     
     # Try to apply a preset that doesn't have tinted variant (create temp scenario)
     # This tests the fallback behavior when tinted variant is missing
@@ -163,7 +163,7 @@ function test_missing_tinted_fallback() {
 
 # Test 9: Explicit tinted request with static mode
 function test_explicit_tinted_with_static() {
-    TODO_COLOR_MODE="static"
+    _TODO_INTERNAL_COLOR_MODE="static"
     
     # Explicitly request tinted preset with static mode
     local output
@@ -176,7 +176,7 @@ function test_explicit_tinted_with_static() {
 
 # Test 10: Color mode display in feedback
 function test_color_mode_in_feedback() {
-    TODO_COLOR_MODE="static"
+    _TODO_INTERNAL_COLOR_MODE="static"
     
     local output
     output=$(todo config preset balanced 2>&1)
@@ -187,7 +187,7 @@ function test_color_mode_in_feedback() {
 
 # Test 11: Detection with both tinted-shell and tinty
 function test_dual_detection() {
-    TODO_COLOR_MODE="auto"
+    _TODO_INTERNAL_COLOR_MODE="auto"
     TINTED_SHELL_ENABLE_BASE16_VARS=1
     
     # Mock tinty as well
@@ -206,7 +206,7 @@ function test_dual_detection() {
 
 # Test 12: No detection fallback
 function test_no_detection_fallback() {
-    TODO_COLOR_MODE="auto"
+    _TODO_INTERNAL_COLOR_MODE="auto"
     unset TINTED_SHELL_ENABLE_BASE16_VARS
     
     # Mock tinty command to not be available by shadowing it

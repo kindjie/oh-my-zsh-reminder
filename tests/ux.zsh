@@ -414,7 +414,7 @@ function test_advanced_help_preserved() {
     ((test_count++))
     
     local full_help=$(COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo help --full')
-    local advanced_features=("todo config" "export" "import" "preset" "TODO_TASK_COLORS" "TODO_BORDER_COLOR")
+    local advanced_features=("todo config" "export" "import" "preset" "todo config set colors" "todo config set border-color")
     local missing_features=()
     
     for feature in "${advanced_features[@]}"; do

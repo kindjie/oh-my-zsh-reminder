@@ -106,36 +106,36 @@ test_toggle_commands() {
     source_test_plugin
     
     # Test affirmation toggle
-    original_affirmation_state="$TODO_SHOW_AFFIRMATION"
-    echo "Original affirmation state: $TODO_SHOW_AFFIRMATION"
+    original_affirmation_state="$_TODO_INTERNAL_SHOW_AFFIRMATION"
+    echo "Original affirmation state: $_TODO_INTERNAL_SHOW_AFFIRMATION"
     
     todo toggle affirmation hide >/dev/null
-    if [[ "$TODO_SHOW_AFFIRMATION" == "false" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_AFFIRMATION" == "false" ]]; then
         echo "✅ PASS: Affirmation hiding works"
     else
         echo "❌ FAIL: Affirmation hiding failed"
     fi
     
     todo toggle affirmation show >/dev/null
-    if [[ "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_AFFIRMATION" == "true" ]]; then
         echo "✅ PASS: Affirmation showing works"
     else
         echo "❌ FAIL: Affirmation showing failed"
     fi
     
     # Test todo box toggle
-    original_box_state="$TODO_SHOW_TODO_BOX"
-    echo "Original todo box state: $TODO_SHOW_TODO_BOX"
+    original_box_state="$_TODO_INTERNAL_SHOW_TODO_BOX"
+    echo "Original todo box state: $_TODO_INTERNAL_SHOW_TODO_BOX"
     
     todo toggle box hide >/dev/null
-    if [[ "$TODO_SHOW_TODO_BOX" == "false" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_TODO_BOX" == "false" ]]; then
         echo "✅ PASS: Todo box hiding works"
     else
         echo "❌ FAIL: Todo box hiding failed"
     fi
     
     todo toggle box show >/dev/null
-    if [[ "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_TODO_BOX" == "true" ]]; then
         echo "✅ PASS: Todo box showing works"
     else
         echo "❌ FAIL: Todo box showing failed"
@@ -143,23 +143,23 @@ test_toggle_commands() {
     
     # Test toggle all
     todo hide >/dev/null
-    if [[ "$TODO_SHOW_AFFIRMATION" == "false" && "$TODO_SHOW_TODO_BOX" == "false" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_AFFIRMATION" == "false" && "$_TODO_INTERNAL_SHOW_TODO_BOX" == "false" ]]; then
         echo "✅ PASS: Toggle all hide works"
     else
         echo "❌ FAIL: Toggle all hide failed"
     fi
     
     todo show >/dev/null
-    if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_AFFIRMATION" == "true" && "$_TODO_INTERNAL_SHOW_TODO_BOX" == "true" ]]; then
         echo "✅ PASS: Toggle all show works"
     else
         echo "❌ FAIL: Toggle all show failed"
     fi
     
     # Test toggle without arguments (should toggle)
-    original_affirmation_state2="$TODO_SHOW_AFFIRMATION"
+    original_affirmation_state2="$_TODO_INTERNAL_SHOW_AFFIRMATION"
     todo toggle affirmation >/dev/null  # Should toggle
-    if [[ "$TODO_SHOW_AFFIRMATION" != "$original_affirmation_state2" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_AFFIRMATION" != "$original_affirmation_state2" ]]; then
         echo "✅ PASS: Toggle affirmation without arguments works"
     else
         echo "❌ FAIL: Toggle affirmation without arguments failed"
@@ -176,15 +176,15 @@ test_toggle_commands() {
     # Test toggle all combinations
     todo hide >/dev/null
     todo toggle >/dev/null  # Should show both
-    if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_AFFIRMATION" == "true" && "$_TODO_INTERNAL_SHOW_TODO_BOX" == "true" ]]; then
         echo "✅ PASS: Toggle all from hide to show works"
     else
         echo "❌ FAIL: Toggle all from hide to show failed"
     fi
     
     # Restore original states
-    TODO_SHOW_AFFIRMATION="$original_affirmation_state"
-    TODO_SHOW_TODO_BOX="$original_box_state"
+    _TODO_INTERNAL_SHOW_AFFIRMATION="$original_affirmation_state"
+    _TODO_INTERNAL_SHOW_TODO_BOX="$original_box_state"
 }
 
 # Test 2: Help command functionality
@@ -243,15 +243,15 @@ test_help_command() {
         echo "❌ FAIL: todo help -f shorthand doesn't work"
     fi
     
-    # Test that full help includes comprehensive sections
-    if [[ "$full_help_output" == *"Configuration Variables:"* ]] && [[ "$full_help_output" == *"Padding/Spacing:"* ]]; then
+    # Test that full help includes comprehensive sections (modernized structure)
+    if [[ "$full_help_output" == *"Configuration Management:"* ]] && [[ "$full_help_output" == *"Get Current Settings:"* ]]; then
         echo "✅ PASS: Full help includes comprehensive configuration sections"
     else
         echo "❌ FAIL: Full help missing comprehensive configuration sections"
     fi
     
-    # Test that full help includes color configuration details
-    if [[ "$full_help_output" == *"Color Configuration:"* ]] && [[ "$full_help_output" == *"TODO_TASK_COLORS"* ]]; then
+    # Test that full help includes color configuration details (modernized structure)
+    if [[ "$full_help_output" == *"Color Reference:"* ]] && [[ "$full_help_output" == *"todo config set colors"* ]]; then
         echo "✅ PASS: Full help includes detailed color configuration"
     else
         echo "❌ FAIL: Full help missing detailed color configuration"
@@ -312,8 +312,8 @@ test_colors_command() {
         echo "❌ FAIL: todo_colors missing basic colors section"
     fi
     
-    # Test usage instructions
-    if [[ "$colors_output" == *"Usage:"* ]] && [[ "$colors_output" == *"export TODO_TASK_COLORS"* ]]; then
+    # Test usage instructions (modernized for config interface)
+    if [[ "$colors_output" == *"Usage:"* ]] && [[ "$colors_output" == *"todo config set colors"* ]]; then
         echo "✅ PASS: todo_colors includes usage instructions"
     else
         echo "❌ FAIL: todo_colors missing usage instructions"
@@ -396,12 +396,12 @@ test_error_handling() {
     done
     
     # Test that commands handle empty parameters gracefully (should default to toggle)
-    original_state="$TODO_SHOW_AFFIRMATION"
+    original_state="$_TODO_INTERNAL_SHOW_AFFIRMATION"
     todo toggle affirmation "" >/dev/null 2>&1
-    if [[ $? -eq 0 && "$TODO_SHOW_AFFIRMATION" != "$original_state" ]]; then
+    if [[ $? -eq 0 && "$_TODO_INTERNAL_SHOW_AFFIRMATION" != "$original_state" ]]; then
         echo "✅ PASS: Empty arguments default to toggle behavior"
         # Restore original state
-        TODO_SHOW_AFFIRMATION="$original_state"
+        _TODO_INTERNAL_SHOW_AFFIRMATION="$original_state"
     else
         echo "❌ FAIL: Empty arguments don't default to toggle behavior"
     fi
@@ -412,15 +412,15 @@ test_state_persistence() {
     echo "\n6. Testing state persistence:"
     
     # Test that toggle states persist across function calls
-    original_affirmation="$TODO_SHOW_AFFIRMATION"
-    original_box="$TODO_SHOW_TODO_BOX"
+    original_affirmation="$_TODO_INTERNAL_SHOW_AFFIRMATION"
+    original_box="$_TODO_INTERNAL_SHOW_TODO_BOX"
     
     # Change states
     todo toggle affirmation hide >/dev/null
     todo toggle box hide >/dev/null
     
     # Check that states are preserved
-    if [[ "$TODO_SHOW_AFFIRMATION" == "false" && "$TODO_SHOW_TODO_BOX" == "false" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_AFFIRMATION" == "false" && "$_TODO_INTERNAL_SHOW_TODO_BOX" == "false" ]]; then
         echo "✅ PASS: Toggle states persist correctly"
     else
         echo "❌ FAIL: Toggle states don't persist"
@@ -430,15 +430,15 @@ test_state_persistence() {
     todo toggle affirmation show >/dev/null
     todo toggle box show >/dev/null
     
-    if [[ "$TODO_SHOW_AFFIRMATION" == "true" && "$TODO_SHOW_TODO_BOX" == "true" ]]; then
+    if [[ "$_TODO_INTERNAL_SHOW_AFFIRMATION" == "true" && "$_TODO_INTERNAL_SHOW_TODO_BOX" == "true" ]]; then
         echo "✅ PASS: Toggle states can be restored"
     else
         echo "❌ FAIL: Toggle states can't be restored"
     fi
     
     # Restore original states
-    TODO_SHOW_AFFIRMATION="$original_affirmation"
-    TODO_SHOW_TODO_BOX="$original_box"
+    _TODO_INTERNAL_SHOW_AFFIRMATION="$original_affirmation"
+    _TODO_INTERNAL_SHOW_TODO_BOX="$original_box"
 }
 
 # Test 7: Help text alignment (manual verification for known good sections)
@@ -484,16 +484,16 @@ test_help_alignment() {
         echo "❌ FAIL: Display Controls section missing"
     fi
     
-    if echo "$full_help_output" | grep -q "Configuration Variables:"; then
-        echo "✅ PASS: Configuration Variables section exists"
+    if echo "$full_help_output" | grep -q "Configuration Management:"; then
+        echo "✅ PASS: Configuration Management section exists"
     else
-        echo "❌ FAIL: Configuration Variables section missing"
+        echo "❌ FAIL: Configuration Management section missing"
     fi
     
-    if echo "$full_help_output" | grep -q "Color Configuration:"; then
-        echo "✅ PASS: Color Configuration section exists"
+    if echo "$full_help_output" | grep -q "Color Reference:"; then
+        echo "✅ PASS: Color Reference section exists"
     else
-        echo "❌ FAIL: Color Configuration section missing"
+        echo "❌ FAIL: Color Reference section missing"
     fi
     
     # Check that sections have commands (lines starting with spaces)

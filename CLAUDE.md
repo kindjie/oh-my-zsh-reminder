@@ -53,7 +53,26 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - The plugin uses zsh-specific features like typeset arrays and precmd hooks
 - External dependency: `curl` and `jq` for affirmations feature
 
+## Security Practices
+
+### **Configuration File Security**
+- **NEVER use `source` or `.` to load user-provided configuration files** - this allows arbitrary code execution
+- **Always parse configuration files manually** using safe key=value parsing
+- **Use allow lists** for valid configuration keys - only permit known variables
+- **Use black lists** for dangerous patterns - reject suspicious content
+- **Validate all values** according to expected type (string, number, enum) before assignment
+- **Sanitize input** to prevent injection attacks
+- **Log warnings** for ignored/invalid configuration lines to help users debug
+
+### **Input Validation**
+- Validate all user inputs (task content, configuration values, file paths)
+- Use length limits to prevent buffer overflow-style attacks
+- Remove or escape control characters from user input
+- Validate file paths to prevent directory traversal attacks
+
 ## Testing Workflow
+
+**CRITICAL**: See `tests/CLAUDE.md` for comprehensive testing requirements, test organization, and mandatory commit validation procedures. This document defines testing as a commit blocker.
 
 **Test Data Safety**: All tests use temporary files via `TODO_SAVE_FILE` configuration to protect user data. Tests automatically isolate themselves in `$TMPDIR` and clean up on exit.
 
@@ -462,5 +481,187 @@ Successfully replaced 9 theme-based presets with 4 semantic intensity presets th
 - **User clarity**: Semantic intensity levels vs theme-specific names
 - **Theme integration**: Clear path to 200+ themes via tinty
 - **Test reliability**: 100% pass rate across 3 consecutive runs
+
+---
+
+# TEMPORARY IMPLEMENTATION PLAN - Private Environment Variables
+
+## Overview
+Convert public environment variables to private `_TODO_INTERNAL_*` naming and expose all configuration through `todo config` subcommands with enhanced tab completion.
+
+## Files Requiring Changes
+
+### **0. Security Fix: Replace `source` with Manual Parsing** (CRITICAL)
+**Security Risk**: Currently using `source` to load preset files and imported configs allows arbitrary code execution.
+
+**Files to Update:**
+- **lib/config.zsh**: Replace `source "$preset_file"` in `todo_config_apply_preset()` (line ~275)
+- **lib/config.zsh**: Replace `source "$config_file"` in `todo_config_import_config()` 
+- **reminder.plugin.zsh**: Replace any `source` calls for user-provided files
+
+**Implementation:**
+- Create `_todo_parse_config_file()` function to safely parse key=value pairs
+- Validate all keys against allow list of known configuration variables
+- Sanitize all values according to expected type (string, number, enum)
+- Reject any lines that don't match `VARIABLE_NAME="value"` or `VARIABLE_NAME=value` pattern
+- Log warnings for ignored/invalid lines
+- Never execute arbitrary code from config files
+
+**Example Safe Parser:**
+```bash
+function _todo_parse_config_file() {
+    local config_file="$1"
+    local line_num=0
+    
+    while IFS= read -r line; do
+        ((line_num++))
+        
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        
+        # Only allow KEY=VALUE or KEY="VALUE" format
+        if [[ "$line" =~ ^([A-Z_][A-Z0-9_]*)=(.*)$ ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+            
+            # Remove quotes if present
+            value="${value#\"}"
+            value="${value%\"}"
+            
+            # Validate key is in allow list
+            if _todo_is_valid_config_key "$key"; then
+                # Validate and sanitize value
+                if _todo_validate_config_value "$key" "$value"; then
+                    typeset -g "$key"="$value"
+                else
+                    echo "Warning: Invalid value for $key on line $line_num, skipping" >&2
+                fi
+            else
+                echo "Warning: Unknown configuration key '$key' on line $line_num, skipping" >&2
+            fi
+        else
+            echo "Warning: Invalid line format on line $line_num, skipping: $line" >&2
+        fi
+    done < "$config_file"
+}
+```
+
+### **1. reminder.plugin.zsh** (Lines 5-57, ~100 locations)
+**Variable Renaming (Lines 5-57):**
+- TODO_TITLE → _TODO_INTERNAL_TITLE
+- TODO_HEART_CHAR → _TODO_INTERNAL_HEART_CHAR  
+- TODO_HEART_POSITION → _TODO_INTERNAL_HEART_POSITION
+- TODO_BULLET_CHAR → _TODO_INTERNAL_BULLET_CHAR
+- TODO_BOX_WIDTH_FRACTION → _TODO_INTERNAL_BOX_WIDTH_FRACTION
+- TODO_BOX_MIN_WIDTH → _TODO_INTERNAL_BOX_MIN_WIDTH
+- TODO_BOX_MAX_WIDTH → _TODO_INTERNAL_BOX_MAX_WIDTH
+- TODO_SHOW_AFFIRMATION → _TODO_INTERNAL_SHOW_AFFIRMATION
+- TODO_SHOW_TODO_BOX → _TODO_INTERNAL_SHOW_TODO_BOX
+- TODO_SHOW_HINTS → _TODO_INTERNAL_SHOW_HINTS
+- TODO_PADDING_* → _TODO_INTERNAL_PADDING_*
+- TODO_TASK_COLORS → _TODO_INTERNAL_TASK_COLORS
+- TODO_BORDER_COLOR → _TODO_INTERNAL_BORDER_COLOR
+- TODO_BORDER_BG_COLOR → _TODO_INTERNAL_BORDER_BG_COLOR
+- TODO_CONTENT_BG_COLOR → _TODO_INTERNAL_CONTENT_BG_COLOR
+- TODO_TASK_TEXT_COLOR → _TODO_INTERNAL_TASK_TEXT_COLOR
+- TODO_TITLE_COLOR → _TODO_INTERNAL_TITLE_COLOR
+- TODO_AFFIRMATION_COLOR → _TODO_INTERNAL_AFFIRMATION_COLOR
+- TODO_BULLET_COLOR → _TODO_INTERNAL_BULLET_COLOR
+- TODO_BOX_* → _TODO_INTERNAL_BOX_*
+
+**Usage Updates (~100 references throughout file):**
+- All function references to these variables need updating
+- Validation sections (lines 60-141)
+- Display functions (todo_display, draw_todo_box, etc.)
+- Color functions (todo_colors, render_color_sample)
+- Configuration functions (todo_config_set, todo_config_reset)
+
+**New Functions to Add:**
+- `_todo_config_get_command()` - Handle `todo config get`
+- `_todo_config_list_command()` - Handle `todo config list/show`
+- Enhanced `_todo_config_set_command()` with validation
+- Enhanced tab completion in `_todo_completion()` function (lines 723-843)
+
+### **2. lib/config.zsh** (~20 locations)
+**Variable References:**
+- Update preset loading functions to use new variable names
+- Update export/import functions for new naming
+- Update validation functions
+- Update serialization functions (_todo_serialize_config, _todo_load_config_from_line)
+
+### **3. lib/wizard.zsh** (~15 locations)  
+**Interactive Setup:**
+- Update wizard steps to use new variable names
+- Update preview and application logic
+- Update user feedback messages
+
+### **4. Tab Completion System** (reminder.plugin.zsh lines 723-843)
+**Enhanced Completion:**
+- Add `get`, `list`, `show` to config subcommands
+- Add setting names completion for `todo config set <TAB>`
+- Add setting names completion for `todo config get <TAB>`
+- Add enum values for specific settings (heart-position: left|right|both|none)
+- Add `...` indicator for free-form string settings
+
+### **5. Help System Updates** (reminder.plugin.zsh lines 631-693, 1531-1693)
+**Remove `--vars` option:**
+- Update `_todo_help_command()` to remove `--vars` case
+- Update `_todo_show_config_help()` with new content (no env vars)
+- Remove environment variable documentation from help system
+
+### **6. README.md** (Lines 216-267)
+**Configuration Section:**
+- Remove environment variable examples
+- Replace with `todo config` examples
+- Update "Configuration" section to focus on `todo config` interface
+- Keep file format documentation but note variables are internal
+
+### **7. Test Files** (~10 files)
+**Test Updates:**
+- tests/configuration.zsh - Update variable references
+- tests/config_management.zsh - Test new get/list/show commands
+- tests/color.zsh - Update color variable references  
+- tests/interface.zsh - Test new config subcommands
+- tests/documentation.zsh - Update variable exclusion lists
+- tests/wizard_noninteractive.zsh - Update variable names
+- All test files that set TODO_* variables for test isolation
+
+### **8. Preset Files** (presets/*.conf)
+**Preset Configuration:**
+- Update all preset files to use new _TODO_INTERNAL_* variable names
+- Maintain backward compatibility during transition
+
+## Implementation Strategy
+
+### **Phase 1: Internal Variable Rename**
+1. Update reminder.plugin.zsh variable declarations and usage
+2. Update lib/config.zsh and lib/wizard.zsh
+3. Update preset files
+4. Update test files for new variable names
+
+### **Phase 2: Enhanced Config Interface**  
+1. Implement `todo config get <setting>`
+2. Implement `todo config list/show`
+3. Enhance `todo config set` validation and user feedback
+4. Update tab completion for new subcommands
+
+### **Phase 3: Documentation Updates**
+1. Remove environment variable documentation from help
+2. Update README.md configuration section
+3. Update help system to focus on config interface
+4. Update examples throughout documentation
+
+### **Phase 4: Testing & Validation**
+1. Run full test suite to ensure no regressions
+2. Test tab completion functionality
+3. Validate all config operations work correctly
+4. Test preset system with new variables
+
+## Benefits
+- **Cleaner Public Interface**: Only `todo config` commands exposed to users
+- **No Config Conflicts**: Save file config can't be overridden by stale env vars
+- **Better Discoverability**: Tab completion guides users to valid options
+- **Consistent Interface**: All configuration through unified `todo config` system
+- **Maintainable**: Single source of truth for configuration options
 
 ---

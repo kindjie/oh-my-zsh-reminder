@@ -219,7 +219,7 @@ test_power_user_workflow() {
         autoload -U colors; colors
         source '$SCRIPT_DIR/../reminder.plugin.zsh'
         todo toggle affirmation >/dev/null
-        echo \$TODO_SHOW_AFFIRMATION
+        echo \$_TODO_INTERNAL_SHOW_AFFIRMATION
     ")
     
     if [[ "$toggle_output" == "false" ]]; then

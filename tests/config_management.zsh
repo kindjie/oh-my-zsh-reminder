@@ -53,7 +53,7 @@ run_test() {
 test_export_stdout() {
     local output=$(todo_config_export_config 2>/dev/null)
     
-    # Check if output contains expected configuration variables
+    # Check if output contains expected configuration variables (exported in TODO_* format)
     if [[ "$output" =~ TODO_TITLE && "$output" =~ TODO_HEART_CHAR && "$output" =~ TODO_TASK_COLORS ]]; then
         return 0
     else
@@ -69,7 +69,7 @@ test_export_file() {
     # Export to file
     todo_config_export_config "$config_file" >/dev/null 2>&1
     
-    # Check if file was created and contains expected content
+    # Check if file was created and contains expected content (exported in TODO_* format)
     if [[ -f "$config_file" ]] && grep -q "TODO_TITLE" "$config_file"; then
         return 0
     else
@@ -95,7 +95,7 @@ test_export_colors_only() {
 test_import_config() {
     local config_file="$TEST_TMPDIR/test_import.conf"
     
-    # Create a test config file
+    # Create a test config file (using TODO_* format for compatibility)
     cat > "$config_file" << 'EOF'
 TODO_TITLE="TEST TITLE"
 TODO_HEART_CHAR="🧪"
@@ -107,11 +107,11 @@ EOF
     todo_config_import_config "$config_file" >/dev/null 2>&1
     
     # Check if variables were set correctly
-    if [[ "$TODO_TITLE" == "TEST TITLE" && "$TODO_HEART_CHAR" == "🧪" && "$TODO_BORDER_COLOR" == "150" ]]; then
+    if [[ "$_TODO_INTERNAL_TITLE" == "TEST TITLE" && "$_TODO_INTERNAL_HEART_CHAR" == "🧪" && "$_TODO_INTERNAL_BORDER_COLOR" == "150" ]]; then
         return 0
     else
         echo "Import failed to set variables correctly"
-        echo "TODO_TITLE='$TODO_TITLE', TODO_HEART_CHAR='$TODO_HEART_CHAR', TODO_BORDER_COLOR='$TODO_BORDER_COLOR'"
+        echo "_TODO_INTERNAL_TITLE='$_TODO_INTERNAL_TITLE', _TODO_INTERNAL_HEART_CHAR='$_TODO_INTERNAL_HEART_CHAR', _TODO_INTERNAL_BORDER_COLOR='$_TODO_INTERNAL_BORDER_COLOR'"
         return 1
     fi
 }
@@ -142,21 +142,21 @@ EOF
 test_config_set() {
     # Test setting title
     todo config set title "NEW TITLE" >/dev/null 2>&1
-    if [[ "$TODO_TITLE" != "NEW TITLE" ]]; then
+    if [[ "$_TODO_INTERNAL_TITLE" != "NEW TITLE" ]]; then
         echo "Failed to set title"
         return 1
     fi
     
     # Test setting heart character
     todo config set heart-char "❤️" >/dev/null 2>&1
-    if [[ "$TODO_HEART_CHAR" != "❤️" ]]; then
+    if [[ "$_TODO_INTERNAL_HEART_CHAR" != "❤️" ]]; then
         echo "Failed to set heart character"
         return 1
     fi
     
     # Test setting colors
     todo config set colors "200,201,202" >/dev/null 2>&1
-    if [[ "$TODO_TASK_COLORS" != "200,201,202" ]]; then
+    if [[ "$_TODO_INTERNAL_TASK_COLORS" != "200,201,202" ]]; then
         echo "Failed to set colors"
         return 1
     fi
@@ -193,15 +193,15 @@ test_config_set_validation() {
 # Test 8: Reset configuration
 test_config_reset() {
     # Change some values first
-    TODO_TITLE="CHANGED"
-    TODO_HEART_CHAR="X"
-    TODO_TASK_COLORS="1,2,3"
+    _TODO_INTERNAL_TITLE="CHANGED"
+    _TODO_INTERNAL_HEART_CHAR="X"
+    _TODO_INTERNAL_TASK_COLORS="1,2,3"
     
     # Reset configuration
     todo config reset >/dev/null 2>&1
     
     # Check if values were reset to defaults
-    if [[ "$TODO_TITLE" == "REMEMBER" && "$TODO_HEART_CHAR" == "♥" && "$TODO_TASK_COLORS" == "167,71,136,110,139,73" ]]; then
+    if [[ "$_TODO_INTERNAL_TITLE" == "REMEMBER" && "$_TODO_INTERNAL_HEART_CHAR" == "♥" && "$_TODO_INTERNAL_TASK_COLORS" == "167,71,136,110,139,73" ]]; then
         return 0
     else
         echo "Reset failed to restore default values"
@@ -212,15 +212,15 @@ test_config_reset() {
 # Test 9: Reset colors only
 test_config_reset_colors_only() {
     # Change title and colors
-    TODO_TITLE="CHANGED"
-    TODO_TASK_COLORS="1,2,3"
-    TODO_BORDER_COLOR="100"
+    _TODO_INTERNAL_TITLE="CHANGED"
+    _TODO_INTERNAL_TASK_COLORS="1,2,3"
+    _TODO_INTERNAL_BORDER_COLOR="100"
     
     # Reset only colors
     todo config reset --colors-only >/dev/null 2>&1
     
     # Title should remain changed, colors should be reset
-    if [[ "$TODO_TITLE" == "CHANGED" && "$TODO_TASK_COLORS" == "167,71,136,110,139,73" && "$TODO_BORDER_COLOR" == "240" ]]; then
+    if [[ "$_TODO_INTERNAL_TITLE" == "CHANGED" && "$_TODO_INTERNAL_TASK_COLORS" == "167,71,136,110,139,73" && "$_TODO_INTERNAL_BORDER_COLOR" == "240" ]]; then
         return 0
     else
         echo "Colors-only reset didn't work correctly"
@@ -234,8 +234,8 @@ validate_preset_values() {
     local errors=()
     
     # Validate all color values are in 0-255 range
-    if [[ -n "$TODO_BORDER_COLOR" ]] && ! [[ "$TODO_BORDER_COLOR" =~ ^[0-9]+$ && "$TODO_BORDER_COLOR" -ge 0 && "$TODO_BORDER_COLOR" -le 255 ]]; then
-        errors+=("TODO_BORDER_COLOR=$TODO_BORDER_COLOR is not valid (0-255)")
+    if [[ -n "$_TODO_INTERNAL_BORDER_COLOR" ]] && ! [[ "$_TODO_INTERNAL_BORDER_COLOR" =~ ^[0-9]+$ && "$_TODO_INTERNAL_BORDER_COLOR" -ge 0 && "$_TODO_INTERNAL_BORDER_COLOR" -le 255 ]]; then
+        errors+=("_TODO_INTERNAL_BORDER_COLOR=$_TODO_INTERNAL_BORDER_COLOR is not valid (0-255)")
     fi
     
     if [[ -n "$TODO_BORDER_BG_COLOR" ]] && ! [[ "$TODO_BORDER_BG_COLOR" =~ ^[0-9]+$ && "$TODO_BORDER_BG_COLOR" -ge 0 && "$TODO_BORDER_BG_COLOR" -le 255 ]]; then
@@ -250,8 +250,8 @@ validate_preset_values() {
         errors+=("TODO_TASK_TEXT_COLOR=$TODO_TASK_TEXT_COLOR is not valid (0-255)")
     fi
     
-    if [[ -n "$TODO_TITLE_COLOR" ]] && ! [[ "$TODO_TITLE_COLOR" =~ ^[0-9]+$ && "$TODO_TITLE_COLOR" -ge 0 && "$TODO_TITLE_COLOR" -le 255 ]]; then
-        errors+=("TODO_TITLE_COLOR=$TODO_TITLE_COLOR is not valid (0-255)")
+    if [[ -n "$_TODO_INTERNAL_TITLE_COLOR" ]] && ! [[ "$_TODO_INTERNAL_TITLE_COLOR" =~ ^[0-9]+$ && "$_TODO_INTERNAL_TITLE_COLOR" -ge 0 && "$_TODO_INTERNAL_TITLE_COLOR" -le 255 ]]; then
+        errors+=("_TODO_INTERNAL_TITLE_COLOR=$_TODO_INTERNAL_TITLE_COLOR is not valid (0-255)")
     fi
     
     if [[ -n "$TODO_AFFIRMATION_COLOR" ]] && ! [[ "$TODO_AFFIRMATION_COLOR" =~ ^[0-9]+$ && "$TODO_AFFIRMATION_COLOR" -ge 0 && "$TODO_AFFIRMATION_COLOR" -le 255 ]]; then
@@ -259,11 +259,11 @@ validate_preset_values() {
     fi
     
     # Validate task colors array format
-    if [[ -n "$TODO_TASK_COLORS" ]]; then
-        IFS=',' read -A color_values <<< "$TODO_TASK_COLORS"
+    if [[ -n "$_TODO_INTERNAL_TASK_COLORS" ]]; then
+        IFS=',' read -A color_values <<< "$_TODO_INTERNAL_TASK_COLORS"
         for color in "${color_values[@]}"; do
             if ! [[ "$color" =~ ^[0-9]+$ && "$color" -ge 0 && "$color" -le 255 ]]; then
-                errors+=("Task color $color in TODO_TASK_COLORS is not valid (0-255)")
+                errors+=("Task color $color in _TODO_INTERNAL_TASK_COLORS is not valid (0-255)")
             fi
         done
     fi
@@ -291,12 +291,12 @@ validate_preset_values() {
     fi
     
     # Check required variables are set
-    if [[ -z "$TODO_TITLE" ]]; then
-        errors+=("TODO_TITLE is not set")
+    if [[ -z "$_TODO_INTERNAL_TITLE" ]]; then
+        errors+=("_TODO_INTERNAL_TITLE is not set")
     fi
     
-    if [[ -z "$TODO_HEART_CHAR" ]]; then
-        errors+=("TODO_HEART_CHAR is not set")
+    if [[ -z "$_TODO_INTERNAL_HEART_CHAR" ]]; then
+        errors+=("_TODO_INTERNAL_HEART_CHAR is not set")
     fi
     
     if [[ -z "$TODO_BULLET_CHAR" ]]; then
@@ -325,16 +325,16 @@ test_preset_subtle() {
     fi
     
     # Semantic preset validation - subtle should have muted characteristics
-    if [[ -n "$TODO_TASK_COLORS" && 
-          -n "$TODO_BORDER_COLOR" &&
+    if [[ -n "$_TODO_INTERNAL_TASK_COLORS" && 
+          -n "$_TODO_INTERNAL_BORDER_COLOR" &&
           -n "$TODO_TASK_TEXT_COLOR" &&
-          -n "$TODO_TITLE_COLOR" &&
+          -n "$_TODO_INTERNAL_TITLE_COLOR" &&
           "$TODO_SHOW_AFFIRMATION" =~ ^(true|false)$ ]]; then
         return 0
     else
         echo "Subtle preset not applied correctly"
-        echo "TODO_TASK_COLORS='$TODO_TASK_COLORS' (expected non-empty)"
-        echo "TODO_BORDER_COLOR='$TODO_BORDER_COLOR' (expected non-empty)"
+        echo "_TODO_INTERNAL_TASK_COLORS='$_TODO_INTERNAL_TASK_COLORS' (expected non-empty)"
+        echo "_TODO_INTERNAL_BORDER_COLOR='$_TODO_INTERNAL_BORDER_COLOR' (expected non-empty)"
         echo "TODO_SHOW_AFFIRMATION='$TODO_SHOW_AFFIRMATION' (expected true/false)"
         return 1
     fi
@@ -350,16 +350,16 @@ test_preset_vibrant() {
     fi
     
     # Semantic preset validation - vibrant should have bright characteristics
-    if [[ -n "$TODO_TASK_COLORS" && 
-          -n "$TODO_BORDER_COLOR" &&
+    if [[ -n "$_TODO_INTERNAL_TASK_COLORS" && 
+          -n "$_TODO_INTERNAL_BORDER_COLOR" &&
           -n "$TODO_TASK_TEXT_COLOR" &&
-          -n "$TODO_TITLE_COLOR" &&
+          -n "$_TODO_INTERNAL_TITLE_COLOR" &&
           "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
         return 0
     else
         echo "Vibrant preset not applied correctly"
-        echo "TODO_TASK_COLORS='$TODO_TASK_COLORS' (expected non-empty)"
-        echo "TODO_BORDER_COLOR='$TODO_BORDER_COLOR' (expected non-empty)"
+        echo "_TODO_INTERNAL_TASK_COLORS='$_TODO_INTERNAL_TASK_COLORS' (expected non-empty)"
+        echo "_TODO_INTERNAL_BORDER_COLOR='$_TODO_INTERNAL_BORDER_COLOR' (expected non-empty)"
         echo "TODO_SHOW_AFFIRMATION='$TODO_SHOW_AFFIRMATION' (expected 'true')"
         return 1
     fi
@@ -375,16 +375,16 @@ test_preset_balanced() {
     fi
     
     # Semantic preset validation - balanced should have moderate characteristics
-    if [[ -n "$TODO_TASK_COLORS" && 
-          -n "$TODO_BORDER_COLOR" &&
+    if [[ -n "$_TODO_INTERNAL_TASK_COLORS" && 
+          -n "$_TODO_INTERNAL_BORDER_COLOR" &&
           -n "$TODO_TASK_TEXT_COLOR" &&
-          -n "$TODO_TITLE_COLOR" &&
+          -n "$_TODO_INTERNAL_TITLE_COLOR" &&
           "$TODO_SHOW_AFFIRMATION" =~ ^(true|false)$ ]]; then
         return 0
     else
         echo "Balanced preset not applied correctly"
-        echo "TODO_TASK_COLORS='$TODO_TASK_COLORS' (expected non-empty)"
-        echo "TODO_BORDER_COLOR='$TODO_BORDER_COLOR' (expected non-empty)"
+        echo "_TODO_INTERNAL_TASK_COLORS='$_TODO_INTERNAL_TASK_COLORS' (expected non-empty)"
+        echo "_TODO_INTERNAL_BORDER_COLOR='$_TODO_INTERNAL_BORDER_COLOR' (expected non-empty)"
         echo "TODO_SHOW_AFFIRMATION='$TODO_SHOW_AFFIRMATION' (expected true/false)"
         return 1
     fi
@@ -400,16 +400,16 @@ test_preset_loud() {
     fi
     
     # Semantic preset validation - loud should have high contrast characteristics
-    if [[ -n "$TODO_TASK_COLORS" && 
-          -n "$TODO_BORDER_COLOR" &&
+    if [[ -n "$_TODO_INTERNAL_TASK_COLORS" && 
+          -n "$_TODO_INTERNAL_BORDER_COLOR" &&
           -n "$TODO_TASK_TEXT_COLOR" &&
-          -n "$TODO_TITLE_COLOR" &&
+          -n "$_TODO_INTERNAL_TITLE_COLOR" &&
           "$TODO_SHOW_AFFIRMATION" == "true" ]]; then
         return 0
     else
         echo "Loud preset not applied correctly"
-        echo "TODO_TASK_COLORS='$TODO_TASK_COLORS' (expected non-empty)"
-        echo "TODO_BORDER_COLOR='$TODO_BORDER_COLOR' (expected non-empty)"
+        echo "_TODO_INTERNAL_TASK_COLORS='$_TODO_INTERNAL_TASK_COLORS' (expected non-empty)"
+        echo "_TODO_INTERNAL_BORDER_COLOR='$_TODO_INTERNAL_BORDER_COLOR' (expected non-empty)"
         echo "TODO_SHOW_AFFIRMATION='$TODO_SHOW_AFFIRMATION' (expected 'true')"
         return 1
     fi
@@ -439,7 +439,7 @@ test_tinted_preset_selection() {
     todo_config_apply_preset subtle >/dev/null 2>&1
     
     # Check that colors were applied
-    if [[ -n "$TODO_TASK_COLORS" ]]; then
+    if [[ -n "$_TODO_INTERNAL_TASK_COLORS" ]]; then
         # Restore original
         TINTED_SHELL_ENABLE_BASE16_VARS="$original_tinted"
         return 0
@@ -453,8 +453,8 @@ test_tinted_preset_selection() {
 # Test 20: Save current preset
 test_save_preset() {
     # Set some distinctive values
-    TODO_TITLE="CUSTOM TEST"
-    TODO_HEART_CHAR="🔥"
+    _TODO_INTERNAL_TITLE="CUSTOM TEST"
+    _TODO_INTERNAL_HEART_CHAR="🔥"
     
     # Save as preset
     todo_config_save_user_preset test-custom "Test preset description" >/dev/null 2>&1
@@ -525,23 +525,23 @@ test_export_import_roundtrip() {
     local config_file="$TEST_TMPDIR/roundtrip.conf"
     
     # Set distinctive values
-    TODO_TITLE="ROUNDTRIP TEST"
-    TODO_HEART_CHAR="🔄"
-    TODO_PADDING_LEFT="5"
+    _TODO_INTERNAL_TITLE="ROUNDTRIP TEST"
+    _TODO_INTERNAL_HEART_CHAR="🔄"
+    _TODO_INTERNAL_PADDING_LEFT="5"
     
     # Export
     todo_config_export_config "$config_file" >/dev/null 2>&1
     
     # Change values
-    TODO_TITLE="CHANGED"
-    TODO_HEART_CHAR="X"
-    TODO_PADDING_LEFT="0"
+    _TODO_INTERNAL_TITLE="CHANGED"
+    _TODO_INTERNAL_HEART_CHAR="X"
+    _TODO_INTERNAL_PADDING_LEFT="0"
     
     # Import back
     todo_config_import_config "$config_file" >/dev/null 2>&1
     
     # Check if original values were restored
-    if [[ "$TODO_TITLE" == "ROUNDTRIP TEST" && "$TODO_HEART_CHAR" == "🔄" && "$TODO_PADDING_LEFT" == "5" ]]; then
+    if [[ "$_TODO_INTERNAL_TITLE" == "ROUNDTRIP TEST" && "$_TODO_INTERNAL_HEART_CHAR" == "🔄" && "$_TODO_INTERNAL_PADDING_LEFT" == "5" ]]; then
         return 0
     else
         echo "Export/import roundtrip failed to preserve values"

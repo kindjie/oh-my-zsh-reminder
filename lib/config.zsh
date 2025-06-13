@@ -9,6 +9,140 @@ typeset -gr _TODO_CONFIG_LOADED=1
 # Private module variables (use local scope where possible)
 typeset -g _TODO_CONFIG_DIR _TODO_USER_PRESETS_DIR _TODO_BUILTIN_PRESETS_DIR _TODO_DEFAULT_SAVE_FILE
 
+# ============================================================================
+# Secure Configuration File Parsing
+# ============================================================================
+
+# Valid configuration keys (allow list)
+typeset -g -a _TODO_VALID_CONFIG_KEYS
+_TODO_VALID_CONFIG_KEYS=(
+    "TODO_PRESET_DESC"
+    "TODO_COLOR_MODE"
+    "TODO_TITLE"
+    "TODO_HEART_CHAR"
+    "TODO_HEART_POSITION"
+    "TODO_BULLET_CHAR"
+    "TODO_BOX_WIDTH_FRACTION"
+    "TODO_BOX_MIN_WIDTH"
+    "TODO_BOX_MAX_WIDTH"
+    "TODO_SHOW_AFFIRMATION"
+    "TODO_SHOW_TODO_BOX"
+    "TODO_SHOW_HINTS"
+    "TODO_PADDING_TOP"
+    "TODO_PADDING_RIGHT"
+    "TODO_PADDING_BOTTOM"
+    "TODO_PADDING_LEFT"
+    "TODO_TASK_COLORS"
+    "TODO_BORDER_COLOR"
+    "TODO_BORDER_BG_COLOR"
+    "TODO_CONTENT_BG_COLOR"
+    "TODO_TASK_TEXT_COLOR"
+    "TODO_TITLE_COLOR"
+    "TODO_AFFIRMATION_COLOR"
+    "TODO_BULLET_COLOR"
+    "TODO_BOX_TOP_LEFT"
+    "TODO_BOX_TOP_RIGHT"
+    "TODO_BOX_BOTTOM_LEFT"
+    "TODO_BOX_BOTTOM_RIGHT"
+    "TODO_BOX_HORIZONTAL"
+    "TODO_BOX_VERTICAL"
+)
+
+# Check if configuration key is valid
+function _todo_is_valid_config_key() {
+    local key="$1"
+    [[ " ${_TODO_VALID_CONFIG_KEYS[*]} " =~ " $key " ]]
+}
+
+# Validate configuration value based on key
+function _todo_validate_config_value() {
+    local key="$1"
+    local value="$2"
+    
+    case "$key" in
+        TODO_COLOR_MODE)
+            [[ "$value" =~ ^(static|dynamic|auto)$ ]]
+            ;;
+        TODO_HEART_POSITION)
+            [[ "$value" =~ ^(left|right|both|none)$ ]]
+            ;;
+        TODO_SHOW_AFFIRMATION|TODO_SHOW_TODO_BOX|TODO_SHOW_HINTS)
+            [[ "$value" =~ ^(true|false)$ ]]
+            ;;
+        TODO_PADDING_*|TODO_BOX_MIN_WIDTH|TODO_BOX_MAX_WIDTH)
+            [[ "$value" =~ ^[0-9]+$ ]]
+            ;;
+        TODO_BOX_WIDTH_FRACTION)
+            [[ "$value" =~ ^(0?\.[0-9]+|1\.0)$ ]]
+            ;;
+        TODO_TASK_COLORS)
+            [[ "$value" =~ ^[0-9]+(,[0-9]+)*$ ]]
+            ;;
+        TODO_BORDER_COLOR|TODO_BORDER_BG_COLOR|TODO_CONTENT_BG_COLOR|TODO_TASK_TEXT_COLOR|TODO_TITLE_COLOR|TODO_AFFIRMATION_COLOR|TODO_BULLET_COLOR)
+            [[ "$value" =~ ^[0-9]+$ ]] && [[ $value -le 255 ]]
+            ;;
+        TODO_TITLE|TODO_HEART_CHAR|TODO_BULLET_CHAR|TODO_BOX_*|TODO_PRESET_DESC)
+            # String values - check length and reject dangerous patterns
+            [[ ${#value} -le 200 ]] && [[ ! "$value" =~ [\$\`\;] ]]
+            ;;
+        *)
+            false
+            ;;
+    esac
+}
+
+# Safely parse configuration file without executing code
+function _todo_parse_config_file() {
+    local config_file="$1"
+    local line_num=0
+    local parsed_count=0
+    local ignored_count=0
+    
+    [[ ! -f "$config_file" ]] && return 1
+    
+    while IFS= read -r line; do
+        ((line_num++))
+        
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        
+        # Only allow KEY=VALUE or KEY="VALUE" format
+        if [[ "$line" =~ '^([A-Z_][A-Z0-9_]*)=(.*)$' ]]; then
+            local key="${match[1]}"
+            local value="${match[2]}"
+            
+            # Remove quotes if present
+            value="${value#\"}"
+            value="${value%\"}"
+            
+            # Validate key is in allow list
+            if _todo_is_valid_config_key "$key"; then
+                # Validate and sanitize value
+                if _todo_validate_config_value "$key" "$value"; then
+                    typeset -g "$key"="$value"
+                    ((parsed_count++))
+                else
+                    echo "Warning: Invalid value for $key on line $line_num: '$value'" >&2
+                    ((ignored_count++))
+                fi
+            else
+                echo "Warning: Unknown configuration key '$key' on line $line_num" >&2
+                ((ignored_count++))
+            fi
+        else
+            echo "Warning: Invalid line format on line $line_num: '$line'" >&2
+            ((ignored_count++))
+        fi
+    done < "$config_file"
+    
+    # Report parsing results
+    if [[ $ignored_count -gt 0 ]]; then
+        echo "Parsed $parsed_count valid settings, ignored $ignored_count invalid lines" >&2
+    fi
+    
+    return 0
+}
+
 # Configuration paths initialization
 function __todo_config_init_paths() {
     local config_dir="$HOME/.config/todo-reminder"
@@ -125,19 +259,18 @@ function __todo_validate_config() {
 function __todo_validate_config_file() {
     local file="$1"
     
-    # Create isolated environment for validation
-    (
-        # Source the config file in subshell
-        source "$file" 2>/dev/null || {
-            echo "Syntax error in config file"
-            return 1
-        }
-        
-        # Run validation
-        __todo_validate_config
-    )
+    # Validate the config file safely (no code execution)
+    # Capture stderr to detect validation warnings
+    local validation_output
+    validation_output=$(_todo_parse_config_file "$file" 2>&1 >/dev/null)
     
-    return $?
+    # If there were validation warnings/errors, fail validation
+    if [[ -n "$validation_output" ]]; then
+        echo "$validation_output" >&2
+        return 1
+    fi
+    
+    return 0
 }
 
 # Get preset file path (private)
@@ -271,14 +404,17 @@ function todo_config_apply_preset() {
     # Clear preset description from previous load
     unset TODO_PRESET_DESC
     
-    # Source the config file
-    source "$preset_file"
+    # Parse the config file safely (no code execution)
+    _todo_parse_config_file "$preset_file"
+    
+    # Convert loaded variables to internal format
+    _todo_convert_to_internal_vars
     
     # Show what was applied with smart feedback
     if [[ "$actual_preset_name" != "$preset_name" ]]; then
-        echo "Applied preset: $preset_name → $actual_preset_name (color-mode: $TODO_COLOR_MODE)"
+        echo "Applied preset: $preset_name → $actual_preset_name (color-mode: $_TODO_INTERNAL_COLOR_MODE)"
     else
-        echo "Applied preset: $preset_name (color-mode: $TODO_COLOR_MODE)"
+        echo "Applied preset: $preset_name (color-mode: $_TODO_INTERNAL_COLOR_MODE)"
     fi
     if [[ -n "$TODO_PRESET_DESC" ]]; then
         echo "  $TODO_PRESET_DESC"
@@ -286,7 +422,7 @@ function todo_config_apply_preset() {
     
     # Handle tinted-shell integration message based on actual selection
     if [[ "$actual_preset_name" == *"_tinted" ]]; then
-        case "$TODO_COLOR_MODE" in
+        case "$_TODO_INTERNAL_COLOR_MODE" in
             "dynamic") echo "🎨 Using theme-adaptive colors (forced dynamic mode)" ;;
             "auto") 
                 if [[ "$TINTED_SHELL_ENABLE_BASE16_VARS" == "1" ]]; then
@@ -298,12 +434,12 @@ function todo_config_apply_preset() {
                 fi
                 ;;
         esac
-    elif command -v tinty >/dev/null 2>&1 && [[ "$TODO_COLOR_MODE" == "auto" ]]; then
+    elif command -v tinty >/dev/null 2>&1 && [[ "$_TODO_INTERNAL_COLOR_MODE" == "auto" ]]; then
         echo "💡 Tip: Use 'tinty apply [theme]' for theme integration"
     fi
     
     # Update color arrays
-    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+    _TODO_INTERNAL_COLORS=(${(@s:,:)_TODO_INTERNAL_TASK_COLORS})
     
     return 0
 }
@@ -337,10 +473,44 @@ function todo_config_export_config() {
         vars_to_export=("${config_vars[@]}" "${color_vars[@]}")
     fi
     
-    # Generate export content
+    # Generate export content using internal variables but exporting as TODO_* format
     local export_content=""
     for var in "${vars_to_export[@]}"; do
-        local value="${(P)var}"
+        # Map TODO_* variable names to _TODO_INTERNAL_* variables
+        local internal_var=""
+        case "$var" in
+            "TODO_TITLE") internal_var="_TODO_INTERNAL_TITLE" ;;
+            "TODO_HEART_CHAR") internal_var="_TODO_INTERNAL_HEART_CHAR" ;;
+            "TODO_HEART_POSITION") internal_var="_TODO_INTERNAL_HEART_POSITION" ;;
+            "TODO_BULLET_CHAR") internal_var="_TODO_INTERNAL_BULLET_CHAR" ;;
+            "TODO_SHOW_AFFIRMATION") internal_var="_TODO_INTERNAL_SHOW_AFFIRMATION" ;;
+            "TODO_SHOW_TODO_BOX") internal_var="_TODO_INTERNAL_SHOW_TODO_BOX" ;;
+            "TODO_SHOW_HINTS") internal_var="_TODO_INTERNAL_SHOW_HINTS" ;;
+            "TODO_PADDING_TOP") internal_var="_TODO_INTERNAL_PADDING_TOP" ;;
+            "TODO_PADDING_RIGHT") internal_var="_TODO_INTERNAL_PADDING_RIGHT" ;;
+            "TODO_PADDING_BOTTOM") internal_var="_TODO_INTERNAL_PADDING_BOTTOM" ;;
+            "TODO_PADDING_LEFT") internal_var="_TODO_INTERNAL_PADDING_LEFT" ;;
+            "TODO_BOX_WIDTH_FRACTION") internal_var="_TODO_INTERNAL_BOX_WIDTH_FRACTION" ;;
+            "TODO_BOX_MIN_WIDTH") internal_var="_TODO_INTERNAL_BOX_MIN_WIDTH" ;;
+            "TODO_BOX_MAX_WIDTH") internal_var="_TODO_INTERNAL_BOX_MAX_WIDTH" ;;
+            "TODO_BOX_TOP_LEFT") internal_var="_TODO_INTERNAL_BOX_TOP_LEFT" ;;
+            "TODO_BOX_TOP_RIGHT") internal_var="_TODO_INTERNAL_BOX_TOP_RIGHT" ;;
+            "TODO_BOX_BOTTOM_LEFT") internal_var="_TODO_INTERNAL_BOX_BOTTOM_LEFT" ;;
+            "TODO_BOX_BOTTOM_RIGHT") internal_var="_TODO_INTERNAL_BOX_BOTTOM_RIGHT" ;;
+            "TODO_BOX_HORIZONTAL") internal_var="_TODO_INTERNAL_BOX_HORIZONTAL" ;;
+            "TODO_BOX_VERTICAL") internal_var="_TODO_INTERNAL_BOX_VERTICAL" ;;
+            "TODO_TASK_COLORS") internal_var="_TODO_INTERNAL_TASK_COLORS" ;;
+            "TODO_BORDER_COLOR") internal_var="_TODO_INTERNAL_BORDER_COLOR" ;;
+            "TODO_BORDER_BG_COLOR") internal_var="_TODO_INTERNAL_BORDER_BG_COLOR" ;;
+            "TODO_CONTENT_BG_COLOR") internal_var="_TODO_INTERNAL_CONTENT_BG_COLOR" ;;
+            "TODO_TASK_TEXT_COLOR") internal_var="_TODO_INTERNAL_TASK_TEXT_COLOR" ;;
+            "TODO_TITLE_COLOR") internal_var="_TODO_INTERNAL_TITLE_COLOR" ;;
+            "TODO_AFFIRMATION_COLOR") internal_var="_TODO_INTERNAL_AFFIRMATION_COLOR" ;;
+            "TODO_BULLET_COLOR") internal_var="_TODO_INTERNAL_BULLET_COLOR" ;;
+            *) internal_var="$var" ;;  # Fallback for unmapped variables
+        esac
+        
+        local value="${(P)internal_var}"
         if [[ -n "$value" ]]; then
             export_content+="$var=\"$value\"\n"
         fi
@@ -370,12 +540,13 @@ function todo_config_import_config() {
         return 1
     fi
     
-    # Source the configuration
-    source "$config_file"
-    echo "Configuration imported from: $config_file"
+    # Parse the configuration safely (no code execution)
+    _todo_parse_config_file "$config_file"
     
-    # Update color arrays
-    TODO_COLORS=(${(@s:,:)TODO_TASK_COLORS})
+    # Convert loaded variables to internal format
+    _todo_convert_to_internal_vars
+    
+    echo "Configuration imported from: $config_file"
     
     return 0
 }
@@ -459,7 +630,7 @@ function __todo_show_preset_swatch() {
     
     # Load preset in subshell to avoid affecting current config
     (
-        source "$preset_file"
+        _todo_parse_config_file "$preset_file"
         
         echo "📦 ${(C)preset} Theme:"
         echo -n "  Title: \e[38;5;${TODO_TITLE_COLOR}m${TODO_TITLE}\e[0m"
@@ -476,5 +647,49 @@ function __todo_show_preset_swatch() {
     )
 }
 
+# Convert loaded TODO_* variables to internal _TODO_INTERNAL_* variables
+function _todo_convert_to_internal_vars() {
+    # Configuration variables mapping
+    [[ -n "$TODO_SAVE_FILE" ]] && _TODO_INTERNAL_SAVE_FILE="$TODO_SAVE_FILE"
+    [[ -n "$TODO_AFFIRMATION_FILE" ]] && _TODO_INTERNAL_AFFIRMATION_FILE="$TODO_AFFIRMATION_FILE"
+    [[ -n "$TODO_COLOR_MODE" ]] && _TODO_INTERNAL_COLOR_MODE="$TODO_COLOR_MODE"
+    [[ -n "$TODO_BOX_WIDTH_FRACTION" ]] && _TODO_INTERNAL_BOX_WIDTH_FRACTION="$TODO_BOX_WIDTH_FRACTION"
+    [[ -n "$TODO_BOX_MIN_WIDTH" ]] && _TODO_INTERNAL_BOX_MIN_WIDTH="$TODO_BOX_MIN_WIDTH"
+    [[ -n "$TODO_BOX_MAX_WIDTH" ]] && _TODO_INTERNAL_BOX_MAX_WIDTH="$TODO_BOX_MAX_WIDTH"
+    [[ -n "$TODO_TITLE" ]] && _TODO_INTERNAL_TITLE="$TODO_TITLE"
+    [[ -n "$TODO_HEART_CHAR" ]] && _TODO_INTERNAL_HEART_CHAR="$TODO_HEART_CHAR"
+    [[ -n "$TODO_HEART_POSITION" ]] && _TODO_INTERNAL_HEART_POSITION="$TODO_HEART_POSITION"
+    [[ -n "$TODO_BULLET_CHAR" ]] && _TODO_INTERNAL_BULLET_CHAR="$TODO_BULLET_CHAR"
+    [[ -n "$TODO_SHOW_AFFIRMATION" ]] && _TODO_INTERNAL_SHOW_AFFIRMATION="$TODO_SHOW_AFFIRMATION"
+    [[ -n "$TODO_SHOW_TODO_BOX" ]] && _TODO_INTERNAL_SHOW_TODO_BOX="$TODO_SHOW_TODO_BOX"
+    [[ -n "$TODO_SHOW_HINTS" ]] && _TODO_INTERNAL_SHOW_HINTS="$TODO_SHOW_HINTS"
+    [[ -n "$TODO_PADDING_TOP" ]] && _TODO_INTERNAL_PADDING_TOP="$TODO_PADDING_TOP"
+    [[ -n "$TODO_PADDING_RIGHT" ]] && _TODO_INTERNAL_PADDING_RIGHT="$TODO_PADDING_RIGHT"
+    [[ -n "$TODO_PADDING_BOTTOM" ]] && _TODO_INTERNAL_PADDING_BOTTOM="$TODO_PADDING_BOTTOM"
+    [[ -n "$TODO_PADDING_LEFT" ]] && _TODO_INTERNAL_PADDING_LEFT="$TODO_PADDING_LEFT"
+    [[ -n "$TODO_TASK_COLORS" ]] && _TODO_INTERNAL_TASK_COLORS="$TODO_TASK_COLORS"
+    [[ -n "$TODO_BORDER_COLOR" ]] && _TODO_INTERNAL_BORDER_COLOR="$TODO_BORDER_COLOR"
+    [[ -n "$TODO_BORDER_BG_COLOR" ]] && _TODO_INTERNAL_BORDER_BG_COLOR="$TODO_BORDER_BG_COLOR"
+    [[ -n "$TODO_CONTENT_BG_COLOR" ]] && _TODO_INTERNAL_CONTENT_BG_COLOR="$TODO_CONTENT_BG_COLOR"
+    [[ -n "$TODO_TASK_TEXT_COLOR" ]] && _TODO_INTERNAL_TASK_TEXT_COLOR="$TODO_TASK_TEXT_COLOR"
+    [[ -n "$TODO_TITLE_COLOR" ]] && _TODO_INTERNAL_TITLE_COLOR="$TODO_TITLE_COLOR"
+    [[ -n "$TODO_AFFIRMATION_COLOR" ]] && _TODO_INTERNAL_AFFIRMATION_COLOR="$TODO_AFFIRMATION_COLOR"
+    [[ -n "$TODO_BULLET_COLOR" ]] && _TODO_INTERNAL_BULLET_COLOR="$TODO_BULLET_COLOR"
+    [[ -n "$TODO_BOX_TOP_LEFT" ]] && _TODO_INTERNAL_BOX_TOP_LEFT="$TODO_BOX_TOP_LEFT"
+    [[ -n "$TODO_BOX_TOP_RIGHT" ]] && _TODO_INTERNAL_BOX_TOP_RIGHT="$TODO_BOX_TOP_RIGHT"
+    [[ -n "$TODO_BOX_BOTTOM_LEFT" ]] && _TODO_INTERNAL_BOX_BOTTOM_LEFT="$TODO_BOX_BOTTOM_LEFT"
+    [[ -n "$TODO_BOX_BOTTOM_RIGHT" ]] && _TODO_INTERNAL_BOX_BOTTOM_RIGHT="$TODO_BOX_BOTTOM_RIGHT"
+    [[ -n "$TODO_BOX_HORIZONTAL" ]] && _TODO_INTERNAL_BOX_HORIZONTAL="$TODO_BOX_HORIZONTAL"
+    [[ -n "$TODO_BOX_VERTICAL" ]] && _TODO_INTERNAL_BOX_VERTICAL="$TODO_BOX_VERTICAL"
+    
+    # Update internal color array
+    if [[ -n "$_TODO_INTERNAL_TASK_COLORS" ]]; then
+        _TODO_INTERNAL_COLORS=(${(@s:,:)_TODO_INTERNAL_TASK_COLORS})
+    fi
+}
+
 # Auto-initialize when module is loaded
 __todo_config_module_init
+
+# Convert any environment variables to internal format on load
+_todo_convert_to_internal_vars
