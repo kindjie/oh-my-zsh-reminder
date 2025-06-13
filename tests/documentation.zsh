@@ -449,6 +449,9 @@ function test_config_variables_documented() {
         "TODO_COLORS"                          # Parsed array from TODO_TASK_COLORS
         "TODO_TASKS"                           # Runtime task storage
         "TODO_TASKS_COLORS"                    # Runtime color storage
+        "_TODO_AVAILABLE_PRESETS"              # Internal preset discovery
+        "_TODO_USER_PRESETS"                   # Internal filtered preset list
+        "_TODO_PRESET_LIST"                    # Internal preset list string
         "_TODO_INTERNAL_FIRST_RUN_FILE"        # Internal state tracking
         "_TODO_INTERNAL_CACHED_TASKS"          # Performance optimization - cache
         "_TODO_INTERNAL_CACHED_COLORS"         # Performance optimization - cache
@@ -456,6 +459,9 @@ function test_config_variables_documented() {
         "_TODO_INTERNAL_FILE_MTIME"            # Performance optimization - file tracking
         "_TODO_INTERNAL_PLUGIN_DIR"            # Internal path resolution
         "_TODO_INTERNAL_LOADED_MODULES"        # Lazy loading tracking
+        "TODO_AVAILABLE_PRESETS"               # Without underscore prefix (grep match)
+        "TODO_USER_PRESETS"                    # Without underscore prefix (grep match)
+        "TODO_PRESET_LIST"                     # Without underscore prefix (grep match)
         "TODO_INTERNAL_FIRST_RUN_FILE"         # Without underscore prefix (grep match)
         "TODO_INTERNAL_CACHED_TASKS"           # Without underscore prefix (grep match)
         "TODO_INTERNAL_CACHED_COLORS"          # Without underscore prefix (grep match)
@@ -474,7 +480,7 @@ function test_config_variables_documented() {
         "TODO_LOADED_MODULES"                  # Legacy name
     )
     
-    # Check README and CLAUDE.md for variable documentation
+    # Check README, CLAUDE.md, and help output for variable documentation
     local doc_content=""
     if [[ -f "README.md" ]]; then
         doc_content+=$(cat README.md)
@@ -482,6 +488,8 @@ function test_config_variables_documented() {
     if [[ -f "CLAUDE.md" ]]; then
         doc_content+=$(cat CLAUDE.md)
     fi
+    # Include help output as documentation source
+    doc_content+=$(zsh -c 'source reminder.plugin.zsh; todo help --full' 2>/dev/null)
     
     # Check each implementation variable for documentation (skip internal ones)
     for var in ${(f)impl_vars}; do

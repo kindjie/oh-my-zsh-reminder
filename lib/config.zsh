@@ -225,19 +225,40 @@ function todo_config_get_preset_description() {
         sed 's/^TODO_PRESET_DESC="//' | sed 's/"$//'
 }
 
-# List preset names only (for arrays)
+# List preset names only (for arrays) - internal use, shows all presets
 function todo_config_get_preset_names() {
     todo_config_find_presets | cut -d: -f1 | sort -u
+}
+
+# List user-facing preset names (filtered base presets only)
+function todo_config_get_user_preset_names() {
+    # Filter out _tinted variants to show only semantic base presets
+    todo_config_get_preset_names | grep -v '_tinted$' | sort -u
 }
 
 # Apply a preset by name
 function todo_config_apply_preset() {
     local preset_name="$1"
-    local preset_file="$(__todo_find_preset_file "$preset_name")"
+    local actual_preset_name="$preset_name"
+    
+    # Smart preset selection based on color mode and tinted detection
+    if _should_use_tinted_preset && [[ "$preset_name" != *"_tinted" ]]; then
+        # Try to use tinted variant if available
+        local tinted_name="${preset_name}_tinted"
+        if [[ -f "$(__todo_find_preset_file "$tinted_name")" ]]; then
+            actual_preset_name="$tinted_name"
+        fi
+    elif ! _should_use_tinted_preset && [[ "$preset_name" == *"_tinted" ]]; then
+        # Force static: remove _tinted suffix if user explicitly requested tinted preset
+        actual_preset_name="${preset_name%_tinted}"
+    fi
+    
+    local preset_file="$(__todo_find_preset_file "$actual_preset_name")"
     
     if [[ ! -f "$preset_file" ]]; then
         echo "Error: Preset '$preset_name' not found" >&2
-        echo "Available presets: $(todo_config_get_preset_names | tr '\n' ' ')" >&2
+        echo "Available presets: $(todo_config_get_user_preset_names | tr '\n' ' ')" >&2
+        echo "💡 Theme-adaptive variants are selected automatically based on your TODO_COLOR_MODE setting" >&2
         return 1
     fi
     
@@ -253,16 +274,31 @@ function todo_config_apply_preset() {
     # Source the config file
     source "$preset_file"
     
-    # Show what was applied
-    echo "Applied preset: $preset_name"
+    # Show what was applied with smart feedback
+    if [[ "$actual_preset_name" != "$preset_name" ]]; then
+        echo "Applied preset: $preset_name → $actual_preset_name (color-mode: $TODO_COLOR_MODE)"
+    else
+        echo "Applied preset: $preset_name (color-mode: $TODO_COLOR_MODE)"
+    fi
     if [[ -n "$TODO_PRESET_DESC" ]]; then
         echo "  $TODO_PRESET_DESC"
     fi
     
-    # Handle tinted-shell integration message
-    if [[ "$preset_file" == *"_tinted.conf" ]]; then
-        echo "🎨 Using theme-adaptive colors"
-    elif command -v tinty >/dev/null 2>&1; then
+    # Handle tinted-shell integration message based on actual selection
+    if [[ "$actual_preset_name" == *"_tinted" ]]; then
+        case "$TODO_COLOR_MODE" in
+            "dynamic") echo "🎨 Using theme-adaptive colors (forced dynamic mode)" ;;
+            "auto") 
+                if [[ "$TINTED_SHELL_ENABLE_BASE16_VARS" == "1" ]]; then
+                    echo "🎨 Using theme-adaptive colors (tinted-shell detected)"
+                elif command -v tinty >/dev/null 2>&1; then
+                    echo "🎨 Using theme-adaptive colors (tinty available)"
+                else
+                    echo "🎨 Using theme-adaptive colors"
+                fi
+                ;;
+        esac
+    elif command -v tinty >/dev/null 2>&1 && [[ "$TODO_COLOR_MODE" == "auto" ]]; then
         echo "💡 Tip: Use 'tinty apply [theme]' for theme integration"
     fi
     
