@@ -259,7 +259,7 @@ export TODO_BULLET_COLOR=39                  # Bullet character color (default: 
 export TODO_TEXT_COLOR=245                   # Deprecated - use TODO_TASK_TEXT_COLOR instead
 
 # File locations
-export TODO_SAVE_FILE="$HOME/.my_todos"      # Save location (default: ~/.todo.save)
+export TODO_SAVE_FILE="$HOME/.my_todos"      # Save location (default: ~/.config/todo-reminder/data.save)
 export TODO_AFFIRMATION_FILE="/tmp/affirm"   # Affirmation cache (default: /tmp/todo_affirmation)
 ```
 
@@ -463,7 +463,7 @@ Todo box enabled
 
 ### File Format
 
-Tasks are stored in `~/.todo.save` with this format:
+Tasks are stored in `~/.config/todo-reminder/data.save` with this format:
 
 - Line 1: Tasks (null-byte separated)
 - Line 2: Colors (null-byte separated)
@@ -605,7 +605,7 @@ This means:
 
 - Your todos appear automatically - no manual commands needed
 - They stay visible in scrollback as you work through commands
-- New terminals immediately show existing tasks from `~/.todo.save`
+- New terminals immediately show existing tasks from `~/.config/todo-reminder/data.save`
 - Performance is optimized to never slow down your prompt
 
 ## 📜 License
