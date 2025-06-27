@@ -332,7 +332,7 @@ function regenerate_colors_for_existing_tasks() {
     todo_color_index="$color_index"
 
     # Save to file
-    todo_save
+    _todo_save
 }
 
 # Calculate optimal box width based on terminal size and configuration
@@ -402,7 +402,7 @@ function _should_use_tinted_preset() {
 }
 
 autoload -U add-zsh-hook
-add-zsh-hook precmd todo_display
+add-zsh-hook precmd _todo_display
 
 
 # Main todo command dispatcher - pure subcommand interface
@@ -463,7 +463,7 @@ function _todo_add_command() {
     todo_tasks_colors+="$color"
     (( todo_color_index %= ${#_TODO_INTERNAL_COLORS} ))
     (( todo_color_index += 1 ))
-    todo_save
+    _todo_save
     
     # Success feedback for users
     echo "✅ Task added: \"$task\""
@@ -498,7 +498,7 @@ function _todo_done_command() {
         local removed_task="${todo_tasks[index]}"
         todo_tasks[index]=()
         todo_tasks_colors[index]=()
-        todo_save
+        _todo_save
         
         # Success feedback
         echo "✅ Task completed: \"$removed_task\""
@@ -1121,7 +1121,7 @@ function fetch_affirmation_async() {
 }
 
 # Display todo box with tasks (called before each prompt)
-function todo_display() {
+function _todo_display() {
     # Skip display if todo box is hidden
     if [[ "$_TODO_INTERNAL_SHOW_TODO_BOX" == "false" ]]; then
         return
@@ -1295,7 +1295,7 @@ function _todo_serialize_config() {
     echo "${config_parts[*]}"
 }
 
-function todo_save() {
+function __todo_save() {
     local temp_file="${_TODO_INTERNAL_SAVE_FILE}.tmp.$$"
     
     # Atomic write: write to temp file first, then move to final location
@@ -1802,7 +1802,7 @@ function todo_config_set() {
     esac
     
     # Persist configuration changes
-    todo_save
+    _todo_save
 }
 
 # Reset configuration to defaults
@@ -1863,7 +1863,7 @@ function todo_config_preset() {
     todo_config_apply_preset "$@"
     
     # Save configuration changes for persistence
-    todo_save
+    _todo_save
 }
 
 

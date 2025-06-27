@@ -29,8 +29,8 @@ function show_wizard_preview() {
         had_tasks=true
     fi
     
-    # Use the actual todo_display function
-    todo_display
+    # Use the actual _todo_display function
+    _todo_display
     
     # Clean up sample tasks if we added them
     if [[ "$had_tasks" == false ]]; then

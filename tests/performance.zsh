@@ -136,7 +136,7 @@ test_basic_display_performance() {
   # Test function
   basic_display() {
     _todo_load_tasks
-    todo_display >/dev/null
+    _todo_display >/dev/null
   }
   
   run_performance_test "Basic display (3 tasks)" basic_display 0.050
@@ -170,7 +170,7 @@ test_large_task_list_performance() {
   
   large_display() {
     _todo_load_tasks
-    todo_display >/dev/null
+    _todo_display >/dev/null
   }
   
   run_performance_test "Large display (50 tasks)" large_display 0.100
@@ -195,7 +195,7 @@ test_text_wrapping_performance() {
   
   wrap_display() {
     _todo_load_tasks
-    todo_display >/dev/null
+    _todo_display >/dev/null
   }
   
   run_performance_test "Text wrapping (complex)" wrap_display 0.075
@@ -220,7 +220,7 @@ test_emoji_performance() {
   
   emoji_display() {
     _todo_load_tasks
-    todo_display >/dev/null
+    _todo_display >/dev/null
   }
   
   run_performance_test "Emoji rendering" emoji_display 0.060
@@ -246,7 +246,7 @@ test_configuration_performance() {
     TODO_PADDING_BOTTOM=2
     TODO_PADDING_LEFT=3
     _todo_load_tasks
-    todo_display >/dev/null
+    _todo_display >/dev/null
   }
   
   run_performance_test "Custom configuration" config_display 0.050
@@ -274,7 +274,7 @@ test_color_performance() {
     # Only display first 20 to keep test reasonable
     TODO_TASKS=("${TODO_TASKS[@]:0:20}")
     TODO_COLORS=("${TODO_COLORS[@]:0:20}")
-    todo_display >/dev/null
+    _todo_display >/dev/null
   }
   
   run_performance_test "Color rendering (20 colors)" color_display 0.060
@@ -299,7 +299,7 @@ test_width_calculation_performance() {
     width_display() {
       COLUMNS=$width
       _todo_load_tasks
-      todo_display >/dev/null
+      _todo_display >/dev/null
     }
     
     run_performance_test "Width calculation (COLUMNS=$width)" width_display 0.040
@@ -342,7 +342,7 @@ test_memory_usage() {
     
     # Run display multiple times
     for i in {1..10}; do
-      todo_display >/dev/null 2>&1
+      _todo_display >/dev/null 2>&1
     done
     
     # Get final memory
@@ -373,7 +373,7 @@ test_rapid_display_stress() {
     
     # Rapid fire displays
     for i in {1..50}; do
-      todo_display >/dev/null 2>&1
+      _todo_display >/dev/null 2>&1
     done
   }
   
@@ -482,7 +482,7 @@ EOF
   # Test display performance with slow network
   slow_network_display() {
     PATH="$mock_curl_dir:$PATH" _todo_load_tasks
-    PATH="$mock_curl_dir:$PATH" todo_display >/dev/null
+    PATH="$mock_curl_dir:$PATH" _todo_display >/dev/null
   }
   
   run_performance_test "Display with slow network (1s timeout)" slow_network_display 0.050
@@ -507,7 +507,7 @@ test_cache_vs_network_performance() {
   # Test cache performance
   cache_display() {
     _todo_load_tasks
-    todo_display >/dev/null
+    _todo_display >/dev/null
   }
   
   run_performance_test "Display with cached affirmation" cache_display 0.030
@@ -518,7 +518,7 @@ test_cache_vs_network_performance() {
   
   no_cache_display() {
     _todo_load_tasks
-    todo_display >/dev/null
+    _todo_display >/dev/null
   }
   
   run_performance_test "Display without cache (fallback)" no_cache_display 0.030
@@ -542,7 +542,7 @@ test_missing_dependencies_performance() {
   # Test display performance without curl/jq
   no_deps_display() {
     PATH="$mock_path_dir" _todo_load_tasks
-    PATH="$mock_path_dir" todo_display >/dev/null
+    PATH="$mock_path_dir" _todo_display >/dev/null
   }
   
   run_performance_test "Display without curl/jq dependencies" no_deps_display 0.030
@@ -570,7 +570,7 @@ test_rapid_display_performance() {
     
     # Rapid fire displays - should all use cache
     for i in {1..20}; do
-      todo_display >/dev/null 2>&1
+      _todo_display >/dev/null 2>&1
     done
   }
   
@@ -602,7 +602,7 @@ EOF
   # Test display performance with network failure
   network_fail_display() {
     PATH="$mock_curl_dir:$PATH" _todo_load_tasks
-    PATH="$mock_curl_dir:$PATH" todo_display >/dev/null
+    PATH="$mock_curl_dir:$PATH" _todo_display >/dev/null
   }
   
   run_performance_test "Display with network failure" network_fail_display 0.040
@@ -631,7 +631,7 @@ test_background_process_cleanup() {
     
     _todo_load_tasks
     for i in {1..5}; do  # Reduced from 10
-      todo_display >/dev/null 2>&1
+      _todo_display >/dev/null 2>&1
       sleep 0.1  # Small delay to allow process spawning
     done
     

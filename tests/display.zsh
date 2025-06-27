@@ -82,7 +82,7 @@ test_basic_display() {
     source_test_plugin
     setup_test_data
     
-    local output=$(COLUMNS=80 todo_display 2>&1)
+    local output=$(COLUMNS=80 _todo_display 2>&1)
     if [[ -n "$output" ]] && [[ "$output" == *"┌"* ]] && [[ "$output" == *"└"* ]]; then
         echo "✅ PASS: Basic display shows todo box with borders"
         ((passed_tests++))
@@ -101,7 +101,7 @@ test_basic_display() {
     
     # Visual output for manual verification
     echo "Display output:"
-    todo_display
+    _todo_display
     
     local test_end_time=$(get_timestamp)
     local test_duration=$(calculate_duration "$test_start_time" "$test_end_time")
@@ -127,8 +127,8 @@ test_nonblocking_affirmation() {
         return 1
     }
     
-    # Test that todo_display completes quickly even with network issues
-    todo_display >/dev/null 2>&1
+    # Test that _todo_display completes quickly even with network issues
+    _todo_display >/dev/null 2>&1
     
     end_time=$(date +%s.%N)
     execution_time=$(echo "$end_time - $start_time" | bc 2>/dev/null || echo "unknown")
@@ -194,7 +194,7 @@ test_show_hide() {
     # Test hidden todo box
     original_box_state="$_TODO_INTERNAL_SHOW_TODO_BOX"
     _TODO_INTERNAL_SHOW_TODO_BOX="false"
-    output=$(COLUMNS=80 todo_display 2>&1)
+    output=$(COLUMNS=80 _todo_display 2>&1)
     if [[ -z "$output" || "$output" == $'\n' ]]; then
         echo "✅ PASS: Hidden todo box produces no output"
         ((passed_tests++))
@@ -207,7 +207,7 @@ test_show_hide() {
     _TODO_INTERNAL_SHOW_TODO_BOX="true"
     original_affirmation_state="$_TODO_INTERNAL_SHOW_AFFIRMATION"
     _TODO_INTERNAL_SHOW_AFFIRMATION="false"
-    output=$(COLUMNS=80 todo_display 2>&1)
+    output=$(COLUMNS=80 _todo_display 2>&1)
     if [[ -n "$output" ]]; then
         echo "✅ PASS: Hidden affirmation still shows todo box"
         ((passed_tests++))
@@ -241,7 +241,7 @@ test_empty_tasks() {
         todo_color_index=1
     }
     
-    output=$(COLUMNS=80 todo_display 2>&1)
+    output=$(COLUMNS=80 _todo_display 2>&1)
     # Empty task list may show contextual hints (UX improvement), terminal width warnings, or no output
     if [[ -z "$output" ]] || [[ "$output" == *"💡"* ]] || [[ "$output" == *"Terminal too narrow"* ]]; then
         echo "✅ PASS: Empty task list produces no output, helpful hints, or terminal warnings"

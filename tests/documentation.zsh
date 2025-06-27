@@ -212,7 +212,7 @@ function test_claude_md_functions() {
         "todo_help"
         "todo_colors"
         "_todo_load_tasks"
-        "todo_save"
+        "_todo_save"
     )
     
     local missing_functions=()
