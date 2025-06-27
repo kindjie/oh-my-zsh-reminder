@@ -28,7 +28,7 @@ setup_test_data() {
     # Set up test data with single-file format (tasks with null separators)
     printf 'Test task with some longer text that should wrap nicely within the box\000Another shorter task\000A third task to show multiple items\n\e[38;5;167m\000\e[38;5;71m\000\e[38;5;136m\n4\n' > "$TEST_SAVE_FILE"
     
-    # Create a modified load_tasks function for testing
+    # Create a modified _todo_load_tasks function for testing
     function load_tasks_test() {
         if [[ -e "$TEST_SAVE_FILE" ]]; then
             if ! local file_content="$(cat "$TEST_SAVE_FILE" 2>/dev/null)"; then
@@ -64,8 +64,8 @@ setup_test_data() {
         fi
     }
     
-    # Override load_tasks for testing and ensure caching variables are reset
-    function load_tasks() { 
+    # Override _todo_load_tasks for testing and ensure caching variables are reset
+    function _todo_load_tasks() { 
         # Reset cache variables to force reload
         TODO_FILE_MTIME=0
         TODO_CACHED_TASKS=""
@@ -235,7 +235,7 @@ test_empty_tasks() {
     echo "" > "$EMPTY_TEST_SAVE_FILE"
     
     # Override with empty data
-    function load_tasks() {
+    function _todo_load_tasks() {
         todo_tasks=()
         todo_tasks_colors=()
         todo_color_index=1
@@ -261,7 +261,7 @@ test_empty_tasks() {
 # Cleanup function
 cleanup_display_tests() {
     rm -f "$TEST_SAVE_FILE" 2>/dev/null || true
-    unfunction load_tasks 2>/dev/null || true
+    unfunction _todo_load_tasks 2>/dev/null || true
     unfunction load_tasks_test 2>/dev/null || true
 }
 

@@ -76,7 +76,7 @@ function test_color_mode_default() {
 # Test 3: Config set command validation
 function test_config_set_color_mode() {
     # Initialize tasks to ensure todo_save works
-    load_tasks >/dev/null 2>&1
+    _todo_load_tasks >/dev/null 2>&1
     
     # Test static mode
     todo_config_set color-mode static >/dev/null 2>&1
@@ -104,7 +104,7 @@ function test_config_set_color_mode_invalid() {
 # Test 5: Config persistence
 function test_color_mode_persistence() {
     # Initialize tasks first
-    load_tasks >/dev/null 2>&1
+    _todo_load_tasks >/dev/null 2>&1
     
     # Set color mode (this calls todo_save automatically)
     todo_config_set color-mode dynamic >/dev/null 2>&1
@@ -146,7 +146,7 @@ function test_config_set_explanations() {
 # Test 8: Config reset behavior
 function test_config_reset_color_mode() {
     # Initialize tasks first
-    load_tasks >/dev/null 2>&1
+    _todo_load_tasks >/dev/null 2>&1
     
     # Set non-default value
     todo_config_set color-mode dynamic >/dev/null 2>&1

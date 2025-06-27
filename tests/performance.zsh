@@ -135,7 +135,7 @@ test_basic_display_performance() {
   
   # Test function
   basic_display() {
-    load_tasks
+    _todo_load_tasks
     todo_display >/dev/null
   }
   
@@ -169,7 +169,7 @@ test_large_task_list_performance() {
   create_test_save_data "${task_args[@]}"
   
   large_display() {
-    load_tasks
+    _todo_load_tasks
     todo_display >/dev/null
   }
   
@@ -194,7 +194,7 @@ test_text_wrapping_performance() {
     "$long_text with special chars ñáéíóú αβγδε 中文字符|yellow"
   
   wrap_display() {
-    load_tasks
+    _todo_load_tasks
     todo_display >/dev/null
   }
   
@@ -219,7 +219,7 @@ test_emoji_performance() {
     "Mixed 中文 and 🎯 emojis αβγ|blue"
   
   emoji_display() {
-    load_tasks
+    _todo_load_tasks
     todo_display >/dev/null
   }
   
@@ -245,7 +245,7 @@ test_configuration_performance() {
     TODO_PADDING_RIGHT=3
     TODO_PADDING_BOTTOM=2
     TODO_PADDING_LEFT=3
-    load_tasks
+    _todo_load_tasks
     todo_display >/dev/null
   }
   
@@ -270,7 +270,7 @@ test_color_performance() {
   create_test_save_data "${color_tasks[@]}"
   
   color_display() {
-    load_tasks
+    _todo_load_tasks
     # Only display first 20 to keep test reasonable
     TODO_TASKS=("${TODO_TASKS[@]:0:20}")
     TODO_COLORS=("${TODO_COLORS[@]:0:20}")
@@ -298,7 +298,7 @@ test_width_calculation_performance() {
   for width in $widths; do
     width_display() {
       COLUMNS=$width
-      load_tasks
+      _todo_load_tasks
       todo_display >/dev/null
     }
     
@@ -334,7 +334,7 @@ test_memory_usage() {
   
   # Start a subshell to measure
   (
-    load_tasks
+    _todo_load_tasks
     
     # Get initial memory
     local pid=$$
@@ -369,7 +369,7 @@ test_rapid_display_stress() {
   create_test_save_data "Stress test task 1|red" "Stress test task 2|green"
   
   rapid_test() {
-    load_tasks
+    _todo_load_tasks
     
     # Rapid fire displays
     for i in {1..50}; do
@@ -400,7 +400,7 @@ test_function_profiling() {
   setup_test_data
   create_test_save_data "Profile test task with some text|red"
   
-  load_tasks
+  _todo_load_tasks
   
   # Profile individual functions
   echo "Individual function timing:"
@@ -481,7 +481,7 @@ EOF
   
   # Test display performance with slow network
   slow_network_display() {
-    PATH="$mock_curl_dir:$PATH" load_tasks
+    PATH="$mock_curl_dir:$PATH" _todo_load_tasks
     PATH="$mock_curl_dir:$PATH" todo_display >/dev/null
   }
   
@@ -506,7 +506,7 @@ test_cache_vs_network_performance() {
   
   # Test cache performance
   cache_display() {
-    load_tasks
+    _todo_load_tasks
     todo_display >/dev/null
   }
   
@@ -517,7 +517,7 @@ test_cache_vs_network_performance() {
   rm -f "$TODO_AFFIRMATION_FILE"
   
   no_cache_display() {
-    load_tasks
+    _todo_load_tasks
     todo_display >/dev/null
   }
   
@@ -541,7 +541,7 @@ test_missing_dependencies_performance() {
   
   # Test display performance without curl/jq
   no_deps_display() {
-    PATH="$mock_path_dir" load_tasks
+    PATH="$mock_path_dir" _todo_load_tasks
     PATH="$mock_path_dir" todo_display >/dev/null
   }
   
@@ -566,7 +566,7 @@ test_rapid_display_performance() {
   
   # Simple rapid display test without network mocking
   rapid_display_test() {
-    load_tasks
+    _todo_load_tasks
     
     # Rapid fire displays - should all use cache
     for i in {1..20}; do
@@ -601,7 +601,7 @@ EOF
   
   # Test display performance with network failure
   network_fail_display() {
-    PATH="$mock_curl_dir:$PATH" load_tasks
+    PATH="$mock_curl_dir:$PATH" _todo_load_tasks
     PATH="$mock_curl_dir:$PATH" todo_display >/dev/null
   }
   
@@ -629,7 +629,7 @@ test_background_process_cleanup() {
     # Pre-populate cache to minimize actual background processes
     echo "Background test affirmation" > "$TODO_AFFIRMATION_FILE"
     
-    load_tasks
+    _todo_load_tasks
     for i in {1..5}; do  # Reduced from 10
       todo_display >/dev/null 2>&1
       sleep 0.1  # Small delay to allow process spawning

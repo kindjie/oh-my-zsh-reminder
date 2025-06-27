@@ -211,7 +211,7 @@ function test_claude_md_functions() {
         "_todo_toggle_command"
         "todo_help"
         "todo_colors"
-        "load_tasks"
+        "_todo_load_tasks"
         "todo_save"
     )
     

@@ -197,7 +197,7 @@ typeset -i -g _TODO_INTERNAL_CACHED_COLOR_INDEX=1
 
 # Load tasks and colors from single save file with caching for performance
 # File format: tasks on line 1, colors on line 2, color_index on line 3
-function load_tasks() {
+function _todo__todo_load_tasks() {
     local current_mtime=0
     
     # Get file modification time (cross-platform)
@@ -458,7 +458,7 @@ function _todo_add_command() {
     
     local color=$'\e[38;5;'${_TODO_INTERNAL_COLORS[${todo_color_index}]}$'m'
 
-    load_tasks
+    _todo_load_tasks
     todo_tasks+="$task"
     todo_tasks_colors+="$color"
     (( todo_color_index %= ${#_TODO_INTERNAL_COLORS} ))
@@ -479,7 +479,7 @@ function _todo_done_command() {
         echo "Usage: todo done <pattern>"
         echo "Example: todo done \"Buy groceries\""
         echo "💡 Use tab completion to see available tasks"
-        load_tasks
+        _todo_load_tasks
         if [[ ${#todo_tasks} -gt 0 ]]; then
             echo "Current tasks:"
             local i=1
@@ -491,7 +491,7 @@ function _todo_done_command() {
         return 1
     fi
 
-    load_tasks
+    _todo_load_tasks
     local index=${(M)todo_tasks[(i)${pattern}*]}
 
     if [[ $index -le ${#todo_tasks} ]]; then
@@ -760,7 +760,7 @@ function _todo_completion() {
             case ${words[2]} in
                 done)
                     # Show current tasks for completion
-                    load_tasks
+                    _todo_load_tasks
                     if [[ ${#todo_tasks} -gt 0 ]]; then
                         compadd "${todo_tasks[@]}"
                     else
@@ -849,7 +849,7 @@ if command -v compdef >/dev/null 2>&1; then
     zstyle ':completion:*:*:*:*:functions' ignored-patterns \
         'todo_*' '_todo_*' 'autoload_todo_module' 'calculate_box_width' \
         'draw_todo_box' 'fetch_affirmation_async' 'format_affirmation' \
-        'format_todo_line' 'load_tasks' 'regenerate_colors_for_existing_tasks' \
+        'format_todo_line' '_todo_load_tasks' 'regenerate_colors_for_existing_tasks' \
         'show_*' 'wrap_todo_text'
         
     # Also ignore internal variables
@@ -1137,7 +1137,7 @@ function todo_display() {
         return 1
     fi
 
-    load_tasks
+    _todo_load_tasks
     if [[ ${#todo_tasks} -gt 0 ]]; then
         # Add top padding
         for (( i = 0; i < _TODO_INTERNAL_PADDING_TOP; i++ )); do

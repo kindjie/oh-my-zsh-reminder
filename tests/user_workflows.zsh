@@ -166,7 +166,7 @@ test_power_user_workflow() {
     local task_count=$(zsh -c "
         autoload -U colors; colors
         source '$SCRIPT_DIR/../reminder.plugin.zsh'
-        load_tasks
+        _todo_load_tasks
         echo \${#todo_tasks}
     ")
     
