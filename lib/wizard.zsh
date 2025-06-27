@@ -212,7 +212,7 @@ function _todo_config_wizard_real() {
             
             # Map selection to preset name using centralized list
             local preset_index=$((preset_choice))
-            preset_name="${_TODO_AVAILABLE_PRESETS[$preset_index]}"
+            preset_name="${_TODO_INTERNAL_AVAILABLE_PRESETS[$preset_index]}"
             
             echo "   ${fg[green]}Applying preset '$preset_name'...${reset_color}"
             todo_config preset "$preset_name" >/dev/null 2>&1

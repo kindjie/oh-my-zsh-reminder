@@ -474,7 +474,7 @@ test_save_preset() {
 # Test 21: Preset discovery and availability
 test_preset_discovery() {
     # Test preset discovery function
-    local preset_names=($(todo_config_get_preset_names))
+    local preset_names=($(_todo_config_get_preset_names))
     
     # Should find at least the 4 semantic presets
     local required_presets=("subtle" "balanced" "vibrant" "loud")

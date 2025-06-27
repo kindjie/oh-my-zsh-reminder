@@ -27,8 +27,8 @@ function run_test() {
 
 # Test 1: User preset list filters tinted variants
 function test_user_preset_filtering() {
-    local user_presets=($(todo_config_get_user_preset_names))
-    local full_presets=($(todo_config_get_preset_names))
+    local user_presets=($(_todo_config_get_user_preset_names))
+    local full_presets=($(_todo_config_get_preset_names))
     
     # User list should be smaller than full list
     [[ ${#user_presets[@]} -lt ${#full_presets[@]} ]] || return 1
@@ -49,7 +49,7 @@ function test_user_preset_filtering() {
 
 # Test 2: Full preset list includes all variants
 function test_full_preset_list() {
-    local full_presets=($(todo_config_get_preset_names))
+    local full_presets=($(_todo_config_get_preset_names))
     
     # Should contain both regular and tinted variants
     [[ "${full_presets[(r)balanced]}" == "balanced" ]] || return 1
@@ -91,7 +91,7 @@ function test_error_message_filtering() {
 # Test 5: Tab completion consistency (hardcoded presets)
 function test_tab_completion_consistency() {
     # This test checks that the hardcoded tab completion matches our filtered list
-    local user_presets=($(todo_config_get_user_preset_names | sort))
+    local user_presets=($(_todo_config_get_user_preset_names | sort))
     local expected=("balanced" "loud" "subtle" "vibrant")
     
     # Check all expected presets are in user list
@@ -107,8 +107,8 @@ function test_tab_completion_consistency() {
 
 # Test 6: Preset list variable uses filtered list
 function test_preset_list_variable() {
-    # _TODO_PRESET_LIST should use filtered list
-    [[ "$_TODO_PRESET_LIST" == "balanced, loud, subtle, vibrant" ]] || return 1
+    # _TODO_INTERNAL_PRESET_LIST should use filtered list
+    [[ "$_TODO_INTERNAL_PRESET_LIST" == "balanced, loud, subtle, vibrant" ]] || return 1
     return 0
 }
 
@@ -126,7 +126,7 @@ function test_help_explanation() {
 
 # Test 8: All base presets have tinted variants
 function test_preset_coverage() {
-    local user_presets=($(todo_config_get_user_preset_names))
+    local user_presets=($(_todo_config_get_user_preset_names))
     
     # Each base preset should have a corresponding tinted variant
     for preset in "${user_presets[@]}"; do
@@ -139,7 +139,7 @@ function test_preset_coverage() {
 
 # Test 9: Tinted presets have correct format
 function test_tinted_preset_format() {
-    local user_presets=($(todo_config_get_user_preset_names))
+    local user_presets=($(_todo_config_get_user_preset_names))
     
     for preset in "${user_presets[@]}"; do
         local tinted_file="$(__todo_find_preset_file "${preset}_tinted")"
@@ -165,7 +165,7 @@ function test_tinted_preset_format() {
 # Test 10: Display consistency across interfaces
 function test_display_consistency() {
     # Help text count
-    local help_preset_count=$(echo "$_TODO_PRESET_LIST" | tr ',' '\n' | wc -l | tr -d ' ')
+    local help_preset_count=$(echo "$_TODO_INTERNAL_PRESET_LIST" | tr ',' '\n' | wc -l | tr -d ' ')
     
     # Error message count  
     local error_output=$(todo config preset invalid 2>&1)
@@ -180,7 +180,7 @@ function test_display_consistency() {
 
 # Test 11: Preset descriptions preserved
 function test_preset_descriptions() {
-    local user_presets=($(todo_config_get_user_preset_names))
+    local user_presets=($(_todo_config_get_user_preset_names))
     
     for preset in "${user_presets[@]}"; do
         local desc=$(todo_config_get_preset_description "$preset")
@@ -193,10 +193,10 @@ function test_preset_descriptions() {
 # Test 12: Internal vs user functions distinction  
 function test_function_distinction() {
     # Internal function should show all presets
-    local internal_count=$(todo_config_get_preset_names | wc -l | tr -d ' ')
+    local internal_count=$(_todo_config_get_preset_names | wc -l | tr -d ' ')
     
     # User function should show filtered presets
-    local user_count=$(todo_config_get_user_preset_names | wc -l | tr -d ' ')
+    local user_count=$(_todo_config_get_user_preset_names | wc -l | tr -d ' ')
     
     # Internal should have more presets than user
     [[ "$internal_count" -gt "$user_count" ]] || return 1
@@ -208,7 +208,7 @@ function test_function_distinction() {
 
 # Test 13: Filtered list alphabetical order
 function test_filtered_list_order() {
-    local user_presets=($(todo_config_get_user_preset_names))
+    local user_presets=($(_todo_config_get_user_preset_names))
     local sorted_presets=($(printf '%s\n' "${user_presets[@]}" | sort))
     
     # Lists should be identical (already sorted)

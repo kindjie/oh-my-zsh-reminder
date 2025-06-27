@@ -10,9 +10,9 @@ _TODO_INTERNAL_AFFIRMATION_FILE="${_TODO_INTERNAL_AFFIRMATION_FILE:-${TMPDIR:-/t
 _TODO_INTERNAL_COLOR_MODE="${_TODO_INTERNAL_COLOR_MODE:-auto}"                   # Color selection mode: "static", "dynamic", "auto"
 
 # Available configuration presets (dynamically discovered)
-_TODO_AVAILABLE_PRESETS=($(todo_config_get_preset_names))              # Internal use - all presets
-_TODO_USER_PRESETS=($(todo_config_get_user_preset_names))               # User display - filtered base presets
-_TODO_PRESET_LIST="${(j:, :)_TODO_USER_PRESETS}"                       # Used in help text
+_TODO_INTERNAL_AVAILABLE_PRESETS=($(_todo_config_get_preset_names))              # Internal use - all presets
+_TODO_INTERNAL_USER_PRESETS=($(_todo_config_get_user_preset_names))               # User display - filtered base presets
+_TODO_INTERNAL_PRESET_LIST="${(j:, :)_TODO_INTERNAL_USER_PRESETS}"                       # Used in help text
 
 # Box width configuration (fraction of terminal width, with min/max limits)
 _TODO_INTERNAL_BOX_WIDTH_FRACTION="${_TODO_INTERNAL_BOX_WIDTH_FRACTION:-0.5}"  # 50% by default
@@ -631,7 +631,7 @@ function _todo_config_command() {
             echo "  reset                 # Reset to defaults"
             echo "  export [file]         # Export configuration"
             echo "  import <file>         # Import configuration"
-            echo "  preset <name>         # Apply preset (${_TODO_PRESET_LIST})"
+            echo "  preset <name>         # Apply preset (${_TODO_INTERNAL_PRESET_LIST})"
             echo "  save-preset <name>    # Save current settings as preset"
             echo "  preview [preset]      # Preview color swatches for presets"
             return 1
@@ -716,7 +716,7 @@ function _todo_show_config_help() {
     echo "  ${cyan}todo config reset${reset}         Reset to defaults"
     echo
     echo "${green}Available Presets:${reset}"
-    echo "  ${gray}${_TODO_PRESET_LIST}${reset}"
+    echo "  ${gray}${_TODO_INTERNAL_PRESET_LIST}${reset}"
     echo
     echo "${green}Quick Configuration Commands:${reset}"
     echo "  ${cyan}todo config get title${reset}             Get current box title"
@@ -1614,7 +1614,7 @@ function todo_help_full() {
     echo "  ${cyan}todo config import${reset} <file> [--colors-only] ${gray}Import configuration${reset}"
     echo "  ${cyan}todo config set${reset} <setting> <value>         ${gray}Change setting${reset}"
     echo "  ${cyan}todo config reset${reset} [--colors-only]         ${gray}Reset to defaults${reset}"
-    echo "  ${cyan}todo config preset${reset} <name>                 ${gray}Apply preset (${_TODO_PRESET_LIST})${reset}"
+    echo "  ${cyan}todo config preset${reset} <name>                 ${gray}Apply preset (${_TODO_INTERNAL_PRESET_LIST})${reset}"
     echo "    ${gray}Preset Intensities:${reset}"
     echo "      ${white}subtle${reset}   - Minimal decoration, muted colors"
     echo "      ${white}balanced${reset} - Professional appearance, moderate colors"

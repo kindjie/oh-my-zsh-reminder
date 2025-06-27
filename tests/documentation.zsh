@@ -447,9 +447,9 @@ function test_config_variables_documented() {
         "TODO_COLORS"                          # Parsed array from TODO_TASK_COLORS
         "TODO_TASKS"                           # Runtime task storage
         "TODO_TASKS_COLORS"                    # Runtime color storage
-        "_TODO_AVAILABLE_PRESETS"              # Internal preset discovery
-        "_TODO_USER_PRESETS"                   # Internal filtered preset list
-        "_TODO_PRESET_LIST"                    # Internal preset list string
+        "_TODO_INTERNAL_AVAILABLE_PRESETS"     # Internal preset discovery
+        "_TODO_INTERNAL_USER_PRESETS"          # Internal filtered preset list
+        "_TODO_INTERNAL_PRESET_LIST"           # Internal preset list string
         "_TODO_INTERNAL_FIRST_RUN_FILE"        # Internal state tracking
         "_TODO_INTERNAL_CACHED_TASKS"          # Performance optimization - cache
         "_TODO_INTERNAL_CACHED_COLORS"         # Performance optimization - cache

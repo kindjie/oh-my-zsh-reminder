@@ -359,14 +359,14 @@ function todo_config_get_preset_description() {
 }
 
 # List preset names only (for arrays) - internal use, shows all presets
-function todo_config_get_preset_names() {
+function _todo_config_get_preset_names() {
     todo_config_find_presets | cut -d: -f1 | sort -u
 }
 
 # List user-facing preset names (filtered base presets only)
-function todo_config_get_user_preset_names() {
+function _todo_config_get_user_preset_names() {
     # Filter out _tinted variants to show only semantic base presets
-    todo_config_get_preset_names | grep -v '_tinted$' | sort -u
+    _todo_config_get_preset_names | grep -v '_tinted$' | sort -u
 }
 
 # Apply a preset by name
@@ -390,7 +390,7 @@ function todo_config_apply_preset() {
     
     if [[ ! -f "$preset_file" ]]; then
         echo "Error: Preset '$preset_name' not found" >&2
-        echo "Available presets: $(todo_config_get_user_preset_names | tr '\n' ' ')" >&2
+        echo "Available presets: $(_todo_config_get_user_preset_names | tr '\n' ' ')" >&2
         echo "💡 Theme-adaptive variants are selected automatically based on your TODO_COLOR_MODE setting" >&2
         return 1
     fi
@@ -598,7 +598,7 @@ function todo_config_preview_presets() {
     echo
     
     if [[ "$preset" == "all" ]]; then
-        local preset_names=($(todo_config_get_preset_names))
+        local preset_names=($(_todo_config_get_preset_names))
         for p in "${preset_names[@]}"; do
             __todo_show_preset_swatch "$p"
             echo
