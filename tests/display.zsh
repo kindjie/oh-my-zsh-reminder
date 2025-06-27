@@ -162,10 +162,12 @@ test_box_width() {
     local test_start_time=$(get_timestamp)
     echo "\n3. Testing configurable box width:"
     
+    source_test_plugin
+    
     original_columns="$COLUMNS"
     COLUMNS=100
     
-    local box_width=$(calculate_box_width)
+    local box_width=$(_todo_calculate_box_width)
     echo "Terminal width: $COLUMNS, Box width: $box_width (50% default)"
     
     if [[ $box_width -eq 50 ]]; then

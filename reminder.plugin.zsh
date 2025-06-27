@@ -336,7 +336,7 @@ function regenerate_colors_for_existing_tasks() {
 }
 
 # Calculate optimal box width based on terminal size and configuration
-function calculate_box_width() {
+function _todo__todo_calculate_box_width() {
     # Convert fraction to percentage for integer math (0.5 -> 50)
     local percentage=$((${_TODO_INTERNAL_BOX_WIDTH_FRACTION} * 100))
     local desired_width=$((COLUMNS * percentage / 100))
@@ -847,8 +847,8 @@ if command -v compdef >/dev/null 2>&1; then
     # Prevent zsh from offering all todo_* functions when completing todo<TAB>
     # This sets up a style that ignores all internal functions for command completion
     zstyle ':completion:*:*:*:*:functions' ignored-patterns \
-        'todo_*' '_todo_*' 'autoload_todo_module' 'calculate_box_width' \
-        'draw_todo_box' 'fetch_affirmation_async' 'format_affirmation' \
+        'todo_*' '_todo_*' 'autoload_todo_module' '_todo_calculate_box_width' \
+        '_todo_draw_todo_box' 'fetch_affirmation_async' 'format_affirmation' \
         'format_todo_line' '_todo_load_tasks' 'regenerate_colors_for_existing_tasks' \
         'show_*' 'wrap_todo_text'
         
@@ -919,7 +919,7 @@ function format_todo_line() {
     local right_content="$2"
     local right_color="$3"
 
-    local box_width=$(calculate_box_width)
+    local box_width=$(_todo_calculate_box_width)
     local effective_columns=$((COLUMNS - _TODO_INTERNAL_PADDING_LEFT - _TODO_INTERNAL_PADDING_RIGHT))
     local left_width=$((effective_columns - box_width))
     local affirmation_color=$'\e[38;5;'${_TODO_INTERNAL_AFFIRMATION_COLOR}$'m'
@@ -961,10 +961,10 @@ function format_todo_line() {
 }
 
 # Draw todo box on right side of terminal with configurable width
-function draw_todo_box() {
+function _todo__todo_draw_todo_box() {
     setopt LOCAL_OPTIONS
     unsetopt XTRACE
-    local box_width=$(calculate_box_width)
+    local box_width=$(_todo_calculate_box_width)
     local content_width=$((box_width - 4))  # 2 for borders, 2 for padding
     local border_fg_color=$'\e[38;5;'${_TODO_INTERNAL_BORDER_COLOR}$'m'
     local border_bg_color=$'\e[48;5;'${_TODO_INTERNAL_BORDER_BG_COLOR}$'m'
@@ -1144,7 +1144,7 @@ function _todo_display() {
             echo
         done
 
-        draw_todo_box
+        _todo_draw_todo_box
 
         # Add bottom padding
         for (( i = 0; i < _TODO_INTERNAL_PADDING_BOTTOM; i++ )); do
