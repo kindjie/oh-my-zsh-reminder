@@ -5,6 +5,12 @@
 echo "🎛️  Testing User Interface Commands"
 echo "══════════════════════════════════════"
 
+# Load shared test utilities
+source "$(dirname "$0")/test_utils.zsh"
+
+# Initialize timing
+init_test_timing()
+
 # Test setup - shared test helper functions
 source_test_plugin() {
     autoload -U colors
@@ -512,16 +518,17 @@ test_help_alignment() {
 
 # Run all interface tests
 main() {
-    test_toggle_commands
-    test_help_command
-    test_colors_command
-    test_subcommand_interface
-    test_error_handling
-    test_state_persistence
-    test_help_alignment
+    timed_test "1. Testing toggle commands" test_toggle_commands
+    timed_test "2. Testing help command" test_help_command
+    timed_test "3. Testing colors command" test_colors_command
+    timed_test "4. Testing subcommand interface" test_subcommand_interface
+    timed_test "5. Testing error handling" test_error_handling
+    timed_test "6. Testing state persistence" test_state_persistence
+    timed_test "7. Testing help alignment" test_help_alignment
     
     echo "\n🎯 Interface Tests Completed"
     echo "════════════════════════════"
+    finalize_test_timing
 }
 
 # Execute if run directly

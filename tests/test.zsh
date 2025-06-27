@@ -640,6 +640,11 @@ show_help() {
     echo "  --skip-ux            Skip UX tests"
     echo "  --skip-docs          Skip documentation tests"
     echo "  -m, --meta           Add Claude-powered analysis to test results"
+    echo "  --claude             Run all Claude tests (templates + validation)"
+    echo "  --claude-templates   Run Claude template function tests (fast)"
+    echo "  --claude-validation  Run Claude plugin validation tests (slow)"
+    echo "  --claude-docs        Run Claude documentation quality tests"
+    echo "  --improve-docs       Improve documentation quality"
     echo
     echo "Test Files:"
     for test_file in "${TEST_FILES[@]}"; do
@@ -654,6 +659,11 @@ show_help() {
     echo "  $script_name display.zsh              # Run specific test file"
     echo "  $script_name --meta                   # Run all tests + Claude analysis"
     echo "  $script_name --only-functional --meta # Functional tests + Claude analysis"
+    echo "  $script_name --claude                 # Run all Claude tests"
+    echo "  $script_name --claude-templates       # Run template function tests (fast)"
+    echo "  $script_name --claude-validation      # Run plugin validation tests (slow)"
+    echo "  $script_name --claude-docs            # Check documentation quality"
+    echo "  $script_name --improve-docs           # Improve documentation"
 }
 
 # Function to list available tests
@@ -718,6 +728,70 @@ main() {
             -m|--meta)
                 run_meta=true
                 shift
+                ;;
+            --claude)
+                echo "🤖 Running all Claude tests (templates + validation)..."
+                ./tests/claude_runner.zsh
+                return $?
+                ;;
+            --claude-templates)
+                echo "🧪 Running Claude template function tests (fast)..."
+                if [[ -f "./tests/claude/claude_template_validation.zsh" ]]; then
+                    CLAUDE_RUNNER_MODE=true ./tests/claude/claude_template_validation.zsh
+                    return $?
+                else
+                    echo "❌ Claude template function tests not available"
+                    return 1
+                fi
+                ;;
+            --claude-validation)
+                echo "🔍 Running Claude plugin validation tests (slow)..."
+                # Create a temporary runner that excludes template validation
+                local validation_tests=(
+                    "claude_namespace_validation.zsh"
+                    "claude_subcommand_coverage.zsh"
+                    "claude_architecture_purity.zsh"
+                    "claude_user_experience.zsh"
+                    "claude_security_validation.zsh"
+                    "claude_documentation_quality.zsh"
+                    "claude_obsolete_file_detection.zsh"
+                )
+                
+                local failed=0
+                for test_file in "${validation_tests[@]}"; do
+                    echo "🔍 Running: $test_file"
+                    if ! "./tests/claude/$test_file" 2>/dev/null; then
+                        ((failed++))
+                    fi
+                done
+                
+                if [[ $failed -eq 0 ]]; then
+                    echo "🎉 All Claude plugin validation tests passed!"
+                    return 0
+                else
+                    echo "⚠️  $failed Claude plugin validation tests failed"
+                    return 1
+                fi
+                ;;
+            --claude-docs)
+                echo "🤖📝 Running Claude documentation quality tests..."
+                if [[ -f "./tests/claude/claude_documentation_quality.zsh" ]]; then
+                    ./tests/claude/claude_documentation_quality.zsh
+                    return $?
+                else
+                    echo "❌ Claude documentation quality tests not available"
+                    return 1
+                fi
+                ;;
+            --improve-docs)
+                echo "📝 Running documentation improvement..."
+                if [[ -f "./dev-tools/improve-docs.zsh" ]]; then
+                    ./dev-tools/improve-docs.zsh
+                    return $?
+                else
+                    echo "❌ Documentation improvement tool not available"
+                    return 1
+                fi
                 ;;
             -*)
                 echo "${RED}❌ Unknown option: $1${RESET}"
@@ -802,55 +876,46 @@ main() {
             # Functional test - run with standard function
             run_test_file "$test_file" "$current_test_num" "$total_test_count"
         else
-            # Extended test - run with custom display and spinner
-            if [[ "$verbose" == false ]]; then
-                echo -n "${CYAN}[$current_test_num/$total_test_count]${RESET} $test_file ... "
-                
-                # Run test in background with spinner
-                case "$test_file" in
-                    "performance.zsh")
-                        run_performance_tests &
-                        ;;
-                    "ux.zsh")
-                        run_ux_tests &
-                        ;;
-                    "user_workflows.zsh")
-                        run_user_workflows "$verbose" &
-                        ;;
-                    "documentation.zsh")
-                        run_documentation_tests &
-                        ;;
-                    "help_examples.zsh")
-                        run_help_examples_tests &
-                        ;;
-                esac
-                
-                local test_pid=$!
-                show_spinner $test_pid
-                wait $test_pid
-                local test_exit_code=$?
-                
-                # The test functions handle their own output, so we don't need to print results here
-                
+            # Extended test - run without background processes to fix counter bug
+            echo -n "${CYAN}[$current_test_num/$total_test_count]${RESET} $test_file ... "
+            
+            # Store counters before test
+            local before_total=$TOTAL_TESTS
+            local before_passed=$PASSED_TESTS
+            local before_failed=$FAILED_TESTS
+            local before_warnings=$WARNING_TESTS
+            
+            # Run test in foreground to preserve global counter updates
+            case "$test_file" in
+                "performance.zsh")
+                    run_performance_tests
+                    ;;
+                "ux.zsh")
+                    run_ux_tests
+                    ;;
+                "user_workflows.zsh")
+                    run_user_workflows "$verbose"
+                    ;;
+                "documentation.zsh")
+                    run_documentation_tests
+                    ;;
+                "help_examples.zsh")
+                    run_help_examples_tests
+                    ;;
+            esac
+            
+            local test_exit_code=$?
+            
+            # Calculate changes in counters and show compact results
+            local test_total=$((TOTAL_TESTS - before_total))
+            local test_passed=$((PASSED_TESTS - before_passed))
+            local test_failed=$((FAILED_TESTS - before_failed))
+            local test_warnings=$((WARNING_TESTS - before_warnings))
+            
+            if [[ $test_failed -eq 0 ]]; then
+                echo "${GREEN}✅ ${test_passed} passed${RESET}"
             else
-                echo
-                case "$test_file" in
-                    "performance.zsh")
-                        run_performance_tests
-                        ;;
-                    "ux.zsh")
-                        run_ux_tests
-                        ;;
-                    "user_workflows.zsh")
-                        run_user_workflows "$verbose"
-                        ;;
-                    "documentation.zsh")
-                        run_documentation_tests
-                        ;;
-                    "help_examples.zsh")
-                        run_help_examples_tests
-                        ;;
-                esac
+                echo "${RED}❌ ${test_failed} failed${RESET}"
             fi
         fi
         ((current_test_num++))

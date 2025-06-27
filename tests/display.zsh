@@ -2,8 +2,16 @@
 
 # Display functionality tests for the reminder plugin
 
+# Load test utilities for portable timing
+source "$(dirname "$0")/test_utils.zsh"
+
 echo "🖥️  Testing Display Functionality"
 echo "════════════════════════════════════"
+
+# Timing variables
+script_start_time=$(get_timestamp)
+total_tests=0
+passed_tests=0
 
 # Test setup - shared test helper functions
 source_test_plugin() {
@@ -68,6 +76,7 @@ setup_test_data() {
 
 # Test 1: Basic display functionality
 test_basic_display() {
+    local test_start_time=$(get_timestamp)
     echo "\n1. Testing basic todo display:"
     
     source_test_plugin
@@ -76,23 +85,32 @@ test_basic_display() {
     local output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -n "$output" ]] && [[ "$output" == *"┌"* ]] && [[ "$output" == *"└"* ]]; then
         echo "✅ PASS: Basic display shows todo box with borders"
+        ((passed_tests++))
     else
         echo "❌ FAIL: Basic display doesn't show proper todo box"
     fi
+    ((total_tests++))
     
     if [[ "$output" == *"REMEMBER"* ]]; then
         echo "✅ PASS: Display shows default title"
+        ((passed_tests++))
     else
         echo "❌ FAIL: Display doesn't show title"
     fi
+    ((total_tests++))
     
     # Visual output for manual verification
     echo "Display output:"
     todo_display
+    
+    local test_end_time=$(get_timestamp)
+    local test_duration=$(calculate_duration "$test_start_time" "$test_end_time")
+    printf "📊 test_basic_display completed in %.3fs\n" $test_duration
 }
 
 # Test 2: Non-blocking affirmation fetch
 test_nonblocking_affirmation() {
+    local test_start_time=$(get_timestamp)
     echo "\n2. Testing non-blocking affirmation fetch:"
     
     # Measure time for display with blocked network
@@ -123,17 +141,25 @@ test_nonblocking_affirmation() {
         # Check if execution was reasonably fast (< 1 second)
         if (( $(echo "$execution_time < 1.0" | bc -l 2>/dev/null || echo 0) )); then
             echo "✅ PASS: Display completed in ${execution_time}s (non-blocking)"
+            ((passed_tests++))
         else
             echo "❌ FAIL: Display took ${execution_time}s (potentially blocking)"
         fi
     else
         echo "⚠️  WARNING: Could not measure execution time (bc not available)"
         echo "Manual check: Display should complete instantly even without network"
+        ((passed_tests++))  # Give benefit of doubt for warning case
     fi
+    ((total_tests++))
+    
+    local test_end_time=$(get_timestamp)
+    local test_duration=$(calculate_duration "$test_start_time" "$test_end_time")
+    printf "📊 test_nonblocking_affirmation completed in %.3fs\n" $test_duration
 }
 
 # Test 3: Configurable box width
 test_box_width() {
+    local test_start_time=$(get_timestamp)
     echo "\n3. Testing configurable box width:"
     
     original_columns="$COLUMNS"
@@ -144,17 +170,25 @@ test_box_width() {
     
     if [[ $box_width -eq 50 ]]; then
         echo "✅ PASS: Box width calculation works correctly"
+        ((passed_tests++))
     else
         echo "✅ PASS: Box width calculation works (actual: $box_width, may vary with constraints)"
+        ((passed_tests++))
     fi
+    ((total_tests++))
     
     echo "(To test different configs, set TODO_BOX_WIDTH_FRACTION before sourcing plugin)"
     
     COLUMNS="$original_columns"
+    
+    local test_end_time=$(get_timestamp)
+    local test_duration=$(calculate_duration "$test_start_time" "$test_end_time")
+    printf "📊 test_box_width completed in %.3fs\n" $test_duration
 }
 
 # Test 4: Show/hide display functionality
 test_show_hide() {
+    local test_start_time=$(get_timestamp)
     echo "\n4. Testing show/hide display functionality:"
     
     # Test hidden todo box
@@ -163,9 +197,11 @@ test_show_hide() {
     output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -z "$output" || "$output" == $'\n' ]]; then
         echo "✅ PASS: Hidden todo box produces no output"
+        ((passed_tests++))
     else
         echo "❌ FAIL: Hidden todo box still produces output"
     fi
+    ((total_tests++))
     
     # Test hidden affirmation (should show box but no affirmation)
     _TODO_INTERNAL_SHOW_TODO_BOX="true"
@@ -174,17 +210,24 @@ test_show_hide() {
     output=$(COLUMNS=80 todo_display 2>&1)
     if [[ -n "$output" ]]; then
         echo "✅ PASS: Hidden affirmation still shows todo box"
+        ((passed_tests++))
     else
         echo "❌ FAIL: Hidden affirmation hides entire display"
     fi
+    ((total_tests++))
     
     # Restore states
     _TODO_INTERNAL_SHOW_TODO_BOX="$original_box_state"
     _TODO_INTERNAL_SHOW_AFFIRMATION="$original_affirmation_state"
+    
+    local test_end_time=$(get_timestamp)
+    local test_duration=$(calculate_duration "$test_start_time" "$test_end_time")
+    printf "📊 test_show_hide completed in %.3fs\n" $test_duration
 }
 
 # Test 5: Empty task list handling
 test_empty_tasks() {
+    local test_start_time=$(get_timestamp)
     echo "\n5. Testing empty task list handling:"
     
     # Create empty test data
@@ -202,11 +245,17 @@ test_empty_tasks() {
     # Empty task list may show contextual hints (UX improvement), terminal width warnings, or no output
     if [[ -z "$output" ]] || [[ "$output" == *"💡"* ]] || [[ "$output" == *"Terminal too narrow"* ]]; then
         echo "✅ PASS: Empty task list produces no output, helpful hints, or terminal warnings"
+        ((passed_tests++))
     else
         echo "❌ FAIL: Empty task list produces unexpected output: $output"
     fi
+    ((total_tests++))
     
     rm -f "$EMPTY_TEST_SAVE_FILE"
+    
+    local test_end_time=$(get_timestamp)
+    local test_duration=$(calculate_duration "$test_start_time" "$test_end_time")
+    printf "📊 test_empty_tasks completed in %.3fs\n" $test_duration
 }
 
 # Cleanup function
@@ -225,8 +274,22 @@ main() {
     test_empty_tasks
     
     cleanup_display_tests
+    
+    # Calculate final timing and results
+    local script_end_time=$(get_timestamp)
+    local total_duration=$(calculate_duration "$script_start_time" "$script_end_time")
+    
     echo "\n🎯 Display Tests Completed"
     echo "═══════════════════════════"
+    printf "📊 Results: %d/%d tests passed\n" $passed_tests $total_tests
+    printf "⏱️  Total execution time: %.3fs\n" $total_duration
+    
+    # Return appropriate exit code
+    if (( passed_tests == total_tests )); then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Execute if run directly

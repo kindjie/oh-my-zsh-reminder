@@ -253,8 +253,8 @@ function test_claude_md_architecture() {
         failed_claims+=("Modular structure claim - lib directory or wizard module missing")
     fi
     
-    # Test: "Persistent Storage: Tasks and colors stored in single file ~/.todo.save"
-    local save_file_usage=$(grep -c "TODO_SAVE_FILE" reminder.plugin.zsh)
+    # Test: "Persistent Storage: Tasks and colors stored in ~/.config/todo-reminder/data.save"
+    local save_file_usage=$(grep -c "_TODO_INTERNAL_SAVE_FILE" reminder.plugin.zsh)
     if [[ $save_file_usage -lt 3 ]]; then
         failed_claims+=("Persistent storage claim - insufficient save file usage")
     fi

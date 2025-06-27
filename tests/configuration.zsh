@@ -5,6 +5,12 @@
 echo "⚙️  Testing Configuration Options"
 echo "════════════════════════════════════"
 
+# Load shared test utilities
+source "$(dirname "$0")/test_utils.zsh"
+
+# Initialize timing
+init_test_timing()
+
 # Test setup - shared test helper functions
 source_test_plugin() {
     autoload -U colors
