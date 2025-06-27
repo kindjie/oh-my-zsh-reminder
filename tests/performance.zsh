@@ -405,12 +405,12 @@ test_function_profiling() {
   # Profile individual functions
   echo "Individual function timing:"
   
-  # Test wrap_todo_text (if function exists)
-  if command -v wrap_todo_text >/dev/null 2>&1; then
+  # Test _todo_wrap_todo_text (if function exists)
+  if command -v _todo_wrap_todo_text >/dev/null 2>&1; then
     local avg_time=0
     local count=0
     for i in {1..100}; do
-      local elapsed=$(measure_time wrap_todo_text 'This is a long text that needs wrapping' 40 2>/dev/null)
+      local elapsed=$(measure_time _todo_wrap_todo_text 'This is a long text that needs wrapping' 40 2>/dev/null)
       if [[ -n "$elapsed" && "$elapsed" != "0" ]]; then
         avg_time=$(echo "scale=6; $avg_time + $elapsed" | bc 2>/dev/null || echo "0")
         ((count++))

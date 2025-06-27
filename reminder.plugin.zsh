@@ -361,7 +361,7 @@ function _todo__todo_calculate_box_width() {
 }
 
 # Format affirmation text with configurable heart position
-function format_affirmation() {
+function _todo__todo_format_affirmation() {
     local text="$1"
     case "$_TODO_INTERNAL_HEART_POSITION" in
         "left")
@@ -848,9 +848,9 @@ if command -v compdef >/dev/null 2>&1; then
     # This sets up a style that ignores all internal functions for command completion
     zstyle ':completion:*:*:*:*:functions' ignored-patterns \
         'todo_*' '_todo_*' 'autoload_todo_module' '_todo_calculate_box_width' \
-        '_todo_draw_todo_box' 'fetch_affirmation_async' 'format_affirmation' \
+        '_todo_draw_todo_box' 'fetch_affirmation_async' '_todo_format_affirmation' \
         'format_todo_line' '_todo_load_tasks' 'regenerate_colors_for_existing_tasks' \
-        'show_*' 'wrap_todo_text'
+        'show_*' '_todo_wrap_todo_text'
         
     # Also ignore internal variables
     zstyle ':completion:*:*:*:*:parameters' ignored-patterns \
@@ -861,7 +861,7 @@ fi
 # Wrap text to fit within specified width, handling bullet and text colors separately
 # Args: text, max_width, bullet_color, is_title
 # Returns: formatted lines with proper bullet prefixes and indentation
-function wrap_todo_text() {
+function _todo__todo_wrap_todo_text() {
     local text="$1"
     local max_width="$2"
     local bullet_color="$3"
@@ -980,12 +980,12 @@ function _todo__todo_draw_todo_box() {
     if [[ -f "$_TODO_INTERNAL_AFFIRMATION_FILE" && -s "$_TODO_INTERNAL_AFFIRMATION_FILE" ]]; then
         local cached_affirm="$(cat "$_TODO_INTERNAL_AFFIRMATION_FILE" 2>/dev/null)"
         if [[ -n "$cached_affirm" ]]; then
-            affirm_text="$(format_affirmation "$cached_affirm")"
+            affirm_text="$(_todo_format_affirmation "$cached_affirm")"
         else
-            affirm_text="$(format_affirmation "Keep going!")"
+            affirm_text="$(_todo_format_affirmation "Keep going!")"
         fi
     else
-        affirm_text="$(format_affirmation "Keep going!")"
+        affirm_text="$(_todo_format_affirmation "Keep going!")"
     fi
 
     # Start background affirmation fetch (safe async execution)
@@ -1036,10 +1036,10 @@ function _todo__todo_draw_todo_box() {
         # Truncate core text and reformat with hearts (ensure non-negative length)
         if [[ $max_affirm_len -gt 0 ]]; then
             local truncated_text="${core_text:0:$max_affirm_len}..."
-            affirm_text="$(format_affirmation "$truncated_text")"
+            affirm_text="$(_todo_format_affirmation "$truncated_text")"
         else
             # If no space for text, just show heart(s) if configured
-            affirm_text="$(format_affirmation "")"
+            affirm_text="$(_todo_format_affirmation "")"
         fi
     fi
 
@@ -1051,7 +1051,7 @@ function _todo__todo_draw_todo_box() {
         if [[ -n "$line" ]]; then
             all_lines+=("$line")
         fi
-    done <<< "$(wrap_todo_text "$_TODO_INTERNAL_TITLE" "$content_width" "" "true")"
+    done <<< "$(_todo_wrap_todo_text "$_TODO_INTERNAL_TITLE" "$content_width" "" "true")"
 
     # Add regular tasks
     for (( i = 1; i <= ${#todo_tasks}; i++ )); do
@@ -1059,7 +1059,7 @@ function _todo__todo_draw_todo_box() {
             if [[ -n "$line" ]]; then
                 all_lines+=("$line")
             fi
-        done <<< "$(wrap_todo_text "${todo_tasks[i]}" "$content_width" "${todo_tasks_colors[i]}" "false")"
+        done <<< "$(_todo_wrap_todo_text "${todo_tasks[i]}" "$content_width" "${todo_tasks_colors[i]}" "false")"
     done
 
     # Calculate middle line for affirmation
