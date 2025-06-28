@@ -119,7 +119,7 @@ function test_readme_config_examples() {
         todo config set title "TASKS" >/dev/null 2>&1;
         todo config set heart-char "💖" >/dev/null 2>&1;
         todo "Test config" >/dev/null 2>&1;
-        todo_display 2>/dev/null | grep -E "(TASKS|💖)" | wc -l
+        _todo_display 2>/dev/null | grep -E "(TASKS|💖)" | wc -l
     ')
     
     if [[ "$test_output" -lt 1 ]]; then
@@ -205,7 +205,7 @@ function test_claude_md_functions() {
     # Extract function names mentioned in CLAUDE.md (updated for pure subcommand interface)
     local documented_functions=(
         "todo"
-        "todo_display"
+        "_todo_display"
         "fetch_affirmation_async"
         "_todo_config_command"
         "_todo_toggle_command"
@@ -293,7 +293,7 @@ function test_claude_md_testing_instructions() {
     local failed_instructions=()
     
     # Test: Basic functionality test command
-    local basic_test_output=$(COLUMNS=80 zsh -c 'autoload -U colors; colors; source reminder.plugin.zsh; todo_display' 2>&1)
+    local basic_test_output=$(COLUMNS=80 zsh -c 'autoload -U colors; colors; source reminder.plugin.zsh; _todo_display' 2>&1)
     if [[ "$basic_test_output" == *"error"* ]]; then
         failed_instructions+=("Basic functionality test")
     fi
@@ -509,7 +509,7 @@ function test_config_variables_documented() {
         source reminder.plugin.zsh;
         TODO_SAVE_FILE="/tmp/test_title_$$";
         todo "test" >/dev/null;
-        todo_display 2>/dev/null | grep "TEST_TITLE" | wc -l
+        _todo_display 2>/dev/null | grep "TEST_TITLE" | wc -l
     ')
     
     local functional_test_passed=true
@@ -652,7 +652,7 @@ function test_documented_edge_cases() {
     local empty_output=$(COLUMNS=80 TODO_SAVE_FILE="$temp_save" TODO_DISABLE_MIGRATION="true" zsh -c '
         autoload -U colors; colors;
         source reminder.plugin.zsh;
-        todo_display
+        _todo_display
     ')
     
     # Empty output OR only contextual hints (UX improvement) are acceptable

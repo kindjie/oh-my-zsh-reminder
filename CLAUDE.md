@@ -38,11 +38,11 @@ This is a zsh plugin that displays TODO reminders above the terminal prompt. It'
 - `todo_toggle_dispatcher`: Routes `todo toggle` commands (box, affirmation, all)
 
 ### Core Display & Logic
-- `todo_display`: Shows tasks before each prompt with right-aligned formatting
+- `_todo_display`: Shows tasks before each prompt with right-aligned formatting
 - `fetch_affirmation_async`: Fetches and displays motivational affirmations asynchronously
-- `format_affirmation`: Handles configurable heart positioning (left/right/both/none)
-- `wrap_todo_text`: Text wrapping with emoji-aware width calculation
-- `load_tasks`/`todo_save`: Handle persistent storage
+- `_todo_format_affirmation`: Handles configurable heart positioning (left/right/both/none)
+- `_todo_wrap_todo_text`: Text wrapping with emoji-aware width calculation
+- `_todo_load_tasks`/`_todo_save`: Handle persistent storage
 
 ### Advanced Features
 - `todo_config_*`: Configuration management (export, import, presets)
@@ -123,7 +123,7 @@ fi
 - Tests requiring task data should create temporary save files with proper task format
 - Use `printf` with null separators (`\000`) to create test data: `printf 'Task 1\000Task 2\000Task 3\n\e[38;5;167m\000\e[38;5;71m\000\e[38;5;136m\n4\n' > "$temp_save"`
 - Set `TODO_SAVE_FILE="$temp_save"` environment variable to point to test data
-- Let `load_tasks` function read from the test file naturally (don't manually override task arrays)
+- Let `_todo_load_tasks` function read from the test file naturally (don't manually override task arrays)
 - This approach ensures tests use the same data flow as real user scenarios
 
 **Test Categories**:
@@ -178,7 +178,7 @@ _TODO_AVAILABLE_PRESETS=("subtle" "balanced" "vibrant" "loud")
 **Quick Testing Commands**:
 ```bash
 # Basic functionality
-COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo "Test"; todo_display'
+COLUMNS=80 zsh -c 'source reminder.plugin.zsh; todo "Test"; _todo_display'
 
 # Complete test suite
 ./tests/test.zsh                    # All tests (~60s)
