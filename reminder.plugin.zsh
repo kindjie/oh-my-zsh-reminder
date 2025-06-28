@@ -197,7 +197,7 @@ typeset -i -g _TODO_INTERNAL_CACHED_COLOR_INDEX=1
 
 # Load tasks and colors from single save file with caching for performance
 # File format: tasks on line 1, colors on line 2, color_index on line 3
-function _todo__todo_load_tasks() {
+function _todo_load_tasks() {
     local current_mtime=0
     
     # Get file modification time (cross-platform)
@@ -336,7 +336,7 @@ function regenerate_colors_for_existing_tasks() {
 }
 
 # Calculate optimal box width based on terminal size and configuration
-function _todo__todo_calculate_box_width() {
+function _todo_calculate_box_width() {
     # Convert fraction to percentage for integer math (0.5 -> 50)
     local percentage=$((${_TODO_INTERNAL_BOX_WIDTH_FRACTION} * 100))
     local desired_width=$((COLUMNS * percentage / 100))
@@ -361,7 +361,7 @@ function _todo__todo_calculate_box_width() {
 }
 
 # Format affirmation text with configurable heart position
-function _todo__todo_format_affirmation() {
+function _todo_format_affirmation() {
     local text="$1"
     case "$_TODO_INTERNAL_HEART_POSITION" in
         "left")
@@ -861,7 +861,7 @@ fi
 # Wrap text to fit within specified width, handling bullet and text colors separately
 # Args: text, max_width, bullet_color, is_title
 # Returns: formatted lines with proper bullet prefixes and indentation
-function _todo__todo_wrap_todo_text() {
+function _todo_wrap_todo_text() {
     local text="$1"
     local max_width="$2"
     local bullet_color="$3"
@@ -961,7 +961,7 @@ function format_todo_line() {
 }
 
 # Draw todo box on right side of terminal with configurable width
-function _todo__todo_draw_todo_box() {
+function _todo_draw_todo_box() {
     setopt LOCAL_OPTIONS
     unsetopt XTRACE
     local box_width=$(_todo_calculate_box_width)
@@ -1295,7 +1295,7 @@ function _todo_serialize_config() {
     echo "${config_parts[*]}"
 }
 
-function __todo_save() {
+function _todo_save() {
     local temp_file="${_TODO_INTERNAL_SAVE_FILE}.tmp.$$"
     
     # Atomic write: write to temp file first, then move to final location
