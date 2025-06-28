@@ -29,7 +29,7 @@ $test_output
 
 Exit code: $test_exit_code"
 
-claude_response=$(echo "$prompt" | claude -p "$(cat)" 2>/dev/null)
+claude_response=$(echo "$prompt" | timeout 30 claude 2>/dev/null)
 
 # Check Claude response
 if [[ "$claude_response" == *"PASS"* ]]; then

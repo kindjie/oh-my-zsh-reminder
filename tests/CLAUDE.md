@@ -97,61 +97,21 @@ Tests documentation matches implementation: README accuracy, help text accuracy,
 #### **`help_examples.zsh`** - Help System Validation (3 tests)
 Tests all help examples are functional: basic help, full help, and specialized help topics.
 
-### **Claude Tests - Two Categories**
+### **Claude Tests - Removed**
 
-Claude tests are organized into two distinct categories with different purposes:
+All Claude tests have been removed from the codebase because:
 
-#### **🧪 Template Function Tests** (testing the tools themselves)
+1. **Template validation tests** - Tested unused utility functions that served no purpose except being tested
+2. **Plugin validation tests** - Required actual AI analysis to provide value, but were running in fast-path mode (bypassing Claude CLI calls)
 
-#### **`claude/claude_template_validation.zsh`** - Template Function Validation (4 tests)
-**Category**: Template Function Tests  
-**Purpose**: Tests that Claude template convenience functions work correctly  
-**What it tests**: `run_validation_test`, `run_doc_evaluation`, `check_file_obsolescence`, `analyze_temporary_sections` using designed pass/fail test cases  
-**Speed**: Fast (~2 minutes) with 90-second timeouts per function
+**Rationale**: The remaining template tests were testing dead code - functions that existed only to be tested but weren't used anywhere else in the codebase.
 
-#### **🔍 Plugin Validation Tests** (using tools to test the plugin)
-
-#### **`claude/claude_namespace_validation.zsh`** - Namespace Pollution Detection (3 tests)
-**Category**: Plugin Validation Tests  
-**Purpose**: Validate plugin architecture using Claude analysis  
-**What it tests**: Function pollution detection, variable pollution detection, pure subcommand interface validation  
-**Speed**: Slow (~2-5 minutes) - requires comprehensive code analysis
-
-#### **`claude/claude_subcommand_coverage.zsh`** - Subcommand Coverage (3 tests)  
-**Category**: Plugin Validation Tests  
-**Purpose**: Validate plugin completeness using Claude analysis  
-**What it tests**: Interface completeness, tab completion coverage, dispatcher routing validation  
-**Speed**: Slow (~2-5 minutes) - requires comprehensive interface analysis
-
-#### **`claude/claude_architecture_purity.zsh`** - Architecture Purity (3 tests)
-**Category**: Plugin Validation Tests  
-**Purpose**: Validate plugin architecture using Claude analysis  
-**What it tests**: Legacy function exposure, internal function privacy, clean plugin lifecycle  
-**Speed**: Slow (~2-5 minutes) - requires architectural analysis
-
-#### **`claude/claude_user_experience.zsh`** - User Experience Validation (3 tests)
-**Category**: Plugin Validation Tests  
-**Purpose**: Validate plugin UX using Claude analysis  
-**What it tests**: Beginner workflow support, power user customization, progressive disclosure implementation  
-**Speed**: Slow (~2-5 minutes) - requires multi-scenario UX analysis
-
-#### **`claude/claude_security_validation.zsh`** - Security Validation (3 tests)
-**Category**: Plugin Validation Tests  
-**Purpose**: Validate plugin security using Claude analysis  
-**What it tests**: Comprehensive security audit, input sanitization, safe configuration parsing  
-**Speed**: Slow (~2-5 minutes) - requires thorough security analysis
-
-#### **`claude/claude_documentation_quality.zsh`** - Documentation Quality (3 tests)
-**Category**: Plugin Validation Tests  
-**Purpose**: Validate plugin documentation using Claude analysis  
-**What it tests**: README.md evaluation, CLAUDE.md evaluation, tests/CLAUDE.md evaluation  
-**Speed**: Slow (~2-5 minutes) - requires quality assessment
-
-#### **`claude/claude_obsolete_file_detection.zsh`** - Obsolete File Detection (5 tests)
-**Category**: Plugin Validation Tests  
-**Purpose**: Validate project hygiene using Claude analysis  
-**What it tests**: Backup file cleanup, temporary file cleanup, deprecated file cleanup, redundant test file cleanup, unused development artifact cleanup  
-**Speed**: Slow (~2-5 minutes) - requires file analysis
+**Better Alternatives**: 
+- Static analysis tools for namespace pollution detection
+- Functional tests for subcommand coverage  
+- Manual security reviews
+- User testing for UX validation
+- Standard unit tests for actual functionality
 
 ## Test Execution
 
@@ -283,13 +243,8 @@ The following checks are **mandatory commit blockers**:
 ./tests/documentation.zsh           # Documentation accuracy (12 tests)
 ./tests/help_examples.zsh          # Help example validation (3 tests)
 
-# Claude tests - two categories
-./tests/test.zsh --claude            # All Claude tests (27 tests, ~15-20 minutes)
-./tests/test.zsh --claude-templates  # Template function tests only (4 tests, ~2 minutes)
-./tests/test.zsh --claude-validation # Plugin validation tests only (23 tests, ~15-20 minutes)
-./tests/test.zsh --claude-docs       # Documentation quality tests (3 tests, ~5 minutes)
+# Documentation improvement
 ./tests/test.zsh --improve-docs      # Documentation improvement tool
-./tests/claude_runner.zsh           # Claude test runner directly (all tests)
 ```
 
 ### **Test Runner Options**
@@ -302,9 +257,6 @@ The main test runner (`./tests/test.zsh`) supports the following options:
 - **`--skip-docs`**: Skip documentation validation tests
 - **`--skip-ux`**: Skip user experience tests  
 - **`--meta`**: Run Claude analysis of test results after completion
-- **`--claude`**: Run all Claude tests (templates + validation, ~15-20 minutes)
-- **`--claude-templates`**: Run only template function tests (fast, ~2 minutes)
-- **`--claude-validation`**: Run only plugin validation tests (slow, ~15-20 minutes)
 - **No options**: Run complete test suite (207 tests, ~60s) with spinner progress
 
 **Option Combinations:**
