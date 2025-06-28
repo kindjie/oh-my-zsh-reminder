@@ -111,7 +111,7 @@ test_beginner_workflow() {
     local display_output=$(zsh -c "
         autoload -U colors; colors
         source '$SCRIPT_DIR/../reminder.plugin.zsh'
-        todo_display 2>&1
+        _todo_display 2>&1
     " | cat -v)
     
     if [[ "$display_output" == *"Buy groceries"* ]] && \

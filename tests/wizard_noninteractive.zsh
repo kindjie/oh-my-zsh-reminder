@@ -343,16 +343,16 @@ function test_wizard_heart_positions() {
         # Test all heart positions
         _TODO_INTERNAL_HEART_CHAR="♥"
         _TODO_INTERNAL_HEART_POSITION="left"
-        left_text=$(format_affirmation "Test")
+        left_text=$(_todo_format_affirmation "Test")
         
         _TODO_INTERNAL_HEART_POSITION="right"
-        right_text=$(format_affirmation "Test")
+        right_text=$(_todo_format_affirmation "Test")
         
         _TODO_INTERNAL_HEART_POSITION="both"
-        both_text=$(format_affirmation "Test")
+        both_text=$(_todo_format_affirmation "Test")
         
         _TODO_INTERNAL_HEART_POSITION="none"
-        none_text=$(format_affirmation "Test")
+        none_text=$(_todo_format_affirmation "Test")
         
         echo "Left: $left_text"
         echo "Right: $right_text"
